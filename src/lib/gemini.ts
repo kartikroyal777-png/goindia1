@@ -1,10 +1,10 @@
 import axios from 'axios';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const API_KEY = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY;
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
 
 export const runGeminiQuery = async (prompt: string): Promise<string> => {
-  if (!API_KEY || API_KEY === 'YOUR_API_KEY') {
+  if (!API_KEY || API_KEY.includes('YOUR_API_KEY')) {
     console.error("Gemini API key is not configured.");
     return "Gemini API is not set up. Please add your API key in the .env file.";
   }
