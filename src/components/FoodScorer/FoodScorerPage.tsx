@@ -1,60 +1,82 @@
 import React, { useState, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Upload, Zap, Info, RefreshCw, FlipHorizontal } from 'lucide-react';
-import { runFoodScorerQuery } from '../../lib/ai';
+import { Camera, Upload, Zap, Info, RefreshCw, FlipHorizontal, AlertTriangle } from 'lucide-react';
+import { runGeminiVisionQuery } from '../../lib/gemini';
 
 const FoodScorerPage: React.FC = () => {
   const [mode, setMode] = useState<'scanner' | 'analysing' | 'score'>('scanner');
   const [scoreData, setScoreData] = useState<any | null>(null);
   const webcamRef = useRef<Webcam>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
-  const handleAnalyze = async () => {
+  const analyzeImage = async (imageSrc: string | null) => {
+    if (!imageSrc) {
+      setScoreData({ error: "Could not capture or load image." });
+      setMode('score');
+      return;
+    }
+
     setMode('analysing');
     setScoreData(null);
     
-    // In a real app, you'd send the image from webcamRef.current.getScreenshot()
-    // For this demo, we'll simulate the flow and call Gemini for the text part.
-    
-    const mockNutritionData = {
-      dish_label: "Masala Dosa",
-      calories: 420,
-      fat_g: 18,
-      sodium_mg: 820,
-      sugar_g: 4,
-      detected_method: "pan-fried"
-    };
+    const base64Image = imageSrc.split(',')[1];
 
     const prompt = `
-      SYSTEM: You are a friendly nutrition advisor. Given a dish name and nutrition estimates, produce a user-facing explanation and tips. Return ONLY valid JSON.
-      USER: Dish: "${mockNutritionData.dish_label}", calories: ${mockNutritionData.calories}, fat_g: ${mockNutritionData.fat_g}, sodium_mg: ${mockNutritionData.sodium_mg}, sugar_g: ${mockNutritionData.sugar_g}, detected_method: "${mockNutritionData.detected_method}".
-      JSON format: { "explanation": "A short 1-line health summary.", "suggestions": ["A simple, actionable suggestion.", "Another suggestion."] }
+      Analyze the food in the image. Identify the dish.
+      Your response MUST be a valid JSON object.
+      Provide a health score from 1 to 10 (1=very unhealthy, 10=very healthy).
+      Estimate nutritional values: calories, fat (g), sodium (mg), and sugar (g).
+      Give a short, 1-line health summary and two simple, actionable suggestions for a healthier alternative or preparation method.
+      
+      Return ONLY the JSON object, with no other text or markdown.
+      
+      JSON format: { 
+        "dish_label": "Name of the dish",
+        "score": 8.5,
+        "breakdown": {
+          "calories": { "value": 350, "score": 7 },
+          "fat": { "value": 15, "score": 6 },
+          "sodium": { "value": 400, "score": 8 },
+          "sugar": { "value": 5, "score": 9 }
+        },
+        "explanation": "A short 1-line health summary.", 
+        "suggestions": ["A simple, actionable suggestion.", "Another suggestion."] 
+      }
     `;
 
     try {
-      const aiResponse = await runFoodScorerQuery(prompt);
+      const aiResponse = await runGeminiVisionQuery(prompt, base64Image);
       const parsedResponse = JSON.parse(aiResponse);
-      
-      setScoreData({
-        score: 6.2, // This would be calculated by a deterministic backend algorithm
-        dish_label: mockNutritionData.dish_label,
-        breakdown: {
-          calories: { value: mockNutritionData.calories, score: 6 },
-          fat: { value: mockNutritionData.fat_g, score: 6 },
-          sodium: { value: mockNutritionData.sodium_mg, score: 5 },
-          sugar: { value: mockNutritionData.sugar_g, score: 8 },
-        },
-        explanation: parsedResponse.explanation,
-        suggestions: parsedResponse.suggestions
-      });
+      setScoreData(parsedResponse);
       setMode('score');
     } catch (error: any) {
       console.error("Failed to get food score analysis:", error);
-      // Use the rejected error message from the API handler
-      setScoreData({ error: error.toString().replace('Error: ', '') || "Could not analyze the food. Please try again." });
+      setScoreData({ error: error.message || "Could not analyze the food. The AI model might be unavailable or the response was not in the correct format. Please try again." });
       setMode('score');
     }
+  };
+  
+  const handleCapture = () => {
+    const imageSrc = webcamRef.current?.getScreenshot();
+    analyzeImage(imageSrc || null);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        analyzeImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   const ScoreRing = ({ score }: { score: number }) => {
@@ -88,13 +110,24 @@ const FoodScorerPage: React.FC = () => {
 
   const renderScanner = () => (
     <div className="relative w-full h-full flex flex-col bg-charcoal">
-      <Webcam
-        audio={false}
-        ref={webcamRef}
-        screenshotFormat="image/jpeg"
-        videoConstraints={{ facingMode }}
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+      {cameraError ? (
+        <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 bg-black text-white">
+          <AlertTriangle className="w-12 h-12 text-amber mb-4" />
+          <h3 className="text-xl font-bold">Camera Error</h3>
+          <p className="text-white/70 mt-2">{cameraError}</p>
+          <p className="text-xs text-white/50 mt-4">Please grant camera permissions in your browser settings and refresh the page. Alternatively, you can upload an image from your device.</p>
+        </div>
+      ) : (
+        <Webcam
+          audio={false}
+          ref={webcamRef}
+          screenshotFormat="image/jpeg"
+          videoConstraints={{ facingMode }}
+          className="absolute inset-0 w-full h-full object-cover"
+          onUserMediaError={(error) => setCameraError("Could not access the camera. Please ensure permissions are granted.")}
+        />
+      )}
       <div className="absolute top-4 right-4 flex flex-col space-y-4">
         <button onClick={() => setFacingMode(p => p === 'user' ? 'environment' : 'user')} className="p-3 bg-black/30 rounded-full text-white"><FlipHorizontal/></button>
         <button className="p-3 bg-black/30 rounded-full text-white"><Zap/></button>
@@ -105,12 +138,12 @@ const FoodScorerPage: React.FC = () => {
           <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/80 rounded-tr-lg z-10"></div>
           <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/80 rounded-bl-lg z-10"></div>
           <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/80 rounded-br-lg z-10"></div>
-          <div className="absolute left-0 right-0 h-1 bg-orange-500 shadow-[0_0_10px_2px_#FF5722] animate-scan"></div>
+          {!cameraError && <div className="absolute left-0 right-0 h-1 bg-orange-500 shadow-[0_0_10px_2px_#FF5722] animate-scan"></div>}
         </div>
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center items-center space-x-8 bg-gradient-to-t from-black/70 to-transparent">
-        <button className="p-4 bg-white/20 rounded-full"><Upload className="w-6 h-6 text-white" /></button>
-        <button onClick={handleAnalyze} className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-black/20">
+        <button onClick={handleUploadClick} className="p-4 bg-white/20 rounded-full"><Upload className="w-6 h-6 text-white" /></button>
+        <button onClick={handleCapture} className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-black/20 disabled:opacity-50" disabled={!!cameraError}>
           <div className="w-16 h-16 bg-orange-500 rounded-full"></div>
         </button>
         <button className="p-4 bg-white/20 rounded-full"><Camera className="w-6 h-6 text-white" /></button>
@@ -125,8 +158,8 @@ const FoodScorerPage: React.FC = () => {
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         className="w-16 h-16 border-4 border-white/30 border-t-orange-500 rounded-full mb-6"
       />
-      <h3 className="text-xl font-bold">Analyzing...</h3>
-      <p className="text-white/70">Checking ingredients and cooking style.</p>
+      <h3 className="text-xl font-bold">Analyzing Your Dish...</h3>
+      <p className="text-white/70">Identifying ingredients with AI vision.</p>
     </div>
   );
 
@@ -141,7 +174,7 @@ const FoodScorerPage: React.FC = () => {
           <p className="text-gray-600 mb-6 max-w-sm">
             {scoreData.error}
           </p>
-          <p className="text-xs text-gray-500 mb-6">Please ensure your Google Gemini API key is correct in the .env file.</p>
+          <p className="text-xs text-gray-500 mb-6">Please ensure your Google Gemini API key is correct and the image is clear.</p>
           <button onClick={() => setMode('scanner')} className="w-full max-w-xs flex items-center justify-center space-x-2 py-3 bg-orange-500 text-white font-bold rounded-xl shadow-lg">
             <RefreshCw className="w-5 h-5"/>
             <span>Try Again</span>
@@ -155,7 +188,7 @@ const FoodScorerPage: React.FC = () => {
     }
 
     return (
-      <div className="w-full h-full bg-light-gray p-4 pt-10 overflow-y-auto">
+      <div className="w-full h-full bg-light-gray p-4 pt-10 overflow-y-auto pb-24">
         <h2 className="text-3xl font-bold text-center mb-4 text-charcoal">{scoreData.dish_label}</h2>
         <motion.div initial={{scale:0.5}} animate={{scale:1}} className="flex justify-center">
           <ScoreRing score={scoreData.score} />
@@ -172,7 +205,7 @@ const FoodScorerPage: React.FC = () => {
                   <div className="w-24 h-2 bg-gray-200 rounded-full">
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${100 - (value.score * 10)}%` }}
+                      animate={{ width: `${(value.score / 10) * 100}%` }}
                       className={`h-2 rounded-full ${value.score > 7 ? 'bg-success' : value.score > 4 ? 'bg-amber' : 'bg-danger'}`}
                     />
                   </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Minus, Plus, Landmark, Mountain, User, ArrowRight, Heart, Users, MapPin, Share2, Sun, Cloud, Wind, ArrowLeft } from 'lucide-react';
-import { runTripPlannerQuery } from '../../lib/ai';
+import { runGeminiQuery } from '../../lib/gemini';
 import { DayPlan, City } from '../../types';
 import { supabase } from '../../lib/supabase';
 
@@ -62,6 +62,10 @@ const TripPlannerPage: React.FC = () => {
 
   const handleBack = () => {
     if (step > 1) setStep(step - 1);
+    else if (step === 5) { // Go back from itinerary to planner
+      setItinerary(null);
+      setStep(4);
+    }
   };
 
   const generateItinerary = async () => {
@@ -79,13 +83,13 @@ const TripPlannerPage: React.FC = () => {
       }`;
 
     try {
-      const response = await runTripPlannerQuery(prompt);
+      const response = await runGeminiQuery(prompt);
       const parsedItinerary: DayPlan[] = JSON.parse(response);
       setItinerary(parsedItinerary);
       setStep(5);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to generate or parse itinerary:", e);
-      setError("Sorry, the AI couldn't generate a trip plan. Please try a different destination.");
+      setError(e.message || "Sorry, the AI couldn't generate a trip plan. Please try a different destination or check your API key.");
     } finally {
       setIsGenerating(false);
     }
@@ -176,27 +180,24 @@ const TripPlannerPage: React.FC = () => {
     const WeatherIcon = [Sun, Cloud, Wind][activeDay % 3];
     return (
       <div className="bg-gray-50 min-h-screen pb-20">
-        <div className="p-4 bg-white shadow-md">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{preferences.days}-Day Trip to {preferences.destination}</h1>
-              <p className="text-gray-600 capitalize">{preferences.style} trip for {preferences.companions}</p>
-            </div>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-full hover:bg-gray-100"><Share2 className="w-5 h-5 text-gray-600" /></motion.button>
-          </div>
+        <div className="p-4 bg-white shadow-md flex justify-between items-center">
+          <motion.button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 flex items-center space-x-2">
+            <ArrowLeft className="w-5 h-5" />
+          </motion.button>
+          <h1 className="text-xl font-bold text-gray-900 text-center">{preferences.destination} Trip</h1>
+          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-full hover:bg-gray-100"><Share2 className="w-5 h-5 text-gray-600" /></motion.button>
         </div>
         <div className="sticky top-0 bg-white/80 backdrop-blur-sm z-10 p-4">
           <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
             {itinerary.map(day => (
               <motion.button key={day.day} onClick={() => setActiveDay(day.day)} className={`relative px-4 py-2 rounded-full font-medium text-sm flex-shrink-0 transition-all ${activeDay === day.day ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
                 Day {day.day}
-                {activeDay === day.day && <motion.div layoutId="activeDayTab" className="absolute -bottom-2 w-full h-1 bg-orange-500 rounded-full" />}
               </motion.button>
             ))}
           </div>
         </div>
         <AnimatePresence mode="wait">
-          <motion.div key={activeDay} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="px-4">
+          <motion.div key={activeDay} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="p-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center">
               <h3 className="text-lg font-bold text-gray-800">{currentDayData?.title}</h3>
               <div className="flex items-center space-x-2 text-gray-600"><WeatherIcon className="w-5 h-5" /><span className="font-medium text-sm">28°C</span></div>
@@ -218,7 +219,7 @@ const TripPlannerPage: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col justify-between">
+    <div className="bg-gray-50 min-h-screen flex flex-col">
       <div className="p-4 pt-8">
         <h1 className="text-3xl font-bold text-center text-gray-900 mb-2">AI Trip Planner</h1>
         <p className="text-center text-gray-600 mb-8">Let's plan your perfect Indian adventure.</p>
@@ -227,7 +228,7 @@ const TripPlannerPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-grow flex items-center justify-center p-4">
+      <div className="flex-grow flex items-center justify-center p-4 pb-32">
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }} className="w-full max-w-md">
             {error ? (
@@ -241,8 +242,8 @@ const TripPlannerPage: React.FC = () => {
       </div>
       
       {!error && (
-        <div className="p-4 bg-white border-t border-gray-200">
-          <div className="flex items-center justify-between space-x-4">
+        <div className="fixed bottom-[72px] left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200 z-20">
+          <div className="flex items-center justify-between space-x-4 max-w-md mx-auto">
             <motion.button onClick={handleBack} className="py-3 px-6 text-gray-700 font-semibold rounded-xl flex items-center space-x-2" disabled={step === 1} style={{ opacity: step === 1 ? 0.5 : 1 }} whileHover={{ scale: step > 1 ? 1.05 : 1 }}>
               <ArrowLeft className="w-4 h-4" />
               <span>Back</span>

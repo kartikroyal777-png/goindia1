@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Volume2, Copy, RotateCcw, Globe, BookOpen, EyeOff, Eye } from 'lucide-react';
-import { runAssistantQuery } from '../../lib/ai';
-import { phraseCategories } from '../../data/phrases';
-import { adultPhraseCategory } from '../../data/advanced-phrases';
+import { Volume2, Copy, RotateCcw, Globe, BookOpen, EyeOff, Eye, Loader2 } from 'lucide-react';
+import { runGeminiQuery } from '../../lib/gemini';
+import { supabase } from '../../lib/supabase';
+import { Phrase } from '../../types';
 
 const TranslatePage: React.FC = () => {
   const [sourceText, setSourceText] = useState('');
@@ -12,6 +12,31 @@ const TranslatePage: React.FC = () => {
   const [targetLang, setTargetLang] = useState('hi');
   const [isTranslating, setIsTranslating] = useState(false);
   const [showAdultContent, setShowAdultContent] = useState(false);
+  
+  const [phraseCategories, setPhraseCategories] = useState<Record<string, Phrase[]>>({});
+  const [loadingPhrases, setLoadingPhrases] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPhrases = async () => {
+      setLoadingPhrases(true);
+      setError(null);
+      const { data, error } = await supabase.from('phrases').select('*').order('category').order('en');
+      if (error) {
+        setError("Could not load phrases. Please try again later.");
+        console.error(error);
+      } else if (data) {
+        const grouped = data.reduce((acc, phrase) => {
+          const category = phrase.is_adult ? 'Slang & Adult (18+)' : phrase.category;
+          (acc[category] = acc[category] || []).push(phrase);
+          return acc;
+        }, {} as Record<string, Phrase[]>);
+        setPhraseCategories(grouped);
+      }
+      setLoadingPhrases(false);
+    };
+    fetchPhrases();
+  }, []);
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -31,9 +56,14 @@ const TranslatePage: React.FC = () => {
 
     const prompt = `Translate the following text from ${sourceLangName} to ${targetLangName}. Provide only the translated text, with no additional explanations or quotation marks. Text: "${sourceText}"`;
     
-    const translation = await runAssistantQuery(prompt);
-    setTranslatedText(translation);
-    setIsTranslating(false);
+    try {
+      const translation = await runGeminiQuery(prompt);
+      setTranslatedText(translation);
+    } catch (e: any) {
+      setTranslatedText(e.message || "Translation failed.");
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   const swapLanguages = () => {
@@ -63,7 +93,10 @@ const TranslatePage: React.FC = () => {
     if (text) navigator.clipboard.writeText(text);
   };
 
-  const allCategories = [...phraseCategories, ...(showAdultContent ? [adultPhraseCategory] : [])];
+  const adultCategoryTitle = 'Slang & Adult (18+)';
+  const displayCategories = Object.entries(phraseCategories).filter(([title]) => {
+    return title !== adultCategoryTitle || showAdultContent;
+  });
 
   return (
     <div className="pb-20">
@@ -115,43 +148,44 @@ const TranslatePage: React.FC = () => {
       </div>
 
       <div className="p-4">
-        {allCategories.map((category) => (
-          <div key={category.title} className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
+        {loadingPhrases ? (
+          <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
+        ) : (
+          displayCategories.map(([category, phrases]) => (
+            <div key={category} className="mb-6">
+              <div className="flex items-center space-x-2 mb-4">
                 <BookOpen className="w-5 h-5 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-900">{category.title}</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{category}</h2>
               </div>
-              {category.title === "Slang & Adult (18+)" && (
-                <button onClick={() => setShowAdultContent(!showAdultContent)} className="flex items-center space-x-1 text-xs text-gray-500">
-                  {showAdultContent ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
-                  <span>{showAdultContent ? 'Hide' : 'Show'}</span>
-                </button>
-              )}
-            </div>
-            <div className="space-y-3">
-              {category.phrases.map((phrase, index) => (
-                <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{phrase.en}</p>
-                      <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
-                      <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+              <div className="space-y-3">
+                {phrases.map((phrase, index) => (
+                  <motion.div key={phrase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{phrase.en}</p>
+                        <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
+                        <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button onClick={() => speakText(phrase.hi, 'hi')} className="p-2 text-gray-400 hover:text-blue-500"><Volume2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <button onClick={() => speakText(phrase.hi, 'hi')} className="p-2 text-gray-400 hover:text-blue-500"><Volume2 className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-        {!showAdultContent && (
+          ))
+        )}
+        {!showAdultContent && phraseCategories[adultCategoryTitle] && (
            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
              <h3 className="font-semibold text-red-800">Adult Content Filter</h3>
              <p className="text-sm text-red-700 my-2">For educational purposes, a section with common slang and explicit words is available. Viewer discretion is advised.</p>
-             <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md">Show Adult Content</button>
+             <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md flex items-center justify-center mx-auto space-x-2">
+              <Eye className="w-4 h-4" />
+              <span>Show Adult Content</span>
+            </button>
            </div>
         )}
       </div>

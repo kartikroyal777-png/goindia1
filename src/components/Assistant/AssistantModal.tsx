@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Send, Bot, User, X } from 'lucide-react';
-import { runAssistantQuery } from '../../lib/ai';
+import { runGeminiQuery } from '../../lib/gemini';
 
 interface Message {
   id: string;
@@ -19,6 +19,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -34,13 +35,22 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
+    setError(null);
 
-    const prompt = `You are a friendly and expert travel assistant for "Go India", an app for foreigners visiting India. A user asks: "${text}". Provide a helpful, concise, and practical answer. Use emojis to make it engaging.`;
-    const aiResponse = await runAssistantQuery(prompt);
+    try {
+      const prompt = `You are a friendly and expert travel assistant for "Go India", an app for foreigners visiting India. A user asks: "${text}". Provide a helpful, concise, and practical answer. Use emojis to make it engaging.`;
+      const aiResponse = await runGeminiQuery(prompt);
 
-    const assistantMessage: Message = { id: (Date.now() + 1).toString(), type: 'assistant', content: aiResponse };
-    setMessages(prev => [...prev, assistantMessage]);
-    setIsTyping(false);
+      const assistantMessage: Message = { id: (Date.now() + 1).toString(), type: 'assistant', content: aiResponse };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (e: any) {
+      const errorMessage = e.message || "Sorry, I couldn't get a response. Please try again.";
+      setError(errorMessage);
+      const assistantMessage: Message = { id: (Date.now() + 1).toString(), type: 'assistant', content: errorMessage };
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (

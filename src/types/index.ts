@@ -124,3 +124,13 @@ export interface SafetyAlert {
   reported_at: string;
   verified: boolean;
 }
+
+export interface Phrase {
+  id: string;
+  category: string;
+  en: string;
+  hi: string;
+  pronunciation: string | null;
+  is_adult: boolean;
+  created_at: string;
+}

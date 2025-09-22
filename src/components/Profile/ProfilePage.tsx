@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Heart, MapPin, Shield, LogOut, Edit, Crown } from 'lucide-react';
+import { User, Settings, Heart, MapPin, LogOut, Edit, Crown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import EditProfileModal from './EditProfileModal';
@@ -20,7 +20,6 @@ const ProfilePage: React.FC = () => {
   const menuItems = [
     { icon: Heart, label: 'Saved Places', count: 12, path: '/saved-places' },
     { icon: MapPin, label: 'My Trips', count: 3, path: '/my-trips' },
-    { icon: Shield, label: 'Safety Settings', path: '/settings/safety' },
     { icon: Settings, label: 'App Settings', path: '/settings/app' },
   ];
 
