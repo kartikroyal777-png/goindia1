@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Upload, Zap, Info, RefreshCw, FlipHorizontal, AlertTriangle } from 'lucide-react';
+import { Camera, Upload, Zap, Info, RefreshCw, FlipHorizontal, AlertTriangle, X } from 'lucide-react';
 import { runGeminiVisionQuery } from '../../lib/gemini';
 
 const FoodScorerPage: React.FC = () => {
@@ -11,8 +11,9 @@ const FoodScorerPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
-  const analyzeImage = async (imageSrc: string | null) => {
+  const analyzeImage = useCallback(async (imageSrc: string | null) => {
     if (!imageSrc) {
       setScoreData({ error: "Could not capture or load image." });
       setMode('score');
@@ -57,200 +58,224 @@ const FoodScorerPage: React.FC = () => {
       setScoreData({ error: error.message || "Could not analyze the food. The AI model might be unavailable or the response was not in the correct format. Please try again." });
       setMode('score');
     }
-  };
+  }, []);
   
-  const handleCapture = () => {
+  const handleCapture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
-    analyzeImage(imageSrc || null);
-  };
+    if (imageSrc) {
+      setCapturedImage(imageSrc);
+      analyzeImage(imageSrc);
+    }
+  }, [webcamRef, analyzeImage]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       const reader = new FileReader();
       reader.onloadend = () => {
-        analyzeImage(reader.result as string);
+        const result = reader.result as string;
+        setCapturedImage(result);
+        analyzeImage(result);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  const resetScanner = () => {
+    setMode('scanner');
+    setScoreData(null);
+    setCapturedImage(null);
+    setCameraError(null);
   };
 
   const ScoreRing = ({ score }: { score: number }) => {
-    const circumference = 2 * Math.PI * 45;
+    const circumference = 2 * Math.PI * 55;
     const offset = circumference - (score / 10) * circumference;
     const color = score >= 8 ? '#28A745' : score >= 5 ? '#FFC107' : '#E63946';
 
     return (
-      <div className="relative w-40 h-40">
-        <svg className="w-full h-full" viewBox="0 0 100 100">
-          <circle className="text-gray-200" strokeWidth="10" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+      <div className="relative w-48 h-48">
+        <svg className="w-full h-full" viewBox="0 0 120 120">
+          <circle className="text-gray-700" strokeWidth="10" stroke="currentColor" fill="transparent" r="55" cx="60" cy="60" />
           <motion.circle
             strokeWidth="10"
             strokeLinecap="round"
             stroke={color}
             fill="transparent"
-            r="45"
-            cx="50"
-            cy="50"
+            r="55"
+            cx="60"
+            cy="60"
             style={{ strokeDasharray: circumference, strokeDashoffset: circumference, transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
             animate={{ strokeDashoffset: offset }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
+            transition={{ duration: 1.5, ease: "circOut" }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-4xl font-bold" style={{color}}>{score.toFixed(1)}</span>
+          <span className="text-5xl font-bold" style={{color}}>{score.toFixed(1)}</span>
         </div>
       </div>
     );
   };
 
   const renderScanner = () => (
-    <div className="relative w-full h-full flex flex-col bg-charcoal">
+    <div className="relative w-full h-full flex flex-col bg-gray-900 text-white overflow-hidden">
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-      {cameraError ? (
-        <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 bg-black text-white">
-          <AlertTriangle className="w-12 h-12 text-amber mb-4" />
-          <h3 className="text-xl font-bold">Camera Error</h3>
-          <p className="text-white/70 mt-2">{cameraError}</p>
-          <p className="text-xs text-white/50 mt-4">Please grant camera permissions in your browser settings and refresh the page. Alternatively, you can upload an image from your device.</p>
-        </div>
-      ) : (
-        <Webcam
-          audio={false}
-          ref={webcamRef}
-          screenshotFormat="image/jpeg"
-          videoConstraints={{ facingMode }}
-          className="absolute inset-0 w-full h-full object-cover"
-          onUserMediaError={(error) => setCameraError("Could not access the camera. Please ensure permissions are granted.")}
-        />
-      )}
-      <div className="absolute top-4 right-4 flex flex-col space-y-4">
-        <button onClick={() => setFacingMode(p => p === 'user' ? 'environment' : 'user')} className="p-3 bg-black/30 rounded-full text-white"><FlipHorizontal/></button>
-        <button className="p-3 bg-black/30 rounded-full text-white"><Zap/></button>
+      
+      <div className="absolute inset-0">
+        {cameraError ? (
+          <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 bg-black">
+            <AlertTriangle className="w-12 h-12 text-amber-400 mb-4" />
+            <h3 className="text-xl font-bold">Camera Error</h3>
+            <p className="text-gray-400 mt-2">{cameraError}</p>
+            <p className="text-xs text-gray-500 mt-4">Please grant camera permissions in your browser settings and refresh. Alternatively, upload an image.</p>
+          </div>
+        ) : (
+          <Webcam
+            audio={false}
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            videoConstraints={{ facingMode, width: 1920, height: 1080 }}
+            className="w-full h-full object-cover"
+            onUserMediaError={() => setCameraError("Could not access the camera. Please ensure permissions are granted.")}
+          />
+        )}
       </div>
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
+
+      <div className="absolute top-4 right-4 flex flex-col space-y-4 z-20">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => setFacingMode(p => p === 'user' ? 'environment' : 'user')} className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white"><FlipHorizontal/></motion.button>
+      </div>
+
       <div className="absolute inset-0 flex items-center justify-center p-8 pointer-events-none">
-        <div className="relative w-[280px] h-[280px] overflow-hidden">
-          <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-white/80 rounded-tl-lg z-10"></div>
-          <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-white/80 rounded-tr-lg z-10"></div>
-          <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-white/80 rounded-bl-lg z-10"></div>
-          <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-white/80 rounded-br-lg z-10"></div>
-          {!cameraError && <div className="absolute left-0 right-0 h-1 bg-orange-500 shadow-[0_0_10px_2px_#FF5722] animate-scan"></div>}
+        <div className="relative w-[280px] h-[280px]">
+          <div className="absolute -top-1 -left-1 w-12 h-12 border-t-4 border-l-4 border-orange-500 rounded-tl-xl z-10"></div>
+          <div className="absolute -top-1 -right-1 w-12 h-12 border-t-4 border-r-4 border-orange-500 rounded-tr-xl z-10"></div>
+          <div className="absolute -bottom-1 -left-1 w-12 h-12 border-b-4 border-l-4 border-orange-500 rounded-bl-xl z-10"></div>
+          <div className="absolute -bottom-1 -right-1 w-12 h-12 border-b-4 border-r-4 border-orange-500 rounded-br-xl z-10"></div>
+          {!cameraError && <div className="absolute left-0 right-0 h-1 bg-orange-500 shadow-[0_0_15px_3px_#FF5722] animate-scan"></div>}
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center items-center space-x-8 bg-gradient-to-t from-black/70 to-transparent">
-        <button onClick={handleUploadClick} className="p-4 bg-white/20 rounded-full"><Upload className="w-6 h-6 text-white" /></button>
-        <button onClick={handleCapture} className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-black/20 disabled:opacity-50" disabled={!!cameraError}>
-          <div className="w-16 h-16 bg-orange-500 rounded-full"></div>
-        </button>
-        <button className="p-4 bg-white/20 rounded-full"><Camera className="w-6 h-6 text-white" /></button>
+      
+      <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-around items-center z-20 bg-gradient-to-t from-black/70 to-transparent pt-16">
+        <motion.button whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center space-y-1 text-gray-300">
+          <Upload className="w-6 h-6" />
+          <span className="text-xs font-medium">Upload</span>
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={handleCapture} className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-gray-800 disabled:opacity-50" disabled={!!cameraError}>
+          <div className="w-16 h-16 bg-orange-500 rounded-full active:bg-orange-600"></div>
+        </motion.button>
+        <div className="flex flex-col items-center space-y-1 text-gray-300">
+          <Zap className="w-6 h-6" />
+          <span className="text-xs font-medium">Flash</span>
+        </div>
       </div>
     </div>
   );
 
   const renderAnalysis = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-charcoal text-white">
+    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white">
+      {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute inset-0 w-full h-full object-cover opacity-20 blur-md" />}
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="w-16 h-16 border-4 border-white/30 border-t-orange-500 rounded-full mb-6"
+        className="w-16 h-16 border-4 border-white/20 border-t-orange-500 rounded-full mb-6"
       />
       <h3 className="text-xl font-bold">Analyzing Your Dish...</h3>
-      <p className="text-white/70">Identifying ingredients with AI vision.</p>
+      <p className="text-gray-400">Our AI is checking the ingredients.</p>
     </div>
   );
 
   const renderScore = () => {
     if (scoreData?.error) {
       return (
-        <div className="w-full h-full bg-light-gray p-4 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <Info className="w-8 h-8 text-danger" />
+        <div className="w-full h-full bg-gray-900 text-white p-4 flex flex-col items-center justify-center text-center">
+          {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute inset-0 w-full h-full object-cover opacity-10 blur-md" />}
+          <div className="relative z-10">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
+              <Info className="w-8 h-8 text-danger" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Analysis Failed</h2>
+            <p className="text-gray-400 mb-6 max-w-sm">{scoreData.error}</p>
+            <p className="text-xs text-gray-500 mb-6">Ensure your API key is correct and the image is clear.</p>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={resetScanner} className="w-full max-w-xs flex items-center justify-center space-x-2 py-3 bg-orange-500 font-bold rounded-xl shadow-lg">
+              <RefreshCw className="w-5 h-5"/>
+              <span>Try Again</span>
+            </motion.button>
           </div>
-          <h2 className="text-2xl font-bold text-charcoal mb-2">Analysis Failed</h2>
-          <p className="text-gray-600 mb-6 max-w-sm">
-            {scoreData.error}
-          </p>
-          <p className="text-xs text-gray-500 mb-6">Please ensure your Google Gemini API key is correct and the image is clear.</p>
-          <button onClick={() => setMode('scanner')} className="w-full max-w-xs flex items-center justify-center space-x-2 py-3 bg-orange-500 text-white font-bold rounded-xl shadow-lg">
-            <RefreshCw className="w-5 h-5"/>
-            <span>Try Again</span>
-          </button>
         </div>
       );
     }
 
-    if (!scoreData) {
-      return null; 
-    }
+    if (!scoreData) return null;
 
     return (
-      <div className="w-full h-full bg-light-gray p-4 pt-10 overflow-y-auto pb-24">
-        <h2 className="text-3xl font-bold text-center mb-4 text-charcoal">{scoreData.dish_label}</h2>
-        <motion.div initial={{scale:0.5}} animate={{scale:1}} className="flex justify-center">
-          <ScoreRing score={scoreData.score} />
-        </motion.div>
-        
-        <div className="my-6 bg-white p-4 rounded-2xl shadow-sm">
-          <h3 className="font-bold mb-3 text-charcoal">Health Breakdown</h3>
-          <div className="space-y-3 text-sm">
-            {Object.entries(scoreData.breakdown).map(([key, value]: [string, any]) => (
-              <div key={key} className="flex justify-between items-center">
-                <span className="capitalize text-gray-600">{key}</span>
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-charcoal">{value.value}</span>
-                  <div className="w-24 h-2 bg-gray-200 rounded-full">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(value.score / 10) * 100}%` }}
-                      className={`h-2 rounded-full ${value.score > 7 ? 'bg-success' : value.score > 4 ? 'bg-amber' : 'bg-danger'}`}
-                    />
+      <div className="w-full h-full bg-gray-900 text-white overflow-y-auto">
+        {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute top-0 left-0 w-full h-64 object-cover opacity-30 [mask-image:linear-gradient(to_bottom,white,transparent)]" />}
+        <div className="relative p-4 pt-10">
+          <button onClick={resetScanner} className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full z-10"><X/></button>
+          <h2 className="text-3xl font-bold text-center mb-4">{scoreData.dish_label}</h2>
+          <motion.div initial={{scale:0.5}} animate={{scale:1}} className="flex justify-center my-6">
+            <ScoreRing score={scoreData.score} />
+          </motion.div>
+          
+          <div className="pb-24">
+            <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.5}} className="my-6 bg-white/5 p-4 rounded-2xl">
+              <h3 className="font-bold mb-3">Health Breakdown</h3>
+              <div className="space-y-3 text-sm">
+                {Object.entries(scoreData.breakdown).map(([key, value]: [string, any]) => (
+                  <div key={key} className="flex justify-between items-center">
+                    <span className="capitalize text-gray-400">{key}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">{value.value}</span>
+                      <div className="w-24 h-2 bg-gray-700 rounded-full">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(value.score / 10) * 100}%` }}
+                          transition={{delay: 0.8}}
+                          className={`h-2 rounded-full ${value.score > 7 ? 'bg-success' : value.score > 4 ? 'bg-amber' : 'bg-danger'}`}
+                        />
+                      </div>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.7}} className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
+              <div className="flex items-start space-x-3">
+                <Info className="w-6 h-6 text-orange-400 mt-1 flex-shrink-0"/>
+                <div>
+                  <h4 className="font-semibold text-white">AI Health Note</h4>
+                  <p className="text-sm text-gray-300">{scoreData.explanation}</p>
                 </div>
               </div>
-            ))}
+            </motion.div>
+
+            <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.9}} className="mt-4">
+              <h4 className="font-semibold text-white mb-2">Healthier Swaps</h4>
+              <ul className="space-y-2">
+                {scoreData.suggestions.map((tip: string, index: number) => (
+                  <li key={index} className="flex items-start space-x-3 text-sm bg-white/5 p-3 rounded-lg">
+                    <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex-shrink-0 border-2 border-gray-900"></div>
+                    <span className="text-gray-300">{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
           </div>
         </div>
-
-        <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl">
-          <div className="flex items-start space-x-3">
-            <Info className="w-6 h-6 text-orange-500 mt-1 flex-shrink-0"/>
-            <div>
-              <h4 className="font-semibold text-charcoal">AI Health Note</h4>
-              <p className="text-sm text-gray-700">{scoreData.explanation}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <h4 className="font-semibold text-charcoal mb-2">Healthier Swaps</h4>
-          <ul className="space-y-2">
-            {scoreData.suggestions.map((tip: string, index: number) => (
-              <li key={index} className="flex items-start space-x-3 text-sm bg-white p-3 rounded-lg shadow-sm">
-                <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex-shrink-0"></div>
-                <span className="text-gray-700">{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <button onClick={() => setMode('scanner')} className="w-full mt-6 flex items-center justify-center space-x-2 py-3 bg-orange-500 text-white font-bold rounded-xl shadow-lg">
-          <RefreshCw className="w-5 h-5"/>
-          <span>Scan Another Dish</span>
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
+    <div className="relative w-full h-screen bg-black">
       <AnimatePresence mode="wait">
         {mode === 'scanner' && <motion.div key="scanner" exit={{ opacity: 0 }} className="w-full h-full">{renderScanner()}</motion.div>}
         {mode === 'analysing' && <motion.div key="analysing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">{renderAnalysis()}</motion.div>}
-        {mode === 'score' && <motion.div key="score" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full h-full">{renderScore()}</motion.div>}
+        {mode === 'score' && <motion.div key="score" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full h-full">{renderScore()}</motion.div>}
       </AnimatePresence>
     </div>
   );

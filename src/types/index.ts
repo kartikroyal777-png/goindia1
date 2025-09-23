@@ -1,3 +1,16 @@
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  emoji: string;
+}
+
+export interface CityCategory {
+  city_id: string;
+  category_id: string;
+  categories: Category;
+}
+
 export interface City {
   id: string;
   name: string;
@@ -9,6 +22,7 @@ export interface City {
   safety_score: number;
   best_time_to_visit: string;
   weather_info: string;
+  city_categories?: CityCategory[];
 }
 
 export interface Tehsil {
@@ -22,13 +36,21 @@ export interface Tehsil {
   location_count: number;
 }
 
+export interface LocationImage {
+  id: string;
+  location_id: string;
+  image_url: string;
+  alt_text?: string;
+}
+
 export interface Location {
   id: string;
   tehsil_id: string;
   name: string;
   category: string;
   short_intro: string;
-  image_url: string;
+  image_url: string; // Keep for thumbnail/main image
+  images: LocationImage[]; // For gallery
   coordinates: { lat: number; lng: number };
   
   basic_info: {
@@ -80,13 +102,6 @@ export interface Location {
 }
 
 
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  emoji: string;
-}
-
 export interface TripPlan {
   id: string;
   user_id: string;
@@ -107,6 +122,7 @@ export interface DayPlan {
 }
 
 export interface Activity {
+  id: string; // Added for unique key
   time: 'Morning' | 'Afternoon' | 'Evening';
   title: string;
   description: string;

@@ -4,49 +4,48 @@ import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import CategoryBar from './CategoryBar';
 import CityCard from './CityCard';
-import { categories } from '../../data/mockData';
-import { City } from '../../types';
+import { City, Category } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { Bot } from 'lucide-react';
 import AssistantModal from '../Assistant/AssistantModal';
-
-const cityCategoryMapping: { [key: string]: string[] } = {
-  'b9c4d5e2-5b4e-4c9d-8a8f-3e2b4c5d6e7f': ['Forts', 'Temples'], // Agra
-  'a8b3c4d1-6a5d-5b8e-9f7e-4d1c3b2a1a0b': ['Forts', 'Temples', 'Markets'], // Jaipur
-  'c7d2e3f0-7b6c-6c9d-8e6d-5e2d4c3b2b1c': ['Temples', 'Food'], // Varanasi
-  'd6e1f2g9-8c7b-7d8e-9a5a-6f3e5d4c3c2d': ['Beaches', 'Food'], // Goa
-  'e5f0a1b8-9d8c-8e9f-a94b-7a4f6e5d4d3e': ['Lakes', 'Beaches', 'Wildlife'], // Kerala
-  'f4a9b0c7-ad9d-9f8a-b83c-8b5a7f6e5e4f': ['Forts', 'Temples', 'Markets', 'Food'], // Delhi
-};
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [allCities, setAllCities] = useState<City[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [filteredCities, setFilteredCities] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   useEffect(() => {
-    const fetchCities = async () => {
+    const fetchData = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('cities')
-        .select('*')
-        .order('popularity_score', { ascending: false });
+      
+      const [citiesRes, categoriesRes] = await Promise.all([
+        supabase.from('cities').select('*, city_categories(categories(*))'),
+        supabase.from('categories').select('*')
+      ]);
 
-      if (error) {
+      if (citiesRes.error) {
         setError('Could not fetch cities. Please try again later.');
-        console.error(error);
+        console.error(citiesRes.error);
       } else {
-        setAllCities(data);
-        setFilteredCities(data);
+        setAllCities(citiesRes.data as City[]);
+        setFilteredCities(citiesRes.data as City[]);
       }
+
+      if (categoriesRes.error) {
+        console.error("Could not fetch categories", categoriesRes.error);
+      } else {
+        setAllCategories(categoriesRes.data);
+      }
+
       setLoading(false);
     };
-    fetchCities();
+    fetchData();
   }, []);
   
   const handleCitySelect = (city: City) => {
@@ -56,13 +55,9 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     let filtered = allCities;
     if (selectedCategory) {
-      const categoryName = categories.find(c => c.id === selectedCategory)?.name;
-      if (categoryName) {
-        filtered = filtered.filter(city => {
-          const cityCategories = cityCategoryMapping[city.id];
-          return cityCategories && cityCategories.includes(categoryName);
-        });
-      }
+      filtered = filtered.filter(city => 
+        city.city_categories?.some(cc => cc.category_id === selectedCategory)
+      );
     }
     if (searchQuery) {
       filtered = filtered.filter(city =>
@@ -92,7 +87,7 @@ const HomePage: React.FC = () => {
       </div>
 
       <CategoryBar
-        categories={categories}
+        categories={allCategories}
         selectedCategory={selectedCategory}
         onCategorySelect={setSelectedCategory}
       />

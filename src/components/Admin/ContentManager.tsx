@@ -30,18 +30,18 @@ const ContentManager: React.FC = () => {
 
     let query;
     if (view === 'locations' && selectedTehsil) {
-      query = supabase.from('locations').select('*').eq('tehsil_id', selectedTehsil.id);
+      query = supabase.from('locations').select('*, images:location_images(*)').eq('tehsil_id', selectedTehsil.id);
     } else if (view === 'tehsils' && selectedCity) {
       query = supabase.from('tehsils').select('*').eq('city_id', selectedCity.id);
     } else {
-      query = supabase.from('cities').select('*');
+      query = supabase.from('cities').select('*, city_categories(categories(*))');
     }
 
     const { data, error: fetchError } = await query.order('name');
     if (fetchError) {
       setError(fetchError.message);
     } else {
-      setItems(data);
+      setItems(data as any);
     }
     setLoading(false);
   }, [view, selectedCity, selectedTehsil]);
@@ -112,14 +112,10 @@ const ContentManager: React.FC = () => {
       case 'cities':
         return <CityForm city={formState.mode === 'edit' ? formState.data as City : null} onSave={onSave} />;
       case 'tehsils':
-        if (!selectedCity) {
-          return <div className="p-4 text-center text-gray-500">Cannot add or edit a tehsil without a selected city. Please go back and select a city.</div>;
-        }
+        if (!selectedCity) return <div className="p-4 text-center text-gray-500">Please select a city first.</div>;
         return <TehsilForm tehsil={formState.mode === 'edit' ? formState.data as Tehsil : null} cityId={selectedCity.id} onSave={onSave} />;
       case 'locations':
-        if (!selectedTehsil) {
-          return <div className="p-4 text-center text-gray-500">Cannot add or edit a location without a selected tehsil. Please go back and select a tehsil.</div>;
-        }
+        if (!selectedTehsil) return <div className="p-4 text-center text-gray-500">Please select a tehsil first.</div>;
         return <LocationForm location={formState.mode === 'edit' ? formState.data as Location : null} tehsilId={selectedTehsil.id} onSave={onSave} />;
       default:
         return null;
@@ -130,7 +126,6 @@ const ContentManager: React.FC = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-10rem)]">
-      {/* Left Pane: List */}
       <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center text-sm text-gray-500">
@@ -163,7 +158,6 @@ const ContentManager: React.FC = () => {
         )}
       </div>
 
-      {/* Right Pane: Form */}
       <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-sm overflow-y-auto">
         <AnimatePresence mode="wait">
           <motion.div

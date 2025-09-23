@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { City } from '../../types';
+import { City, Category } from '../../types';
 
 interface CityFormProps {
   city: City | null;
@@ -21,11 +21,28 @@ const initialCityState: Partial<City> = {
 
 const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
   const [formData, setFormData] = useState<Partial<City>>(initialCityState);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setFormData(city ? city : initialCityState);
+    const fetchCategories = async () => {
+      const { data } = await supabase.from('categories').select('*');
+      if (data) setAllCategories(data);
+    };
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (city) {
+      setFormData(city);
+      const currentCategoryIds = new Set(city.city_categories?.map(cc => cc.category_id) || []);
+      setSelectedCategories(currentCategoryIds);
+    } else {
+      setFormData(initialCityState);
+      setSelectedCategories(new Set());
+    }
   }, [city]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -33,20 +50,54 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
     setFormData(prev => ({ ...prev, [name]: name.endsWith('_score') ? parseInt(value) : value }));
   };
 
+  const handleCategoryChange = (categoryId: string) => {
+    setSelectedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { error: apiError } = city?.id
-      ? await supabase.from('cities').update(formData).eq('id', city.id)
-      : await supabase.from('cities').insert(formData);
+    // Upsert the city
+    const { data: cityData, error: cityError } = city?.id
+      ? await supabase.from('cities').update(formData).eq('id', city.id).select().single()
+      : await supabase.from('cities').insert(formData).select().single();
 
-    if (apiError) {
-      setError(apiError.message);
-    } else {
-      onSave();
+    if (cityError) {
+      setError(cityError.message);
+      setLoading(false);
+      return;
     }
+
+    // Sync categories
+    const cityId = cityData.id;
+    const { error: deleteError } = await supabase.from('city_categories').delete().eq('city_id', cityId);
+    if (deleteError) {
+      setError(`Failed to update categories: ${deleteError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (selectedCategories.size > 0) {
+      const categoryLinks = Array.from(selectedCategories).map(catId => ({ city_id: cityId, category_id: catId }));
+      const { error: insertError } = await supabase.from('city_categories').insert(categoryLinks);
+      if (insertError) {
+        setError(`Failed to link categories: ${insertError.message}`);
+        setLoading(false);
+        return;
+      }
+    }
+
+    onSave();
     setLoading(false);
   };
 
@@ -71,6 +122,23 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
             </div>
           );
         })}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 capitalize mb-2">Categories</label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {allCategories.map(cat => (
+              <div key={cat.id} className="flex items-center">
+                <input
+                  id={`cat-${cat.id}`}
+                  type="checkbox"
+                  checked={selectedCategories.has(cat.id)}
+                  onChange={() => handleCategoryChange(cat.id)}
+                  className="h-4 w-4 text-orange-600 border-gray-300 rounded"
+                />
+                <label htmlFor={`cat-${cat.id}`} className="ml-2 text-sm text-gray-700">{cat.name}</label>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end space-x-3 pt-4 border-t">
