@@ -1,10 +1,8 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, BlockReason } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY;
 
 if (!GOOGLE_API_KEY || GOOGLE_API_KEY.includes('YOUR_API_KEY') || GOOGLE_API_KEY.length < 30) {
-  // This is a front-end check. The real error will come from the API call.
-  // We will throw a more user-friendly error in the calling components.
   console.error("VITE_GOOGLE_GEMINI_API_KEY is not configured correctly in .env file.");
 }
 
@@ -26,20 +24,21 @@ const safetySettings = [
 
 const handleApiError = (error: any, apiName: string): string => {
   console.error(`Error calling ${apiName} API:`, error);
-  if (error.message.includes('API key not valid')) {
+  const errorMessage = error.message || 'An unknown error occurred.';
+
+  if (errorMessage.includes('API key not valid')) {
     return `The provided Google Gemini API key is not valid. Please check it in your .env file and ensure the 'Generative Language API' is enabled in your Google Cloud project.`;
   }
-  if (error.message.includes('[400]')) {
-    return `The request was malformed. This may be due to an invalid model name or incorrect parameters in the code.`;
+  if (errorMessage.includes('[400]')) {
+    return `The request was malformed. This may be due to an invalid model name or incorrect parameters in the code. (Details: ${errorMessage})`;
   }
-  if (error.message.includes('permission')) {
-     return `API key does not have permission to access the model. Please check your Google Cloud project settings.`;
+  if (errorMessage.includes('permission')) {
+     return `API key does not have permission to access the model. Please check your Google Cloud project settings. (Details: ${errorMessage})`;
   }
-  return `Sorry, an unexpected error occurred with the ${apiName} assistant. Please try again later.`;
+  return `Sorry, an unexpected error occurred with the ${apiName} assistant. Please try again later. (Details: ${errorMessage})`;
 };
 
 const cleanJsonString = (rawText: string): string => {
-  // Find the start and end of the JSON object/array
   const firstBracket = rawText.indexOf('{');
   const firstSquareBracket = rawText.indexOf('[');
   let start = -1;
@@ -77,7 +76,8 @@ export const runGeminiQuery = async (prompt: string): Promise<string> => {
 
 export const runGeminiVisionQuery = async (prompt: string, base64Image: string): Promise<string> => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest", safetySettings, generationConfig });
+    // Switching to Flash model for vision - it's fast, capable, and has wider availability.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings, generationConfig });
     const imagePart = {
       inlineData: {
         data: base64Image,

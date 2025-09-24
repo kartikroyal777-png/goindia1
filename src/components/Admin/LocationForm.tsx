@@ -25,7 +25,7 @@ const initialLocationState: Omit<Location, 'id' | 'tehsil_id' | 'images'> = {
 };
 
 const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave }) => {
-  const [formData, setFormData] = useState<Omit<Location, 'id' | 'tehsil_id' | 'images'>>(initialLocationState);
+  const [formData, setFormData] = useState<Omit<Location, 'id' | 'tehsil_id' | 'images'>>(JSON.parse(JSON.stringify(initialLocationState)));
   const [images, setImages] = useState<LocationImage[]>([]);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,75 +33,85 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
 
   useEffect(() => {
     if (location) {
-      // Deep copy to prevent direct state mutation issues with nested objects
       const locationCopy = JSON.parse(JSON.stringify(location));
       const { id, tehsil_id, images: locationImages, ...rest } = locationCopy;
       setFormData(rest);
       setImages(locationImages || []);
     } else {
-      setFormData(initialLocationState);
+      setFormData(JSON.parse(JSON.stringify(initialLocationState)));
       setImages([]);
     }
   }, [location]);
 
-  const handleSimpleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleValueChange = (path: string, value: any, type?: string) => {
+    setFormData(prev => {
+      const keys = path.split('.');
+      const newState = JSON.parse(JSON.stringify(prev));
+      let current = newState;
+      for (let i = 0; i < keys.length - 1; i++) {
+        current = current[keys[i]];
+      }
+      
+      let finalValue = value;
+      if (type === 'checkbox') finalValue = (value as unknown as React.ChangeEvent<HTMLInputElement>).target.checked;
+      if (type === 'number') finalValue = parseFloat(value) || 0;
+
+      current[keys[keys.length - 1]] = finalValue;
+      return newState;
+    });
   };
 
-  const handleNestedChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>, parentKey: keyof typeof formData) => {
-    const { name, value, type } = e.target;
-    const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
-    const val = type === 'checkbox' ? checked : (name === 'safety_score' ? parseInt(value) : value);
-    
-    setFormData(prev => ({
-      ...prev,
-      [parentKey]: { ...(prev[parentKey] as object), [name]: val },
-    }));
+  const handleArrayItemChange = (path: string, index: number, value: string) => {
+    setFormData(prev => {
+      const keys = path.split('.');
+      const newState = JSON.parse(JSON.stringify(prev));
+      let currentArray = newState;
+      keys.forEach(key => { currentArray = currentArray[key]; });
+      currentArray[index] = value;
+      return newState;
+    });
   };
   
-  const handleDeeplyNestedChange = (e: React.ChangeEvent<HTMLInputElement>, parentKey: keyof typeof formData, childKey: string, isNumber = false) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [parentKey]: {
-        ...(prev[parentKey] as object),
-        [childKey]: { ...((prev[parentKey] as any)[childKey] || {}), [name]: isNumber ? parseFloat(value) : value },
-      },
-    }));
+  const handleObjectArrayChange = (path: string, index: number, field: string, value: any) => {
+    setFormData(prev => {
+      const keys = path.split('.');
+      const newState = JSON.parse(JSON.stringify(prev));
+      let currentArray = newState;
+      keys.forEach(key => { currentArray = currentArray[key]; });
+      currentArray[index][field] = value;
+      return newState;
+    });
   };
 
-  const handleArrayChange = (e: React.ChangeEvent<HTMLTextAreaElement>, parentKey: keyof typeof formData, childKey: string) => {
-    const { value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [parentKey]: {
-        ...(prev[parentKey] as object),
-        [childKey]: value.split('\n').filter(line => line.trim() !== ''),
-      },
-    }));
+  const addArrayItem = (path: string, newItem: any) => {
+    setFormData(prev => {
+      const keys = path.split('.');
+      const newState = JSON.parse(JSON.stringify(prev));
+      let current = newState;
+      for (let i = 0; i < keys.length; i++) {
+        current = current[keys[i]];
+      }
+      current.push(newItem);
+      return newState;
+    });
   };
-  
-  const handleJsonArrayChange = (e: React.ChangeEvent<HTMLTextAreaElement>, parentKey: keyof typeof formData, childKey: string) => {
-    const { value } = e.target;
-    // We just update the string value, validation happens on submit or blur if needed
-    setFormData(prev => ({
-      ...prev,
-      [parentKey]: {
-        ...(prev[parentKey] as object),
-        [childKey]: value,
-      },
-    }));
+
+  const deleteArrayItem = (path: string, index: number) => {
+    setFormData(prev => {
+      const keys = path.split('.');
+      const newState = JSON.parse(JSON.stringify(prev));
+      let current = newState;
+      for (let i = 0; i < keys.length; i++) {
+        current = current[keys[i]];
+      }
+      current.splice(index, 1);
+      return newState;
+    });
   };
 
   const handleAddImage = () => {
     if (newImageUrl.trim()) {
-      const newImage: LocationImage = {
-        id: `new_${Date.now()}`,
-        location_id: location?.id || '',
-        image_url: newImageUrl,
-      };
-      setImages(prev => [...prev, newImage]);
+      setImages(prev => [...prev, { id: `new_${Date.now()}`, location_id: location?.id || '', image_url: newImageUrl }]);
       setNewImageUrl('');
     }
   };
@@ -115,20 +125,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
     setLoading(true);
     setError(null);
     
-    // Create a mutable copy to parse JSON fields
-    let dataToSave: any = JSON.parse(JSON.stringify(formData));
-    dataToSave.tehsil_id = tehsilId;
-
-    // Safely parse JSON textareas
-    try {
-        dataToSave.safety_risks.emergency_contacts = JSON.parse(dataToSave.safety_risks.emergency_contacts);
-        dataToSave.local_insights.local_phrases = JSON.parse(dataToSave.local_insights.local_phrases);
-        dataToSave.food_stay.nearby_restaurants = JSON.parse(dataToSave.food_stay.nearby_restaurants);
-    } catch (jsonError) {
-        setError("Invalid JSON format in one of the text areas (e.g., Emergency Contacts, Local Phrases). Please check the structure.");
-        setLoading(false);
-        return;
-    }
+    let dataToSave: any = { ...formData, tehsil_id: tehsilId };
 
     const { data: locationData, error: locationError } = location?.id
       ? await supabase.from('locations').update(dataToSave).eq('id', location.id).select().single()
@@ -140,14 +137,8 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
       return;
     }
 
-    // Sync images
     const locationId = locationData.id;
-    const { error: deleteImagesError } = await supabase.from('location_images').delete().eq('location_id', locationId);
-    if (deleteImagesError) {
-      setError(`Failed to update images: ${deleteImagesError.message}`);
-      setLoading(false);
-      return;
-    }
+    await supabase.from('location_images').delete().eq('location_id', locationId);
 
     if (images.length > 0) {
       const imagesToInsert = images.map(({ image_url, alt_text }) => ({ location_id: locationId, image_url, alt_text }));
@@ -162,53 +153,49 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
     onSave();
     setLoading(false);
   };
-  
-  const renderInput = (name: string, value: any, onChange: any, type = 'text', parent?: string, props: object = {}) => (
-    <div>
-      <label htmlFor={`${parent}-${name}`} className="block text-sm font-medium text-gray-700 capitalize mb-1">{name.replace(/_/g, ' ')}</label>
-      <input id={`${parent}-${name}`} type={type} name={name} value={value} onChange={onChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" {...props} />
-    </div>
-  );
-  const renderTextarea = (name: string, value: any, onChange: any, parent?: string, props: object = {}) => (
-    <div>
-      <label htmlFor={`${parent}-${name}`} className="block text-sm font-medium text-gray-700 capitalize mb-1">{name.replace(/_/g, ' ')}</label>
-      <textarea id={`${parent}-${name}`} name={name} value={value} onChange={onChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" rows={3} {...props} />
-    </div>
-  );
-  const renderSelect = (name: string, value: any, onChange: any, options: string[], parent?: string) => (
-    <div>
-      <label htmlFor={`${parent}-${name}`} className="block text-sm font-medium text-gray-700 capitalize mb-1">{name.replace(/_/g, ' ')}</label>
-      <select id={`${parent}-${name}`} name={name} value={value} onChange={onChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-        {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-      </select>
-    </div>
-  );
-  const renderCheckbox = (name: string, checked: boolean, onChange: any, parent?: string) => (
-     <div className="flex items-center">
-      <input id={`${parent}-${name}`} type="checkbox" name={name} checked={checked} onChange={onChange} className="h-4 w-4 text-orange-600 border-gray-300 rounded" />
-      <label htmlFor={`${parent}-${name}`} className="ml-2 block text-sm text-gray-900 capitalize">{name.replace(/_/g, ' ')}</label>
-    </div>
-  );
+
+  const renderField = (label: string, path: string, type: 'text' | 'number' | 'textarea' | 'select' | 'checkbox' = 'text', options?: string[]) => {
+    const keys = path.split('.');
+    let value = formData as any;
+    try {
+      keys.forEach(key => { value = value[key]; });
+    } catch {
+      value = '';
+    }
+
+    const commonProps = {
+      id: path,
+      name: path,
+      value: value,
+      onChange: (e: React.ChangeEvent<any>) => handleValueChange(path, e.target.value, type),
+      className: "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+    };
+
+    if (type === 'textarea') return <textarea {...commonProps} rows={2} />;
+    if (type === 'select' && options) return <select {...commonProps}>{options.map(o => <option key={o} value={o}>{o}</option>)}</select>;
+    if (type === 'checkbox') return (
+      <div className="flex items-center"><input type="checkbox" id={path} name={path} checked={!!value} onChange={(e) => handleValueChange(path, e, 'checkbox')} className="h-4 w-4 text-orange-600 border-gray-300 rounded" /><label htmlFor={path} className="ml-2 text-sm">{label}</label></div>
+    );
+    return <input type={type} {...commonProps} step={type === 'number' ? 'any' : undefined} />;
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
       <h3 className="text-lg font-bold">{location ? 'Edit Location' : 'Add New Location'}</h3>
       <div className="flex-grow overflow-y-auto pr-2 space-y-4">
-        {renderInput('name', formData.name, handleSimpleChange, 'text', 'top')}
-        {renderInput('category', formData.category, handleSimpleChange, 'text', 'top')}
-        {renderInput('image_url', formData.image_url, handleSimpleChange, 'text', 'top', {placeholder: "Main thumbnail URL..."})}
-        {renderTextarea('short_intro', formData.short_intro, handleSimpleChange, 'top')}
-
+        {renderField('Name', 'name')}
+        {renderField('Category', 'category')}
+        {renderField('Main Image URL', 'image_url', 'text')}
+        {renderField('Short Intro', 'short_intro', 'textarea')}
+        
         <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Image Gallery</summary>
-          <div className="space-y-2">
-            {images.map((img) => (
-              <div key={img.id} className="flex items-center space-x-2">
-                <img src={img.image_url} alt="thumbnail" className="w-10 h-10 object-cover rounded"/>
-                <input type="text" value={img.image_url} readOnly className="flex-grow p-1 border rounded text-xs bg-gray-100" />
-                <button type="button" onClick={() => handleDeleteImage(img.id)} className="p-1 text-red-500"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            ))}
-          </div>
+          {images.map((img, index) => (
+            <div key={index} className="flex items-center space-x-2">
+              <img src={img.image_url} alt="thumbnail" className="w-10 h-10 object-cover rounded"/>
+              <input type="text" value={img.image_url} readOnly className="flex-grow p-1 border rounded text-xs bg-gray-100" />
+              <button type="button" onClick={() => handleDeleteImage(img.id)} className="p-1 text-red-500"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          ))}
           <div className="flex items-center space-x-2 pt-2">
             <input type="text" value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="Add new image URL" className="flex-grow px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             <button type="button" onClick={handleAddImage} className="p-2 bg-blue-500 text-white rounded-full"><PlusCircle className="w-5 h-5" /></button>
@@ -216,66 +203,55 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
         </details>
 
         <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Coordinates</summary>
-          {renderInput('lat', formData.coordinates.lat, (e:any) => handleDeeplyNestedChange(e, 'coordinates', 'lat', true), 'number', 'coords', {step: "any"})}
-          {renderInput('lng', formData.coordinates.lng, (e:any) => handleDeeplyNestedChange(e, 'coordinates', 'lng', true), 'number', 'coords', {step: "any"})}
+          {renderField('Latitude', 'coordinates.lat', 'number')}
+          {renderField('Longitude', 'coordinates.lng', 'number')}
         </details>
 
         <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Basic Info</summary>
-          {renderInput('opening_hours', formData.basic_info.opening_hours, (e:any) => handleNestedChange(e, 'basic_info'), 'text', 'basic')}
-          {renderInput('best_time_to_visit', formData.basic_info.best_time_to_visit, (e:any) => handleNestedChange(e, 'basic_info'), 'text', 'basic')}
-          {renderInput('local', formData.basic_info.entry_fee.local, (e:any) => handleDeeplyNestedChange(e, 'basic_info', 'entry_fee'), 'text', 'basic-fee-local')}
-          {renderInput('foreigner', formData.basic_info.entry_fee.foreigner, (e:any) => handleDeeplyNestedChange(e, 'basic_info', 'entry_fee'), 'text', 'basic-fee-foreigner')}
+          {renderField('Opening Hours', 'basic_info.opening_hours')}
+          {renderField('Best Time to Visit', 'basic_info.best_time_to_visit')}
+          {renderField('Entry Fee (Local)', 'basic_info.entry_fee.local')}
+          {renderField('Entry Fee (Foreigner)', 'basic_info.entry_fee.foreigner')}
         </details>
 
         <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Access & Transport</summary>
-            {Object.keys(formData.access_transport).map(key => (
-              <div key={`transport-${key}`}>
-                <label htmlFor={`transport-${key}`} className="block text-sm font-medium text-gray-700 capitalize mb-1">{key.replace(/_/g, ' ')}</label>
-                <input
-                  id={`transport-${key}`}
-                  type="text"
-                  name={key}
-                  value={(formData.access_transport as any)[key]}
-                  onChange={(e: any) => handleNestedChange(e, 'access_transport')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-              </div>
-            ))}
+          {Object.keys(initialLocationState.access_transport).map(key => <div key={key}><label className="text-xs font-semibold capitalize">{key.replace(/_/g, ' ')}</label>{renderField('', `access_transport.${key}`)}</div>)}
         </details>
 
         <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Safety & Risks</summary>
-            {renderInput('safety_score', formData.safety_risks.safety_score, (e:any) => handleNestedChange(e, 'safety_risks'), 'number', 'safety', {min: 0, max: 10})}
-            {renderSelect('pickpocket_risk', formData.safety_risks.pickpocket_risk, (e:any) => handleNestedChange(e, 'safety_risks'), ['Low', 'Medium', 'High'], 'safety')}
-            {renderTextarea('common_scams', formData.safety_risks.common_scams.join('\n'), (e:any) => handleArrayChange(e, 'safety_risks', 'common_scams'), 'safety', {placeholder: "One scam per line"})}
-            {renderTextarea('emergency_contacts', typeof formData.safety_risks.emergency_contacts === 'string' ? formData.safety_risks.emergency_contacts : JSON.stringify(formData.safety_risks.emergency_contacts, null, 2), (e:any) => handleJsonArrayChange(e, 'safety_risks', 'emergency_contacts'), 'safety', {placeholder: '[{"name": "Police", "number": "112"}]'})}
-        </details>
+          <label className="text-xs font-semibold">Safety Score</label>{renderField('', 'safety_risks.safety_score', 'number')}
+          <label className="text-xs font-semibold">Pickpocket Risk</label>{renderField('', 'safety_risks.pickpocket_risk', 'select', ['Low', 'Medium', 'High'])}
+          
+          <div className="space-y-2">
+            <label className="text-xs font-semibold">Common Scams</label>
+            {formData.safety_risks.common_scams.map((scam, i) => (
+              <div key={i} className="flex items-center space-x-2">
+                <input value={scam} onChange={e => handleArrayItemChange('safety_risks.common_scams', i, e.target.value)} className="w-full px-2 py-1 border rounded-md text-sm" />
+                <button type="button" onClick={() => deleteArrayItem('safety_risks.common_scams', i)} className="p-1 text-red-500"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => addArrayItem('safety_risks.common_scams', '')} className="text-sm text-blue-600">+ Add Scam</button>
+          </div>
 
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Local Insights</summary>
-            {renderTextarea('cultural_etiquette', formData.local_insights.cultural_etiquette.join('\n'), (e:any) => handleArrayChange(e, 'local_insights', 'cultural_etiquette'), 'insights', {placeholder: "One tip per line"})}
-            {renderTextarea('women_specific_tips', formData.local_insights.women_specific_tips.join('\n'), (e:any) => handleArrayChange(e, 'local_insights', 'women_specific_tips'), 'insights', {placeholder: "One tip per line"})}
-            {renderTextarea('food_safety_note', formData.local_insights.food_safety_note, (e:any) => handleNestedChange(e, 'local_insights'), 'insights')}
-            {renderTextarea('local_phrases', typeof formData.local_insights.local_phrases === 'string' ? formData.local_insights.local_phrases : JSON.stringify(formData.local_insights.local_phrases, null, 2), (e:any) => handleJsonArrayChange(e, 'local_insights', 'local_phrases'), 'insights', {placeholder: '[{"phrase": "...", "translation": "..."}]'})}
-        </details>
-        
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Costs & Money</summary>
-            {renderInput('average_budget', formData.costs_money.average_budget, (e:any) => handleNestedChange(e, 'costs_money'), 'text', 'costs')}
-            {renderInput('nearby_atms', formData.costs_money.nearby_atms, (e:any) => handleNestedChange(e, 'costs_money'), 'text', 'costs')}
-            {renderSelect('haggling_needed', formData.costs_money.haggling_needed, (e:any) => handleNestedChange(e, 'costs_money'), ['Yes', 'No', 'Sometimes'], 'costs')}
-            {renderCheckbox('digital_payments_accepted', formData.costs_money.digital_payments_accepted, (e:any) => handleNestedChange(e, 'costs_money'), 'costs')}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold">Emergency Contacts</label>
+            {formData.safety_risks.emergency_contacts.map((contact, i) => (
+              <div key={i} className="grid grid-cols-11 gap-2">
+                <input value={contact.name} onChange={e => handleObjectArrayChange('safety_risks.emergency_contacts', i, 'name', e.target.value)} placeholder="Name" className="col-span-5 px-2 py-1 border rounded-md text-sm" />
+                <input value={contact.number} onChange={e => handleObjectArrayChange('safety_risks.emergency_contacts', i, 'number', e.target.value)} placeholder="Number" className="col-span-5 px-2 py-1 border rounded-md text-sm" />
+                <button type="button" onClick={() => deleteArrayItem('safety_risks.emergency_contacts', i)} className="p-1 text-red-500"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => addArrayItem('safety_risks.emergency_contacts', {name: '', number: ''})} className="text-sm text-blue-600">+ Add Contact</button>
+          </div>
         </details>
         
         <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Amenities</summary>
-            {renderSelect('toilets', formData.amenities.toilets, (e:any) => handleNestedChange(e, 'amenities'), ['Clean', 'Available', 'Not Available'], 'amenities')}
-            {renderSelect('wifi_signal', formData.amenities.wifi_signal, (e:any) => handleNestedChange(e, 'amenities'), ['Strong', 'Average', 'Weak', 'None'], 'amenities')}
-            {renderCheckbox('seating', formData.amenities.seating, (e:any) => handleNestedChange(e, 'amenities'), 'amenities')}
-            {renderCheckbox('water_refill_points', formData.amenities.water_refill_points, (e:any) => handleNestedChange(e, 'amenities'), 'amenities')}
+          {renderField('Toilets', 'amenities.toilets', 'select', ['Clean', 'Available', 'Not Available'])}
+          {renderField('WiFi Signal', 'amenities.wifi_signal', 'select', ['Strong', 'Average', 'Weak', 'None'])}
+          {renderField('Seating', 'amenities.seating', 'checkbox')}
+          {renderField('Water Refills', 'amenities.water_refill_points', 'checkbox')}
         </details>
-
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Food & Stay</summary>
-            {renderInput('local_specialty', formData.food_stay.local_specialty, (e:any) => handleNestedChange(e, 'food_stay'), 'text', 'food')}
-            {renderTextarea('nearby_restaurants', typeof formData.food_stay.nearby_restaurants === 'string' ? formData.food_stay.nearby_restaurants : JSON.stringify(formData.food_stay.nearby_restaurants, null, 2), (e:any) => handleJsonArrayChange(e, 'food_stay', 'nearby_restaurants'), 'food', {placeholder: '[{"name": "...", "rating": 4.5}]'})}
-        </details>
-
       </div>
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="flex justify-end space-x-3 pt-4 border-t">
