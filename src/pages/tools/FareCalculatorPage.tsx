@@ -148,7 +148,7 @@ const FareCalculatorPage: React.FC = () => {
         <motion.button
           onClick={handleCalculate}
           disabled={isButtonDisabled}
-          className="w-full max-w-md mx-auto py-4 bg-orange-500 text-white font-bold rounded-2xl shadow-2xl shadow-orange-300 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg transition-opacity"
+          className="w-full max-w-md mx-auto py-4 bg-orange-500 text-white font-bold rounded-2xl shadow-2xl shadow-orange-300 disabled:from-gray-400 disabled:to-gray-500 disabled:opacity-70 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg transition-all"
           whileHover={{ scale: isButtonDisabled ? 1 : 1.02 }}
           whileTap={{ scale: isButtonDisabled ? 1 : 0.98 }}
         >

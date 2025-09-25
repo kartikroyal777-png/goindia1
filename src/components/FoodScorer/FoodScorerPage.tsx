@@ -56,7 +56,8 @@ const FoodScorerPage: React.FC = () => {
       setMode('score');
     } catch (error: any) {
       console.error("Failed to get food score analysis:", error);
-      setScoreData({ error: error.message || "Could not analyze the food. The AI model might be unavailable or the response was not in the correct format. Please try again." });
+      const errorMessage = error.message || "Could not analyze the food. The AI model might be unavailable or the response was not in the correct format. Please try again.";
+      setScoreData({ error: errorMessage });
       setMode('score');
     }
   }, []);
@@ -203,7 +204,7 @@ const FoodScorerPage: React.FC = () => {
   const renderScore = () => {
     const scoreValue = scoreData?.score ? parseFloat(scoreData.score) : null;
 
-    if (scoreData?.error || scoreValue === null || isNaN(scoreValue)) {
+    if (scoreData?.error || !scoreData || scoreValue === null || isNaN(scoreValue)) {
       return (
         <div className="w-full h-full bg-gray-900 text-white p-4 flex flex-col items-center justify-center text-center">
           {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute inset-0 w-full h-full object-cover opacity-10 blur-md" />}
@@ -222,9 +223,7 @@ const FoodScorerPage: React.FC = () => {
         </div>
       );
     }
-
-    if (!scoreData) return null;
-
+    
     return (
       <div className="w-full h-full bg-gray-900 text-white overflow-y-auto">
         {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute top-0 left-0 w-full h-64 object-cover opacity-30 [mask-image:linear-gradient(to_bottom,white,transparent)]" />}
@@ -286,7 +285,7 @@ const FoodScorerPage: React.FC = () => {
   }
 
   return (
-    <div className="relative w-full h-screen bg-black flex flex-col">
+    <div className="relative w-full h-full bg-black flex flex-col">
       <AnimatePresence mode="wait">
         {mode === 'scanner' && <motion.div key="scanner" exit={{ opacity: 0 }} className="flex-grow flex flex-col">{renderScanner()}</motion.div>}
         {mode === 'analysing' && <motion.div key="analysing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">{renderAnalysis()}</motion.div>}

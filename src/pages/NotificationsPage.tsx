@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Bell, Shield, Tag, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +14,7 @@ interface Notification {
 
 const getIcon = (type: string) => {
   switch (type) {
-    case 'safety': return <Shield className="w-5 h-5 text-red-500" />;
+    case 'alert': return <Shield className="w-5 h-5 text-red-500" />;
     case 'promo': return <Tag className="w-5 h-5 text-green-500" />;
     default: return <Bell className="w-5 h-5 text-blue-500" />;
   }
@@ -26,23 +26,26 @@ const NotificationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: rpcError } = await supabase.rpc('get_user_notifications');
+    const { data, error: fetchError } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    if (rpcError) {
+    if (fetchError) {
       setError('Could not fetch notifications.');
-      console.error(rpcError);
+      console.error(fetchError);
     } else {
       setNotifications(data || []);
     }
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">

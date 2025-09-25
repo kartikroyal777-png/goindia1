@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
@@ -6,8 +6,10 @@ import CategoryBar from './CategoryBar';
 import CityCard from './CityCard';
 import { City, Category } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { Bot } from 'lucide-react';
+import { Bot, Loader2 } from 'lucide-react';
 import AssistantModal from '../Assistant/AssistantModal';
+
+const CITIES_PER_PAGE = 6;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,16 +18,20 @@ const HomePage: React.FC = () => {
   const [allCities, setAllCities] = useState<City[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [filteredCities, setFilteredCities] = useState<City[]>([]);
+  const [displayedCities, setDisplayedCities] = useState<City[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       setLoading(true);
       
       const [citiesRes, categoriesRes] = await Promise.all([
-        supabase.from('cities').select('id, name, state, description, short_tagline, thumbnail_url, popularity_score, safety_score, best_time_to_visit, city_categories(category_id)'),
+        supabase.from('cities').select('id, name, state, short_tagline, thumbnail_url, popularity_score, safety_score, best_time_to_visit, city_categories(category_id)'),
         supabase.from('categories').select('*')
       ]);
 
@@ -34,7 +40,6 @@ const HomePage: React.FC = () => {
         console.error(citiesRes.error);
       } else {
         setAllCities(citiesRes.data as City[]);
-        setFilteredCities(citiesRes.data as City[]);
       }
 
       if (categoriesRes.error) {
@@ -45,14 +50,14 @@ const HomePage: React.FC = () => {
 
       setLoading(false);
     };
-    fetchData();
+    fetchInitialData();
   }, []);
   
   const handleCitySelect = (city: City) => {
     navigate(`/city/${city.id}`);
   };
 
-  useEffect(() => {
+  const applyFiltersAndSort = useCallback(() => {
     let filtered = allCities;
     if (selectedCategory) {
       filtered = filtered.filter(city => 
@@ -65,8 +70,32 @@ const HomePage: React.FC = () => {
         city.state.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
+    
+    // Sort by popularity if no specific search/filter is active
+    if (!searchQuery && !selectedCategory) {
+      filtered.sort((a, b) => b.popularity_score - a.popularity_score);
+    }
+
     setFilteredCities(filtered);
+    setDisplayedCities(filtered.slice(0, CITIES_PER_PAGE));
+    setPage(1);
+    setHasMore(filtered.length > CITIES_PER_PAGE);
   }, [searchQuery, selectedCategory, allCities]);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [applyFiltersAndSort]);
+
+  const loadMoreCities = () => {
+    if (!hasMore || loadingMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const newCities = filteredCities.slice(0, nextPage * CITIES_PER_PAGE);
+    setDisplayedCities(newCities);
+    setPage(nextPage);
+    setHasMore(newCities.length < filteredCities.length);
+    setLoadingMore(false);
+  };
 
   return (
     <div className="pb-24">
@@ -111,7 +140,7 @@ const HomePage: React.FC = () => {
           </div>
         ) : error ? (
           <div className="text-center py-12 text-red-500">{error}</div>
-        ) : filteredCities.length === 0 ? (
+        ) : displayedCities.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -124,16 +153,31 @@ const HomePage: React.FC = () => {
             <p className="text-gray-500">Try adjusting your search or changing the category.</p>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCities.map((city, index) => (
-              <CityCard
-                key={city.id}
-                city={city}
-                onClick={handleCitySelect}
-                index={index}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedCities.map((city, index) => (
+                <CityCard
+                  key={city.id}
+                  city={city}
+                  onClick={handleCitySelect}
+                  index={index}
+                />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-8 text-center">
+                <motion.button
+                  onClick={loadMoreCities}
+                  disabled={loadingMore}
+                  className="px-6 py-2 bg-orange-500 text-white font-semibold rounded-full shadow-md disabled:opacity-50 flex items-center justify-center mx-auto"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {loadingMore ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Load More'}
+                </motion.button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
