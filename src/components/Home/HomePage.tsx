@@ -25,7 +25,7 @@ const HomePage: React.FC = () => {
       setLoading(true);
       
       const [citiesRes, categoriesRes] = await Promise.all([
-        supabase.from('cities').select('*, city_categories(categories(*))'),
+        supabase.from('cities').select('id, name, state, description, short_tagline, thumbnail_url, popularity_score, safety_score, best_time_to_visit, city_categories(category_id)'),
         supabase.from('categories').select('*')
       ]);
 

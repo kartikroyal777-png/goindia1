@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
+import { City } from '../../types';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -13,19 +15,30 @@ const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<City[]>([]);
 
-  const suggestions = [
-    'Taj Mahal, Agra',
-    'Forts in Rajasthan',
-    'Kerala backwaters',
-    'Goa beaches',
-    'Delhi monuments',
-    'Mumbai street food'
-  ];
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (query.length > 1) {
+        const { data } = await supabase
+          .from('cities')
+          .select('name, state')
+          .ilike('name', `%${query}%`)
+          .limit(5);
+        setSuggestions(data || []);
+      } else {
+        setSuggestions([]);
+      }
+    };
+
+    const debounce = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(debounce);
+  }, [query]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch(query);
+    setIsFocused(false);
   };
 
   return (
@@ -53,36 +66,33 @@ const SearchBar: React.FC<SearchBarProps> = ({
         </div>
       </motion.form>
 
-      {/* Auto-suggestions */}
-      {isFocused && query.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 max-h-60 overflow-y-auto"
-        >
-          {suggestions
-            .filter(suggestion => 
-              suggestion.toLowerCase().includes(query.toLowerCase())
-            )
-            .slice(0, 5)
-            .map((suggestion, index) => (
+      <AnimatePresence>
+        {isFocused && suggestions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 max-h-60 overflow-y-auto"
+          >
+            {suggestions.map((suggestion) => (
               <motion.button
-                key={index}
+                key={suggestion.name}
                 onClick={() => {
-                  setQuery(suggestion);
-                  onSearch(suggestion);
+                  const fullQuery = `${suggestion.name}, ${suggestion.state}`;
+                  setQuery(fullQuery);
+                  onSearch(fullQuery);
                   setIsFocused(false);
                 }}
                 className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-50 last:border-b-0"
                 whileHover={{ backgroundColor: '#f9fafb' }}
               >
                 <MapPin className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-700">{suggestion}</span>
+                <span className="text-sm text-gray-700">{suggestion.name}, <span className="text-gray-500">{suggestion.state}</span></span>
               </motion.button>
             ))}
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

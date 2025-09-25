@@ -49,55 +49,109 @@ export interface Location {
   name: string;
   category: string;
   short_intro: string;
-  image_url: string; // Keep for thumbnail/main image
-  images: LocationImage[]; // For gallery
-  coordinates: { lat: number; lng: number };
-  
-  basic_info: {
-    opening_hours: string;
-    best_time_to_visit: string;
-    entry_fee: { local: string; foreigner: string };
-  };
-
-  access_transport: {
-    nearest_airport: string;
-    public_transport_guide: string;
-    taxi_fare_estimate: string;
-    last_mile_access: string;
-    travel_time_from_center: string;
-  };
-
-  safety_risks: {
-    safety_score: number;
-    common_scams: string[];
-    pickpocket_risk: 'Low' | 'Medium' | 'High';
-    emergency_contacts: { name: string; number: string }[];
-  };
-
-  local_insights: {
-    cultural_etiquette: string[];
-    local_phrases: { phrase: string; translation: string; pronunciation: string }[];
-    food_safety_note: string;
-    women_specific_tips: string[];
-  };
-
-  costs_money: {
-    average_budget: string;
-    nearby_atms: string;
-    digital_payments_accepted: boolean;
-    haggling_needed: string;
-  };
-
-  amenities: {
-    toilets: 'Clean' | 'Available' | 'Not Available';
-    wifi_signal: 'Strong' | 'Average' | 'Weak' | 'None';
-    seating: boolean;
-    water_refill_points: boolean;
-  };
-
-  food_stay: {
-    nearby_restaurants: { name: string; rating: number }[];
-    local_specialty: string;
+  image_url: string;
+  images: LocationImage[];
+  details: {
+    about: {
+      historical_background: string;
+      cultural_significance: string;
+      why_famous: string;
+    };
+    opening_hours: {
+      daily_timings: Record<string, string>;
+      weekly_closures: string[];
+      seasonal_changes: string;
+    };
+    best_time_to_visit: {
+      best_season: string;
+      best_time_of_day: string;
+      festival_timing: string;
+    };
+    transport: {
+      nearest_airport: string;
+      nearest_railway_station: string;
+      last_mile_options: string;
+      taxi_cost_estimate: string;
+    };
+    safety_risks: {
+      safety_score: number;
+      scams_warnings: string[];
+      womens_safety_rating: string;
+      emergency_contacts: { name: string; number: string }[];
+    };
+    cultural_etiquette: {
+      dress_code: string;
+      dos_donts: string[];
+      temple_etiquette: string;
+      photography_rules: string;
+    };
+    costs_money: {
+      ticket_prices: { local: string; foreigner: string };
+      avg_budget_per_day: string;
+      haggling_info: string;
+      digital_payment_availability: string;
+    };
+    amenities: {
+      toilets: string;
+      wifi: string;
+      seating: string;
+      water_refills: string;
+      cloakrooms: string;
+    };
+    food_stay: {
+      local_shops_street_food: string;
+      dishes_to_try: string;
+      recommended_restaurants: string[];
+      nearby_hotels: string[];
+    };
+    events_festivals: {
+      event_name: string;
+      event_date: string;
+      type: string;
+    };
+    weather_air_quality: {
+      current_temp: string;
+      humidity: string;
+      aqi: string;
+      seasonal_trends: string;
+    };
+    accessibility: {
+      wheelchair_access: string;
+      english_speaking_guides: string;
+      foreigner_friendly_services: string;
+    };
+    nearby_essentials: {
+      atms: string;
+      pharmacies: string;
+      hospitals: string;
+      police_stations: string;
+    };
+    crowd_experience: {
+      avg_crowd_density: string;
+      best_crowd_free_hours: string;
+      type_of_visitors: string;
+    };
+    traveler_tips: {
+      hacks: string;
+      hidden_gems: string;
+      scam_avoidance: string;
+      photography_spots: string;
+    };
+    google_reviews: {
+      live_rating: string;
+      top_traveler_quotes: string[];
+    };
+    virtual_tour: {
+      url: string;
+    };
+    hygiene_index: {
+      rating: number;
+      notes: string;
+    };
+    visa_foreigner_rules: {
+      visa_info: string;
+      permits: string;
+    };
   };
 }
 
@@ -149,4 +203,12 @@ export interface Phrase {
   pronunciation: string | null;
   is_adult: boolean;
   created_at: string;
+}
+
+export interface BargainingPrice {
+  id: string;
+  location_name: string;
+  item_name: string;
+  fair_price_range: string;
+  quoted_price_range: string;
 }

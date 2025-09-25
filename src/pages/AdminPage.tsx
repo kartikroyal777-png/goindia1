@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Bell, Globe, LayoutDashboard, LogOut, ArrowLeft } from 'lucide-react';
+import { Shield, Bell, Globe, LayoutDashboard, LogOut, ArrowLeft, Tag, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ContentManager from '../components/Admin/ContentManager';
 import NotificationManager from '../components/Admin/NotificationManager';
 import DictionaryManager from '../components/Admin/DictionaryManager';
+import PriceGuideManager from '../components/Admin/PriceGuideManager';
 
-// Placeholder component for dashboard
 const Dashboard = () => <div className="p-6 bg-gray-100 rounded-lg">Dashboard content goes here. Analytics and summary stats will be shown here.</div>;
 
 const AdminPage: React.FC = () => {
@@ -25,6 +25,7 @@ const AdminPage: React.FC = () => {
     { id: 'content', label: 'Content', icon: Shield },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'dictionary', label: 'Dictionary', icon: Globe },
+    { id: 'price_guide', label: 'Price Guide', icon: Tag },
   ];
 
   const renderContent = () => {
@@ -32,6 +33,7 @@ const AdminPage: React.FC = () => {
       case 'content': return <ContentManager />;
       case 'notifications': return <NotificationManager />;
       case 'dictionary': return <DictionaryManager />;
+      case 'price_guide': return <PriceGuideManager />;
       default: return <Dashboard />;
     }
   };

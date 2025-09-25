@@ -29,6 +29,9 @@ const handleApiError = (error: any, apiName: string): string => {
   if (errorMessage.includes('API key not valid')) {
     return `The provided Google Gemini API key is not valid. Please check it in your .env file and ensure the 'Generative Language API' is enabled in your Google Cloud project.`;
   }
+  if (errorMessage.includes('[503]') || errorMessage.includes('overloaded')) {
+    return `The AI model is currently overloaded. This is a temporary issue on Google's side. Please try again in a few moments.`;
+  }
   if (errorMessage.includes('[400]')) {
     return `The request was malformed. This may be due to an invalid model name or incorrect parameters in the code. (Details: ${errorMessage})`;
   }
@@ -76,7 +79,6 @@ export const runGeminiQuery = async (prompt: string): Promise<string> => {
 
 export const runGeminiVisionQuery = async (prompt: string, base64Image: string): Promise<string> => {
   try {
-    // Switching to Flash model for vision - it's fast, capable, and has wider availability.
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings, generationConfig });
     const imagePart = {
       inlineData: {

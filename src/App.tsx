@@ -17,6 +17,11 @@ import AdminPage from './pages/AdminPage';
 import MyTripsPage from './pages/MyTripsPage';
 import SavedPlacesPage from './pages/SavedPlacesPage';
 import { useAuth } from './contexts/AuthContext';
+import ToolsPage from './pages/ToolsPage';
+import FareCalculatorPage from './pages/tools/FareCalculatorPage';
+import CurrencyExchangerPage from './pages/tools/CurrencyExchangerPage';
+import BudgetTrackerPage from './pages/tools/BudgetTrackerPage';
+import BargainingCoachPage from './pages/tools/BargainingCoachPage';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
   const { session, user } = useAuth();
@@ -39,7 +44,7 @@ const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }
 const AppLayout = () => {
   const location = useLocation();
   const noNavRoutes = ['/auth', '/admin'];
-  const detailPageRoutes = ['/city/', '/tehsil/', '/location/'];
+  const detailPageRoutes = ['/city/', '/tehsil/', '/location/', '/tools/'];
 
   const showNav = !noNavRoutes.some(path => location.pathname.startsWith(path));
   const isDetailPage = detailPageRoutes.some(path => location.pathname.startsWith(path));
@@ -74,7 +79,12 @@ function App() {
 
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/translate" element={<TranslatePage />} />
+        <Route path="/tools" element={<ToolsPage />} />
+        <Route path="/tools/translate" element={<TranslatePage />} />
+        <Route path="/tools/fare-calculator" element={<FareCalculatorPage />} />
+        <Route path="/tools/currency-exchanger" element={<CurrencyExchangerPage />} />
+        <Route path="/tools/budget-tracker" element={<BudgetTrackerPage />} />
+        <Route path="/tools/bargaining-coach" element={<BargainingCoachPage />} />
         <Route path="/food-scorer" element={<FoodScorerPage />} />
         
         <Route element={<ProtectedRoute />}>
