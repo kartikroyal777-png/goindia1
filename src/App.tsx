@@ -25,24 +25,23 @@ import TranslatePage from './pages/TranslatePage';
 import AssistantModal from './components/Assistant/AssistantModal';
 import AppSettingsPage from './pages/AppSettingsPage';
 import AboutUsPage from './pages/AboutUsPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
-import { Loader2 } from 'lucide-react';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
-  const { session, profile } = useAuth();
+  const { session, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!session) {
       navigate('/auth', { replace: true });
-    } else if (adminOnly && profile && profile.role !== 'admin') {
+    } else if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') {
       navigate('/', { replace: true });
     }
-  }, [session, profile, adminOnly, navigate]);
+  }, [session, user, adminOnly, navigate]);
 
   if (!session) return null;
-  if (adminOnly && (!profile || profile.role !== 'admin')) return null;
+  if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') return null;
 
   return <Outlet />;
 };
@@ -53,15 +52,12 @@ const AppLayout = () => {
   
   const isFullScreen = [
     '/food-scorer', 
-    '/tools/translate', 
-    '/tools/fare-calculator', 
-    '/tools/currency-exchanger', 
-    '/tools/budget-tracker', 
-    '/tools/bargaining-coach'
   ].includes(location.pathname);
 
-  const showTopNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen;
-  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen;
+  const isToolPage = location.pathname.startsWith('/tools/');
+
+  const showTopNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen && !isToolPage;
+  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen && !isToolPage;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -88,16 +84,6 @@ const AppLayout = () => {
 };
 
 function App() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
@@ -105,24 +91,18 @@ function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/tools" element={<ToolsPage />} />
-        <Route path="/tools/translate" element={<TranslatePage />} />
-        <Route path="/tools/fare-calculator" element={<FareCalculatorPage />} />
-        <Route path="/tools/currency-exchanger" element={<CurrencyExchangerPage />} />
-        <Route path="/tools/budget-tracker" element={<BudgetTrackerPage />} />
-        <Route path="/tools/bargaining-coach" element={<BargainingCoachPage />} />
         <Route path="/food-scorer" element={<FoodScorerPage />} />
         
         <Route element={<ProtectedRoute />}>
           <Route path="/planner" element={<TripPlannerPage />} />
-          <Route path="/planner/:tripId" element={<TripPlannerPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/my-trips" element={<MyTripsPage />} />
           <Route path="/saved-places" element={<SavedPlacesPage />} />
           <Route path="/settings/app" element={<AppSettingsPage />} />
-          <Route path="/about" element={<AboutUsPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/about-us" element={<AboutUsPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
         </Route>
 
         <Route element={<ProtectedRoute adminOnly={true} />}>
@@ -133,6 +113,13 @@ function App() {
         <Route path="/tehsil/:tehsilId" element={<TehsilPage />} />
         <Route path="/location/:locationId" element={<LocationDetailPage />} />
       </Route>
+      
+      {/* Tool routes outside main layout for fullscreen */}
+      <Route path="/tools/translate" element={<TranslatePage />} />
+      <Route path="/tools/fare-calculator" element={<FareCalculatorPage />} />
+      <Route path="/tools/currency-exchanger" element={<CurrencyExchangerPage />} />
+      <Route path="/tools/budget-tracker" element={<BudgetTrackerPage />} />
+      <Route path="/tools/bargaining-coach" element={<BargainingCoachPage />} />
     </Routes>
   );
 }

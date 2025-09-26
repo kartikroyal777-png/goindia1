@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Heart, MapPin, LogOut, Edit, Crown, Shield, FileText, Info } from 'lucide-react';
+import { User, Settings, Heart, MapPin, LogOut, Edit, Crown, FileText, Shield, Info } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import EditProfileModal from './EditProfileModal';
 
 const ProfilePage: React.FC = () => {
-  const { user, signOut, profile } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -15,18 +15,18 @@ const ProfilePage: React.FC = () => {
     navigate('/');
   };
   
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
 
-  const mainMenuItems = [
+  const menuItems = [
     { icon: Heart, label: 'Saved Places', path: '/saved-places' },
     { icon: MapPin, label: 'My Trips', path: '/my-trips' },
     { icon: Settings, label: 'App Settings', path: '/settings/app' },
   ];
 
-  const legalMenuItems = [
-    { icon: Info, label: 'About Us', summary: 'Who We Are', path: '/about' },
-    { icon: FileText, label: 'Terms of Use', summary: 'Rules of Use', path: '/terms' },
-    { icon: Shield, label: 'Privacy Policy', summary: 'How We Protect You', path: '/privacy' },
+  const legalItems = [
+    { icon: Info, label: 'About Us', path: '/about-us' },
+    { icon: Shield, label: 'Privacy Policy', path: '/privacy-policy' },
+    { icon: FileText, label: 'Terms of Service', path: '/terms-of-service' },
   ];
 
   return (
@@ -44,7 +44,7 @@ const ProfilePage: React.FC = () => {
                 <Edit className="w-4 h-4" />
               </button>
             </div>
-            <h1 className="text-xl font-bold mb-1">{profile?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
+            <h1 className="text-xl font-bold mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
             <p className="text-orange-100 text-sm">{user?.email}</p>
           </motion.div>
         </div>
@@ -62,9 +62,9 @@ const ProfilePage: React.FC = () => {
             </Link>
           )}
 
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <div className="space-y-1">
-              {mainMenuItems.map((item, index) => (
+          <div className="bg-white rounded-xl shadow-md p-4 mb-4">
+            <div className="space-y-2">
+              {menuItems.map((item, index) => (
                 <Link to={item.path} key={item.label}>
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -83,23 +83,19 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-md p-4 mt-6">
-            <h2 className="text-sm font-semibold text-gray-500 mb-2 px-3">Legal & Info</h2>
-            <div className="space-y-1">
-              {legalMenuItems.map((item, index) => (
+          <div className="bg-white rounded-xl shadow-md p-4">
+            <div className="space-y-2">
+              {legalItems.map((item, index) => (
                 <Link to={item.path} key={item.label}>
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: (mainMenuItems.length + index) * 0.1 }}
+                    transition={{ delay: (index + menuItems.length) * 0.1 }}
                     className="w-full p-3 flex items-center justify-between hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <div className="flex items-center space-x-3">
                       <item.icon className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <span className="font-medium text-gray-800">{item.label}</span>
-                        <p className="text-xs text-gray-500">{item.summary}</p>
-                      </div>
+                      <span className="font-medium text-gray-800">{item.label}</span>
                     </div>
                     <span className="text-gray-400">›</span>
                   </motion.div>

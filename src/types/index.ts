@@ -8,7 +8,7 @@ export interface Category {
 export interface CityCategory {
   city_id: string;
   category_id: string;
-  categories: Category;
+  categories?: Category; // Make optional as we might only fetch the ID
 }
 
 export interface City {
@@ -151,27 +151,30 @@ export interface Location {
     recommended_hotels?: Recommendation[];
     local_foods?: LocalFood[];
     influencer_videos?: InfluencerVideo[];
-    // Deprecated fields, kept for potential data migration
-    food_stay?: any;
-    weather_air_quality?: any;
-    accessibility?: any;
-    nearby_essentials?: any;
-    crowd_experience?: any;
-    traveler_tips?: any;
-    google_reviews?: any;
-    virtual_tour?: any;
-    visa_foreigner_rules?: any;
   };
 }
 
+export interface SavedPlace {
+  user_id: string;
+  location_id: string;
+  locations: Location; // For joined data
+}
 
-export interface Trip {
+export interface TripPreferences {
+  days: number;
+  destination: string;
+  style: 'cultural' | 'romantic' | 'family' | 'adventure';
+  companions: 'solo' | 'couple' | 'family' | 'friends';
+}
+
+export interface SavedTrip {
   id: string;
   user_id: string;
-  title: string;
-  preferences: any;
-  itinerary: DayPlan[];
   created_at: string;
+  trip_details: {
+    preferences: TripPreferences;
+    itinerary: DayPlan[];
+  }
 }
 
 export interface DayPlan {
@@ -181,7 +184,7 @@ export interface DayPlan {
 }
 
 export interface Activity {
-  id: string; // Added for unique key
+  id: string;
   time: 'Morning' | 'Afternoon' | 'Evening';
   title: string;
   description: string;
@@ -216,11 +219,4 @@ export interface BargainingPrice {
   item_name: string;
   fair_price_range: string;
   quoted_price_range: string;
-}
-
-export interface Profile {
-  id: string;
-  full_name?: string;
-  avatar_url?: string;
-  role?: 'user' | 'admin';
 }

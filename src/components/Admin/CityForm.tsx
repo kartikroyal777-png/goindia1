@@ -36,15 +36,13 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
 
   useEffect(() => {
     if (city) {
-      // The city object from the query includes the city_categories relation.
-      // We must not include it in the formData that will be sent for update.
-      const { city_categories, ...cityDataForForm } = city as any;
-      setFormData(cityDataForForm);
-      
-      // The query in ContentManager is `city_categories(categories(*))`.
-      // So the structure is { city_categories: [ { categories: { id: '...' } } ] }
-      const currentCategoryIds = new Set(city_categories?.map((cc: any) => cc.categories.id) || []);
-      setSelectedCategories(currentCategoryIds);
+      setFormData(city);
+      const fetchCityCategories = async () => {
+        const { data } = await supabase.from('city_categories').select('category_id').eq('city_id', city.id);
+        const currentCategoryIds = new Set(data?.map(cc => cc.category_id) || []);
+        setSelectedCategories(currentCategoryIds);
+      };
+      fetchCityCategories();
     } else {
       setFormData(initialCityState);
       setSelectedCategories(new Set());
@@ -73,13 +71,11 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
     setLoading(true);
     setError(null);
 
-    // Explicitly remove any relational fields from the data to be submitted.
-    const { city_categories, ...cleanFormData } = formData as any;
+    const { city_categories, ...cityDataToSave } = formData;
 
-    // Upsert the city
-    const { data: cityData, error: cityError } = city?.id
-      ? await supabase.from('cities').update(cleanFormData).eq('id', city.id).select().single()
-      : await supabase.from('cities').insert(cleanFormData).select().single();
+    const { data: savedCity, error: cityError } = city?.id
+      ? await supabase.from('cities').update(cityDataToSave).eq('id', city.id).select().single()
+      : await supabase.from('cities').insert(cityDataToSave).select().single();
 
     if (cityError) {
       setError(cityError.message);
@@ -87,8 +83,7 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
       return;
     }
 
-    // Sync categories
-    const cityId = cityData.id;
+    const cityId = savedCity.id;
     const { error: deleteError } = await supabase.from('city_categories').delete().eq('city_id', cityId);
     if (deleteError) {
       setError(`Failed to update categories: ${deleteError.message}`);

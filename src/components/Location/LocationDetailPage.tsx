@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 import { Location, Tehsil, City, LocationImage } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
+import { useAuth } from '../../contexts/AuthContext';
 
 type LocationWithDetails = Location & {
   tehsil: Tehsil & { city: City; };
@@ -19,11 +19,12 @@ type LocationWithDetails = Location & {
 };
 
 const OPEN_WEATHER_API_KEY = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
+const AQI_API_KEY = import.meta.env.VITE_AQI_API_KEY;
 
 const LocationDetailPage: React.FC = () => {
   const { locationId } = useParams<{ locationId: string }>();
   const navigate = useNavigate();
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const [location, setLocation] = useState<LocationWithDetails | null>(null);
   const [weather, setWeather] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -33,47 +34,58 @@ const LocationDetailPage: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const fetchLocationData = useCallback(async () => {
+    if (!locationId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: dbError } = await supabase.from('locations').select('*, tehsil:tehsils(*, city:cities(*)), images:location_images(*)').eq('id', locationId).single();
+      if (dbError || !data) throw dbError || new Error('Location not found');
+      setLocation(data as unknown as LocationWithDetails);
+
+      if (data.latitude && data.longitude) {
+        try {
+          const weatherResponse = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${data.latitude}&lon=${data.longitude}&appid=${OPEN_WEATHER_API_KEY}&units=metric`);
+          const aqiResponse = await axios.get(`https://api.waqi.info/feed/geo:${data.latitude};${data.longitude}/?token=${AQI_API_KEY}`);
+          setWeather({ ...weatherResponse.data, aqi: aqiResponse.data.data.aqi });
+        } catch (weatherError) { console.error("Could not fetch weather data:", weatherError); setWeather(null); }
+      } else { setWeather(null); }
+
+    } catch (err: any) { setError(err.message || 'Could not find the requested location.'); console.error(err); } 
+    finally { setLoading(false); }
+  }, [locationId]);
+
+  const checkIsSaved = useCallback(async () => {
+    if (!user || !locationId) return;
+    const { data, error } = await supabase.from('saved_places').select('location_id').eq('user_id', user.id).eq('location_id', locationId).single();
+    if (!error && data) {
+      setIsSaved(true);
+    } else {
+      setIsSaved(false);
+    }
+  }, [user, locationId]);
+  
   useEffect(() => {
-    const fetchData = async () => {
-      if (!locationId) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const { data, error: dbError } = await supabase.from('locations').select('*, tehsil:tehsils(*, city:cities(*)), images:location_images(*)').eq('id', locationId).single();
-        if (dbError || !data) throw dbError || new Error('Location not found');
-        setLocation(data as unknown as LocationWithDetails);
+    fetchLocationData();
+  }, [fetchLocationData]);
 
-        if (user) {
-          const { data: savedData } = await supabase.from('saved_locations').select('location_id').eq('user_id', user.id).eq('location_id', locationId).single();
-          if (savedData) setIsSaved(true);
-        }
-
-        if (data.latitude && data.longitude && OPEN_WEATHER_API_KEY && !OPEN_WEATHER_API_KEY.includes('YOUR_API_KEY')) {
-          try {
-            const weatherResponse = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${data.latitude}&lon=${data.longitude}&appid=${OPEN_WEATHER_API_KEY}&units=metric`);
-            const aqiResponse = await axios.get(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${data.latitude}&lon=${data.longitude}&appid=${OPEN_WEATHER_API_KEY}`);
-            setWeather({ ...weatherResponse.data, aqi: aqiResponse.data.list[0].main.aqi });
-          } catch (weatherError) { console.error("Could not fetch weather data:", weatherError); setWeather(null); }
-        } else { setWeather(null); }
-      } catch (err: any) { setError(err.message || 'Could not find the requested location.'); console.error(err); } 
-      finally { setLoading(false); }
-    };
-    fetchData();
-  }, [locationId, user]);
+  useEffect(() => {
+    checkIsSaved();
+  }, [checkIsSaved]);
 
   const handleToggleSave = async () => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    if (!locationId) return;
-
+    if (isSaving) return;
     setIsSaving(true);
+
     if (isSaved) {
-      const { error } = await supabase.from('saved_locations').delete().match({ user_id: user.id, location_id: locationId });
+      const { error } = await supabase.from('saved_places').delete().match({ user_id: user.id, location_id: locationId });
       if (!error) setIsSaved(false);
     } else {
-      const { error } = await supabase.from('saved_locations').insert({ user_id: user.id, location_id: locationId });
+      const { error } = await supabase.from('saved_places').insert({ user_id: user.id, location_id: locationId });
       if (!error) setIsSaved(true);
     }
     setIsSaving(false);
@@ -96,12 +108,12 @@ const LocationDetailPage: React.FC = () => {
   ];
   
   const getAqiInfo = (aqi: number) => {
-    if (aqi === 1) return { text: "Good", color: "text-green-500" };
-    if (aqi === 2) return { text: "Fair", color: "text-yellow-500" };
-    if (aqi === 3) return { text: "Moderate", color: "text-orange-500" };
-    if (aqi === 4) return { text: "Poor", color: "text-red-500" };
-    if (aqi === 5) return { text: "Very Poor", color: "text-purple-500" };
-    return { text: "N/A", color: "text-gray-500" };
+    if (aqi <= 50) return { text: "Good", color: "text-green-500" };
+    if (aqi <= 100) return { text: "Moderate", color: "text-yellow-500" };
+    if (aqi <= 150) return { text: "Unhealthy (SG)", color: "text-orange-500" };
+    if (aqi <= 200) return { text: "Unhealthy", color: "text-red-500" };
+    if (aqi <= 300) return { text: "Very Unhealthy", color: "text-purple-500" };
+    return { text: "Hazardous", color: "text-maroon-500" };
   };
 
   const renderTabContent = () => {
@@ -119,6 +131,17 @@ const LocationDetailPage: React.FC = () => {
               <InfoItem icon={Wallet} label="Local Ticket" value={d.costs_money?.ticket_prices?.local} />
               <InfoItem icon={HandCoins} label="Avg. Budget/Day" value={d.costs_money?.avg_budget_per_day} />
               <InfoItem icon={CheckCircle} label="Digital Payments" value={d.costs_money?.digital_payment_availability} />
+          </DetailCard>
+          <DetailCard icon={Accessibility} title="Accessibility & Services">
+            <InfoItem icon={Accessibility} label="Wheelchair Access" value={d.accessibility?.wheelchair_access} />
+            <InfoItem icon={Speaker} label="English Guides" value={d.accessibility?.english_speaking_guides} />
+            <InfoItem icon={UserCheck} label="Foreigner Services" value={d.accessibility?.foreigner_friendly_services} />
+          </DetailCard>
+          <DetailCard icon={Hospital} title="Nearby Essentials">
+            <InfoItem icon={Banknote} label="ATMs" value={d.nearby_essentials?.atms} />
+            <InfoItem icon={Syringe} label="Pharmacies" value={d.nearby_essentials?.pharmacies} />
+            <InfoItem icon={Hospital} label="Hospitals" value={d.nearby_essentials?.hospitals} />
+            <InfoItem icon={Siren} label="Police Stations" value={d.nearby_essentials?.police_stations} />
           </DetailCard>
         </div>
       );
@@ -140,6 +163,10 @@ const LocationDetailPage: React.FC = () => {
               <p className="text-sm font-semibold text-gray-600 mb-1">Do's & Don'ts:</p>
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">{d.cultural_etiquette?.dos_donts?.map((tip, i) => <li key={i}>{tip}</li>)}</ul>
             </div>
+          </DetailCard>
+           <DetailCard icon={Gem} title="Traveler Tips">
+            <InfoItem icon={BrainCircuit} label="Hacks" value={d.traveler_tips?.hacks} />
+            <InfoItem icon={Microscope} label="Hidden Gems" value={d.traveler_tips?.hidden_gems} />
           </DetailCard>
           <DetailCard icon={UserCog} title="Guides">
             <InfoItem icon={UserCheck} label="Availability" value={d.guides?.availability} />
@@ -177,8 +204,6 @@ const LocationDetailPage: React.FC = () => {
                   <div><p className={`text-2xl font-bold ${getAqiInfo(weather.aqi).color}`}>{weather.aqi}</p><p className="text-xs">AQI ({getAqiInfo(weather.aqi).text})</p></div>
                 </div>
             </DetailCard>
-          ) : OPEN_WEATHER_API_KEY && OPEN_WEATHER_API_KEY.includes('YOUR_API_KEY') ? (
-              <DetailCard icon={Cloud} title="Live Weather & AQI"><p className="text-sm text-center text-gray-500">Please add your OpenWeatherMap API key to the .env file to enable live weather.</p></DetailCard>
           ) : null}
           <DetailCard icon={Clock} title="Timings & Best Time">
             <InfoItem icon={Sun} label="Best Season" value={d.best_time_to_visit?.best_season} />
@@ -198,10 +223,10 @@ const LocationDetailPage: React.FC = () => {
   const StatCard: React.FC<{icon: React.ElementType, label: string, value: string | React.ReactNode}> = ({icon: Icon, label, value}) => (<div className="bg-white rounded-xl shadow-sm border p-3 text-center"><Icon className="w-6 h-6 text-orange-500 mx-auto mb-1"/><p className="text-xs text-gray-500">{label}</p><p className="font-bold text-gray-800">{value}</p></div>);
   const InfoItem: React.FC<{icon?: React.ElementType, label: string, value: string | React.ReactNode}> = ({icon: Icon, label, value}) => (value ? <div className="mt-2 flex justify-between items-center text-sm border-b border-gray-100 pb-2"><p className="text-gray-500 flex items-center space-x-2">{Icon && <Icon className="w-4 h-4 text-gray-400" />}<span>{label}</span></p><p className="text-gray-800 font-semibold text-right">{value}</p></div> : null);
   const SectionWithCarousel: React.FC<{title: string, icon: React.ElementType, items: any[], renderItem: (item: any) => React.ReactNode}> = ({title, icon: Icon, items, renderItem}) => (items && items.length > 0 ? <DetailCard icon={Icon} title={title}><div className="flex space-x-4 overflow-x-auto scrollbar-hide -m-2 p-2">{items.map((item, i) => <div key={i} className="flex-shrink-0 w-64">{renderItem(item)}</div>)}</div></DetailCard> : null);
-  const PhotoSpotCard: React.FC<{item: any}> = ({item}) => (<div className="rounded-lg overflow-hidden shadow-md bg-white h-full"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.title}</p><p className="text-xs text-gray-600">{item.description}</p></div></div>);
-  const RecommendationCard: React.FC<{item: any}> = ({item}) => (<div className="rounded-lg overflow-hidden shadow-md bg-white h-full"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.name}</p></div></div>);
-  const LocalFoodCard: React.FC<{item: any}> = ({item}) => (<div className="rounded-lg overflow-hidden shadow-md bg-white h-full"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.name}</p><p className="text-xs text-gray-600">{item.shop}</p></div></div>);
-  const VideoCard: React.FC<{item: any}> = ({item}) => (<div className="rounded-lg overflow-hidden shadow-md bg-white h-full"><img src={`https://i.ytimg.com/vi/${item.video_id}/hqdefault.jpg`} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.title}</p><p className="text-xs text-gray-600">by {item.influencer_name}</p></div></div>);
+  const PhotoSpotCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.title}</p><p className="text-xs text-gray-600">{item.description}</p></div></a>);
+  const RecommendationCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.name}</p></div></a>);
+  const LocalFoodCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-bold text-sm">{item.name}</p><p className="text-xs text-gray-600">{item.shop}</p></div></a>);
+  const VideoCard: React.FC<{item: any}> = ({item}) => (<a href={`https://www.youtube.com/watch?v=${item.video_id}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><div className="relative"><img src={`https://i.ytimg.com/vi/${item.video_id}/hqdefault.jpg`} className="w-full h-32 object-cover" /><div className="absolute inset-0 flex items-center justify-center bg-black/30"><Youtube className="w-10 h-10 text-white" /></div></div><div className="p-3"><p className="font-bold text-sm">{item.title}</p><p className="text-xs text-gray-600">by {item.influencer_name}</p></div></a>);
 
   return (
     <div className="bg-gray-100 min-h-screen pb-10">
@@ -209,12 +234,12 @@ const LocationDetailPage: React.FC = () => {
         <AnimatePresence initial={false}><motion.img key={currentImageIndex} src={images[currentImageIndex]} alt={location.name} className="absolute w-full h-full object-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} /></AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         {images.length > 1 && (<><button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><ChevronLeft /></button><button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><ChevronRight /></button></>)}
-        <motion.button onClick={() => navigate(-1)} className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-full z-10" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} ><ArrowLeft className="w-5 h-5 text-gray-800" /></motion.button>
-        {session && (
-          <motion.button onClick={handleToggleSave} disabled={isSaving} className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-full z-10" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} >
-            <Heart className={`w-5 h-5 transition-colors ${isSaved ? 'text-red-500' : 'text-gray-800'}`} fill={isSaved ? 'currentColor' : 'none'} />
-          </motion.button>
-        )}
+        <div className="absolute top-4 left-4 right-4 flex justify-between z-10">
+            <motion.button onClick={() => navigate(-1)} className="bg-white/80 backdrop-blur-sm p-2 rounded-full" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} ><ArrowLeft className="w-5 h-5 text-gray-800" /></motion.button>
+            <motion.button onClick={handleToggleSave} className="bg-white/80 backdrop-blur-sm p-2 rounded-full" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} >
+                <Heart className={`w-5 h-5 transition-all ${isSaved ? 'text-red-500 fill-current' : 'text-gray-800'}`} />
+            </motion.button>
+        </div>
         <div className="absolute bottom-4 left-4 text-white z-10"><p className="text-md bg-black/40 px-2 py-1 rounded-md inline-block">{location.category}</p><h1 className="text-4xl font-bold mt-1">{location.name}</h1><p className="text-lg text-gray-200">{location.tehsil.name}, {location.tehsil.city?.name}</p></div>
       </div>
 
