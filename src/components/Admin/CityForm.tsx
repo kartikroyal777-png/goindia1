@@ -36,8 +36,14 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
 
   useEffect(() => {
     if (city) {
-      setFormData(city);
-      const currentCategoryIds = new Set(city.city_categories?.map(cc => cc.category_id) || []);
+      // The city object from the query includes the city_categories relation.
+      // We must not include it in the formData that will be sent for update.
+      const { city_categories, ...cityDataForForm } = city as any;
+      setFormData(cityDataForForm);
+      
+      // The query in ContentManager is `city_categories(categories(*))`.
+      // So the structure is { city_categories: [ { categories: { id: '...' } } ] }
+      const currentCategoryIds = new Set(city_categories?.map((cc: any) => cc.categories.id) || []);
       setSelectedCategories(currentCategoryIds);
     } else {
       setFormData(initialCityState);
@@ -67,10 +73,13 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
     setLoading(true);
     setError(null);
 
+    // Explicitly remove any relational fields from the data to be submitted.
+    const { city_categories, ...cleanFormData } = formData as any;
+
     // Upsert the city
     const { data: cityData, error: cityError } = city?.id
-      ? await supabase.from('cities').update(formData).eq('id', city.id).select().single()
-      : await supabase.from('cities').insert(formData).select().single();
+      ? await supabase.from('cities').update(cleanFormData).eq('id', city.id).select().single()
+      : await supabase.from('cities').insert(cleanFormData).select().single();
 
     if (cityError) {
       setError(cityError.message);

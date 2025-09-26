@@ -9,7 +9,7 @@ interface LocationCardProps {
 }
 
 const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
-  const imageUrl = location.image_url || location.images?.[0]?.image_url || 'https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400.png';
+  const imageUrl = location.image_url || location.images?.[0]?.image_url || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400.png';
 
   return (
     <motion.div

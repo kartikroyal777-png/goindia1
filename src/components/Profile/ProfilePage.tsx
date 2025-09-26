@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Heart, MapPin, LogOut, Edit, Crown } from 'lucide-react';
+import { User, Settings, Heart, MapPin, LogOut, Edit, Crown, Shield, FileText, Info } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import EditProfileModal from './EditProfileModal';
 
 const ProfilePage: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -15,12 +15,18 @@ const ProfilePage: React.FC = () => {
     navigate('/');
   };
   
-  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+  const isAdmin = profile?.role === 'admin';
 
-  const menuItems = [
-    { icon: Heart, label: 'Saved Places', count: 12, path: '/saved-places' },
-    { icon: MapPin, label: 'My Trips', count: 3, path: '/my-trips' },
+  const mainMenuItems = [
+    { icon: Heart, label: 'Saved Places', path: '/saved-places' },
+    { icon: MapPin, label: 'My Trips', path: '/my-trips' },
     { icon: Settings, label: 'App Settings', path: '/settings/app' },
+  ];
+
+  const legalMenuItems = [
+    { icon: Info, label: 'About Us', summary: 'Who We Are', path: '/about' },
+    { icon: FileText, label: 'Terms of Use', summary: 'Rules of Use', path: '/terms' },
+    { icon: Shield, label: 'Privacy Policy', summary: 'How We Protect You', path: '/privacy' },
   ];
 
   return (
@@ -38,7 +44,7 @@ const ProfilePage: React.FC = () => {
                 <Edit className="w-4 h-4" />
               </button>
             </div>
-            <h1 className="text-xl font-bold mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
+            <h1 className="text-xl font-bold mb-1">{profile?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
             <p className="text-orange-100 text-sm">{user?.email}</p>
           </motion.div>
         </div>
@@ -57,9 +63,8 @@ const ProfilePage: React.FC = () => {
           )}
 
           <div className="bg-white rounded-xl shadow-md p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Settings</h2>
-            <div className="space-y-2">
-              {menuItems.map((item, index) => (
+            <div className="space-y-1">
+              {mainMenuItems.map((item, index) => (
                 <Link to={item.path} key={item.label}>
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -71,10 +76,32 @@ const ProfilePage: React.FC = () => {
                       <item.icon className="w-5 h-5 text-gray-500" />
                       <span className="font-medium text-gray-800">{item.label}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {item.count && <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">{item.count}</span>}
-                      <span className="text-gray-400">›</span>
+                    <span className="text-gray-400">›</span>
+                  </motion.div>
+                </Link>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-md p-4 mt-6">
+            <h2 className="text-sm font-semibold text-gray-500 mb-2 px-3">Legal & Info</h2>
+            <div className="space-y-1">
+              {legalMenuItems.map((item, index) => (
+                <Link to={item.path} key={item.label}>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: (mainMenuItems.length + index) * 0.1 }}
+                    className="w-full p-3 flex items-center justify-between hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <item.icon className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <span className="font-medium text-gray-800">{item.label}</span>
+                        <p className="text-xs text-gray-500">{item.summary}</p>
+                      </div>
                     </div>
+                    <span className="text-gray-400">›</span>
                   </motion.div>
                 </Link>
               ))}

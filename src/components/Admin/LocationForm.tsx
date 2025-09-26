@@ -30,53 +30,28 @@ const getDefaultDetails = (): Location['details'] => ({
   influencer_videos: [],
 });
 
-const DynamicObjectArrayField: React.FC<{
-  label: string;
-  items: any[];
-  fields: { name: string; placeholder: string }[];
-  onUpdate: (newItems: any[]) => void;
-}> = ({ label, items, fields, onUpdate }) => {
-  const handleItemChange = (index: number, fieldName: string, value: string) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [fieldName]: value };
-    onUpdate(newItems);
-  };
-
-  const addItem = () => {
-    const newItem = fields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
-    onUpdate([...items, newItem]);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate(items.filter((_, i) => i !== index));
-  };
-
-  return (
-    <div className="space-y-2">
-      <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
-      {items.map((item, index) => (
-        <div key={index} className="flex items-start space-x-2 border p-2 rounded-md bg-gray-50">
-          <div className="flex-grow space-y-1">
-            {fields.map(field => (
-              <input
-                key={field.name}
-                value={item[field.name] || ''}
-                onChange={e => handleItemChange(index, field.name, e.target.value)}
-                placeholder={field.placeholder}
-                className="w-full p-1.5 border rounded text-sm"
-              />
-            ))}
-          </div>
-          <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full mt-1"><Trash2 className="w-4 h-4" /></button>
-        </div>
-      ))}
-      <button type="button" onClick={addItem} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
-        <PlusCircle className="w-4 h-4" />
-        <span>Add {label.replace(/_/g, ' ').slice(0, -1)}</span>
-      </button>
-    </div>
-  );
+const isObject = (item: any) => {
+  return (item && typeof item === 'object' && !Array.isArray(item));
 };
+
+const mergeDeep = (target: any, source: any): any => {
+  const output = { ...target };
+  if (isObject(target) && isObject(source)) {
+    Object.keys(source).forEach(key => {
+      if (isObject(source[key])) {
+        if (!(key in target)) {
+          Object.assign(output, { [key]: source[key] });
+        } else {
+          output[key] = mergeDeep(target[key], source[key]);
+        }
+      } else {
+        Object.assign(output, { [key]: source[key] });
+      }
+    });
+  }
+  return output;
+};
+
 
 const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave }) => {
   const [formData, setFormData] = useState<Partial<Omit<Location, 'id' | 'tehsil_id' | 'images'>>>({
@@ -95,14 +70,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
   useEffect(() => {
     if (location) {
         const defaultDetails = getDefaultDetails();
-        const locationDetails = location.details || {};
-        
-        const mergedDetails = Object.keys(defaultDetails).reduce((acc, key) => {
-            const defaultSection = defaultDetails[key as keyof typeof defaultDetails];
-            const locationSection = locationDetails[key as keyof typeof locationDetails];
-            acc[key as keyof typeof acc] = locationSection ?? defaultSection;
-            return acc;
-        }, {} as Location['details']);
+        const mergedDetails = mergeDeep(defaultDetails, location.details || {});
 
         setFormData({
             name: location.name,
@@ -226,6 +194,54 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
           </div>
         ))}
         <button type="button" onClick={addToArray} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add</span></button>
+      </div>
+    );
+  };
+
+  const DynamicObjectArrayField: React.FC<{
+    label: string;
+    items: any[];
+    fields: { name: string; placeholder: string }[];
+    onUpdate: (newItems: any[]) => void;
+  }> = ({ label, items, fields, onUpdate }) => {
+    const handleItemChange = (index: number, fieldName: string, value: string) => {
+      const newItems = [...items];
+      newItems[index] = { ...newItems[index], [fieldName]: value };
+      onUpdate(newItems);
+    };
+  
+    const addItem = () => {
+      const newItem = fields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
+      onUpdate([...(items || []), newItem]);
+    };
+  
+    const removeItem = (index: number) => {
+      onUpdate(items.filter((_, i) => i !== index));
+    };
+  
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        {(items || []).map((item, index) => (
+          <div key={index} className="flex items-start space-x-2 border p-2 rounded-md bg-gray-50">
+            <div className="flex-grow space-y-1">
+              {fields.map(field => (
+                <input
+                  key={field.name}
+                  value={item[field.name] || ''}
+                  onChange={e => handleItemChange(index, field.name, e.target.value)}
+                  placeholder={field.placeholder}
+                  className="w-full p-1.5 border rounded text-sm"
+                />
+              ))}
+            </div>
+            <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full mt-1"><Trash2 className="w-4 h-4" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={addItem} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
+          <PlusCircle className="w-4 h-4" />
+          <span>Add {label.replace(/_/g, ' ').slice(0, -1)}</span>
+        </button>
       </div>
     );
   };

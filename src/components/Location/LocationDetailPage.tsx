@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Location, Tehsil, City, LocationImage } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
 
 type LocationWithDetails = Location & {
@@ -22,12 +23,15 @@ const OPEN_WEATHER_API_KEY = import.meta.env.VITE_OPENWEATHERMAP_API_KEY;
 const LocationDetailPage: React.FC = () => {
   const { locationId } = useParams<{ locationId: string }>();
   const navigate = useNavigate();
+  const { user, session } = useAuth();
   const [location, setLocation] = useState<LocationWithDetails | null>(null);
   const [weather, setWeather] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,6 +42,12 @@ const LocationDetailPage: React.FC = () => {
         const { data, error: dbError } = await supabase.from('locations').select('*, tehsil:tehsils(*, city:cities(*)), images:location_images(*)').eq('id', locationId).single();
         if (dbError || !data) throw dbError || new Error('Location not found');
         setLocation(data as unknown as LocationWithDetails);
+
+        if (user) {
+          const { data: savedData } = await supabase.from('saved_locations').select('location_id').eq('user_id', user.id).eq('location_id', locationId).single();
+          if (savedData) setIsSaved(true);
+        }
+
         if (data.latitude && data.longitude && OPEN_WEATHER_API_KEY && !OPEN_WEATHER_API_KEY.includes('YOUR_API_KEY')) {
           try {
             const weatherResponse = await axios.get(`https://api.openweathermap.org/data/2.5/weather?lat=${data.latitude}&lon=${data.longitude}&appid=${OPEN_WEATHER_API_KEY}&units=metric`);
@@ -49,7 +59,25 @@ const LocationDetailPage: React.FC = () => {
       finally { setLoading(false); }
     };
     fetchData();
-  }, [locationId]);
+  }, [locationId, user]);
+
+  const handleToggleSave = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (!locationId) return;
+
+    setIsSaving(true);
+    if (isSaved) {
+      const { error } = await supabase.from('saved_locations').delete().match({ user_id: user.id, location_id: locationId });
+      if (!error) setIsSaved(false);
+    } else {
+      const { error } = await supabase.from('saved_locations').insert({ user_id: user.id, location_id: locationId });
+      if (!error) setIsSaved(true);
+    }
+    setIsSaving(false);
+  };
 
   const images = location?.images && location.images.length > 0 ? location.images.map(i => i.image_url) : location?.image_url ? [location.image_url] : [];
   const nextImage = () => setCurrentImageIndex(p => (p + 1) % images.length);
@@ -92,17 +120,6 @@ const LocationDetailPage: React.FC = () => {
               <InfoItem icon={HandCoins} label="Avg. Budget/Day" value={d.costs_money?.avg_budget_per_day} />
               <InfoItem icon={CheckCircle} label="Digital Payments" value={d.costs_money?.digital_payment_availability} />
           </DetailCard>
-          <DetailCard icon={Accessibility} title="Accessibility & Services">
-            <InfoItem icon={Accessibility} label="Wheelchair Access" value={d.accessibility?.wheelchair_access} />
-            <InfoItem icon={Speaker} label="English Guides" value={d.accessibility?.english_speaking_guides} />
-            <InfoItem icon={UserCheck} label="Foreigner Services" value={d.accessibility?.foreigner_friendly_services} />
-          </DetailCard>
-          <DetailCard icon={Hospital} title="Nearby Essentials">
-            <InfoItem icon={Banknote} label="ATMs" value={d.nearby_essentials?.atms} />
-            <InfoItem icon={Syringe} label="Pharmacies" value={d.nearby_essentials?.pharmacies} />
-            <InfoItem icon={Hospital} label="Hospitals" value={d.nearby_essentials?.hospitals} />
-            <InfoItem icon={Siren} label="Police Stations" value={d.nearby_essentials?.police_stations} />
-          </DetailCard>
         </div>
       );
       case 'culture': return (
@@ -123,10 +140,6 @@ const LocationDetailPage: React.FC = () => {
               <p className="text-sm font-semibold text-gray-600 mb-1">Do's & Don'ts:</p>
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">{d.cultural_etiquette?.dos_donts?.map((tip, i) => <li key={i}>{tip}</li>)}</ul>
             </div>
-          </DetailCard>
-           <DetailCard icon={Gem} title="Traveler Tips">
-            <InfoItem icon={BrainCircuit} label="Hacks" value={d.traveler_tips?.hacks} />
-            <InfoItem icon={Microscope} label="Hidden Gems" value={d.traveler_tips?.hidden_gems} />
           </DetailCard>
           <DetailCard icon={UserCog} title="Guides">
             <InfoItem icon={UserCheck} label="Availability" value={d.guides?.availability} />
@@ -197,6 +210,11 @@ const LocationDetailPage: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         {images.length > 1 && (<><button onClick={prevImage} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><ChevronLeft /></button><button onClick={nextImage} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><ChevronRight /></button></>)}
         <motion.button onClick={() => navigate(-1)} className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-full z-10" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} ><ArrowLeft className="w-5 h-5 text-gray-800" /></motion.button>
+        {session && (
+          <motion.button onClick={handleToggleSave} disabled={isSaving} className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-2 rounded-full z-10" whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} >
+            <Heart className={`w-5 h-5 transition-colors ${isSaved ? 'text-red-500' : 'text-gray-800'}`} fill={isSaved ? 'currentColor' : 'none'} />
+          </motion.button>
+        )}
         <div className="absolute bottom-4 left-4 text-white z-10"><p className="text-md bg-black/40 px-2 py-1 rounded-md inline-block">{location.category}</p><h1 className="text-4xl font-bold mt-1">{location.name}</h1><p className="text-lg text-gray-200">{location.tehsil.name}, {location.tehsil.city?.name}</p></div>
       </div>
 

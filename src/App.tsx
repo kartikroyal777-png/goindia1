@@ -23,21 +23,26 @@ import BudgetTrackerPage from './pages/tools/BudgetTrackerPage';
 import BargainingCoachPage from './pages/tools/BargainingCoachPage';
 import TranslatePage from './pages/TranslatePage';
 import AssistantModal from './components/Assistant/AssistantModal';
+import AppSettingsPage from './pages/AppSettingsPage';
+import AboutUsPage from './pages/AboutUsPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import { Loader2 } from 'lucide-react';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
-  const { session, user } = useAuth();
+  const { session, profile } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!session) {
       navigate('/auth', { replace: true });
-    } else if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') {
+    } else if (adminOnly && profile && profile.role !== 'admin') {
       navigate('/', { replace: true });
     }
-  }, [session, user, adminOnly, navigate]);
+  }, [session, profile, adminOnly, navigate]);
 
   if (!session) return null;
-  if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') return null;
+  if (adminOnly && (!profile || profile.role !== 'admin')) return null;
 
   return <Outlet />;
 };
@@ -83,6 +88,16 @@ const AppLayout = () => {
 };
 
 function App() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
@@ -99,10 +114,15 @@ function App() {
         
         <Route element={<ProtectedRoute />}>
           <Route path="/planner" element={<TripPlannerPage />} />
+          <Route path="/planner/:tripId" element={<TripPlannerPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/my-trips" element={<MyTripsPage />} />
           <Route path="/saved-places" element={<SavedPlacesPage />} />
+          <Route path="/settings/app" element={<AppSettingsPage />} />
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
         </Route>
 
         <Route element={<ProtectedRoute adminOnly={true} />}>

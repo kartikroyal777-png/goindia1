@@ -165,15 +165,11 @@ export interface Location {
 }
 
 
-export interface TripPlan {
+export interface Trip {
   id: string;
   user_id: string;
   title: string;
-  days: number;
-  budget: 'low' | 'mid' | 'luxury';
-  travel_style: 'solo' | 'women' | 'family' | 'backpack' | 'luxury';
-  interests: string[];
-  cities: string[];
+  preferences: any;
   itinerary: DayPlan[];
   created_at: string;
 }
@@ -220,4 +216,11 @@ export interface BargainingPrice {
   item_name: string;
   fair_price_range: string;
   quoted_price_range: string;
+}
+
+export interface Profile {
+  id: string;
+  full_name?: string;
+  avatar_url?: string;
+  role?: 'user' | 'admin';
 }

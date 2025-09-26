@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Minus, Plus, Landmark, Mountain, User, ArrowRight, Heart, Users, MapPin, Share2, Sun, Cloud, Wind, ArrowLeft, Trash2, Edit, Save, FileDown, Calendar, Users2, Compass, Check } from 'lucide-react';
+import { Search, Minus, Plus, Landmark, Mountain, User, ArrowRight, Heart, Users, MapPin, Share2, Sun, Cloud, Wind, ArrowLeft, Trash2, Edit, Save, FileDown, Calendar, Users2, Compass, Check, AlertTriangle } from 'lucide-react';
 import { runGeminiQuery } from '../../lib/gemini';
-import { DayPlan, City, Activity } from '../../types';
+import { DayPlan, City, Activity, Trip } from '../../types';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 type TravelStyle = 'cultural' | 'romantic' | 'family' | 'adventure';
 type Companion = 'solo' | 'couple' | 'family' | 'friends';
@@ -16,6 +18,10 @@ interface TripPreferences {
 }
 
 const TripPlannerPage: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { tripId } = useParams<{ tripId?: string }>();
+  
   const [step, setStep] = useState(1);
   const [preferences, setPreferences] = useState<TripPreferences>({
     days: 7,
@@ -29,14 +35,28 @@ const TripPlannerPage: React.FC = () => {
   const [activeDay, setActiveDay] = useState(1);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const fetchTrendingCities = async () => {
-      const { data } = await supabase.from('cities').select('*').order('popularity_score', { ascending: false }).limit(5);
-      if (data) setTrendingCities(data);
+    const fetchInitialData = async () => {
+      if (tripId) {
+        setIsGenerating(true);
+        const { data: tripData, error: tripError } = await supabase.from('trips').select('*').eq('id', tripId).single();
+        if (tripError || !tripData) {
+          setError("Could not load the requested trip.");
+        } else {
+          setPreferences(tripData.preferences);
+          setItinerary(tripData.itinerary);
+          setStep(5);
+        }
+        setIsGenerating(false);
+      } else {
+        const { data } = await supabase.from('cities').select('*').order('popularity_score', { ascending: false }).limit(5);
+        if (data) setTrendingCities(data);
+      }
     };
-    fetchTrendingCities();
-  }, []);
+    fetchInitialData();
+  }, [tripId]);
 
   const styleOptions = [
     { id: 'cultural' as TravelStyle, label: 'Cultural & Historical', icon: Landmark },
@@ -61,7 +81,8 @@ const TripPlannerPage: React.FC = () => {
     if (step > 1 && step < 5) setStep(step - 1);
     else if (step === 5) {
       setItinerary(null);
-      setStep(4);
+      if (tripId) navigate('/my-trips');
+      else setStep(4);
     }
   };
 
@@ -93,6 +114,31 @@ const TripPlannerPage: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSaveTrip = async () => {
+    if (!user) { navigate('/auth'); return; }
+    if (!itinerary) return;
+
+    setIsSaving(true);
+    const tripData = {
+      user_id: user.id,
+      title: `Trip to ${preferences.destination}`,
+      preferences: preferences,
+      itinerary: itinerary,
+    };
+
+    const { error: saveError } = tripId
+      ? await supabase.from('trips').update(tripData).eq('id', tripId)
+      : await supabase.from('trips').insert(tripData);
+
+    if (saveError) {
+      alert('Error saving trip: ' + saveError.message);
+    } else {
+      alert(tripId ? 'Trip updated successfully!' : 'Trip saved successfully!');
+      if (!tripId) navigate('/my-trips');
+    }
+    setIsSaving(false);
   };
 
   const handleDeleteActivity = (dayIndex: number, activityId: string) => {
@@ -259,6 +305,11 @@ const TripPlannerPage: React.FC = () => {
           </motion.button>
           <h1 className="text-xl font-bold text-gray-900 text-center">{preferences.destination} Trip</h1>
           <div className="flex items-center space-x-1">
+            {user && (
+              <motion.button onClick={handleSaveTrip} disabled={isSaving} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50">
+                <Save className="w-5 h-5 text-gray-600" />
+              </motion.button>
+            )}
             <motion.button onClick={handleSaveToFile} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-full hover:bg-gray-100"><FileDown className="w-5 h-5 text-gray-600" /></motion.button>
             <motion.button onClick={handleShare} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-full hover:bg-gray-100"><Share2 className="w-5 h-5 text-gray-600" /></motion.button>
           </div>
@@ -329,7 +380,9 @@ const TripPlannerPage: React.FC = () => {
           <motion.div key={step} initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} transition={{ duration: 0.3 }} className="w-full max-w-md">
             {error ? (
               <div className="text-center p-4 bg-red-100 border border-red-300 rounded-lg">
-                <p className="text-red-700">{error}</p>
+                <AlertTriangle className="w-8 h-8 mx-auto text-red-600 mb-2" />
+                <p className="text-red-700 font-semibold">Trip Generation Failed</p>
+                <p className="text-sm text-red-600">{error}</p>
                 <button onClick={() => { setError(null); setStep(4); }} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg">Try Again</button>
               </div>
             ) : renderStepContent()}
