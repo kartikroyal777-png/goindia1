@@ -71,7 +71,6 @@ const HomePage: React.FC = () => {
       );
     }
     
-    // Sort by popularity if no specific search/filter is active
     if (!searchQuery && !selectedCategory) {
       filtered.sort((a, b) => b.popularity_score - a.popularity_score);
     }
@@ -98,7 +97,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="pb-24">
+    <>
       <div className="bg-gradient-to-br from-orange-50 to-orange-100 px-4 pt-6 pb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -194,7 +193,7 @@ const HomePage: React.FC = () => {
       <AnimatePresence>
         {isAssistantOpen && <AssistantModal onClose={() => setIsAssistantOpen(false)} />}
       </AnimatePresence>
-    </div>
+    </>
   );
 };
 

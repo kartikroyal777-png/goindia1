@@ -5,7 +5,6 @@ import TopNavBar from './components/Layout/TopNavBar';
 import BottomNavBar from './components/Layout/BottomNavBar';
 import HomePage from './components/Home/HomePage';
 import FoodScorerPage from './components/FoodScorer/FoodScorerPage';
-import TranslatePage from './components/Translate/TranslatePage';
 import TripPlannerPage from './components/TripPlanner/TripPlannerPage';
 import ProfilePage from './components/Profile/ProfilePage';
 import CityPage from './components/City/CityPage';
@@ -22,6 +21,8 @@ import FareCalculatorPage from './pages/tools/FareCalculatorPage';
 import CurrencyExchangerPage from './pages/tools/CurrencyExchangerPage';
 import BudgetTrackerPage from './pages/tools/BudgetTrackerPage';
 import BargainingCoachPage from './pages/tools/BargainingCoachPage';
+import TranslatePage from './pages/TranslatePage';
+import AssistantModal from './components/Assistant/AssistantModal';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
   const { session, user } = useAuth();
@@ -44,30 +45,39 @@ const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }
 const AppLayout = () => {
   const location = useLocation();
   const noNavRoutes = ['/auth', '/admin'];
-  const detailPageRoutes = ['/city/', '/tehsil/', '/location/', '/tools/'];
+  
+  const isFullScreen = [
+    '/food-scorer', 
+    '/tools/translate', 
+    '/tools/fare-calculator', 
+    '/tools/currency-exchanger', 
+    '/tools/budget-tracker', 
+    '/tools/bargaining-coach'
+  ].includes(location.pathname);
 
-  const showNav = !noNavRoutes.some(path => location.pathname.startsWith(path));
-  const isDetailPage = detailPageRoutes.some(path => location.pathname.startsWith(path));
+  const showTopNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen;
+  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {showNav && !isDetailPage && <TopNavBar />}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {showTopNav && <TopNavBar />}
       
-      <main className={showNav && !isDetailPage ? 'pt-16' : ''}>
+      <main className={`flex-grow ${showTopNav ? 'pt-16' : ''} ${showBottomNav ? 'pb-20' : ''} flex flex-col`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-grow flex flex-col"
           >
             <Outlet />
           </motion.div>
         </AnimatePresence>
       </main>
 
-      {showNav && <BottomNavBar />}
+      {showBottomNav && <BottomNavBar />}
     </div>
   );
 };

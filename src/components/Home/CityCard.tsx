@@ -45,13 +45,12 @@ const CityCard: React.FC<CityCardProps> = ({ city, onClick, index }) => {
         {/* City name overlay */}
         <div className="absolute bottom-3 left-3 right-3">
           <h3 className="text-white font-bold text-lg">{city.name}</h3>
-          <p className="text-white/90 text-sm">{city.short_tagline}</p>
         </div>
       </div>
 
       {/* Content */}
       <div className="p-4">
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{city.description}</p>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{city.short_tagline}</p>
         
         {/* Stats */}
         <div className="flex items-center justify-between">

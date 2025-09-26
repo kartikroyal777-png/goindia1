@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, Copy, RotateCcw, Globe, BookOpen, EyeOff, Eye, Loader2, ArrowLeft } from 'lucide-react';
-import { runGeminiQuery } from '../../lib/gemini';
-import { supabase } from '../../lib/supabase';
+import { runGeminiQuery } from '../lib/gemini';
+import { supabase } from '../lib/supabase';
 import { Phrase } from '../../types';
 import { Link } from 'react-router-dom';
 

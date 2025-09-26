@@ -18,65 +18,21 @@ const getDefaultDetails = (): Location['details'] => ({
   cultural_etiquette: { dress_code: '', dos_donts: [], temple_etiquette: '', photography_rules: '' },
   costs_money: { ticket_prices: { local: '', foreigner: '' }, avg_budget_per_day: '', haggling_info: '', digital_payment_availability: '' },
   amenities: { toilets: '', wifi: '', seating: '', water_refills: '', cloakrooms: '' },
-  hygiene_index: { rating: 3, notes: '' },
-  guides: { availability: '', booking_info: '' },
-  map_navigation: { google_maps_link: '' },
+  food_stay: { local_shops_street_food: '', dishes_to_try: '', recommended_restaurants: [], nearby_hotels: [] },
   events_festivals: { event_name: '', event_date: '', type: '' },
+  weather_air_quality: { current_temp: '', humidity: '', aqi: '', seasonal_trends: '' },
+  accessibility: { wheelchair_access: '', english_speaking_guides: '', foreigner_friendly_services: '' },
+  nearby_essentials: { atms: '', pharmacies: '', hospitals: '', police_stations: '' },
+  crowd_experience: { avg_crowd_density: '', best_crowd_free_hours: '', type_of_visitors: '' },
+  traveler_tips: { hacks: '', hidden_gems: '', scam_avoidance: '', photography_spots: '' },
+  google_reviews: { live_rating: '', top_traveler_quotes: [] },
+  virtual_tour: { url: '' },
+  hygiene_index: { rating: 3, notes: '' },
+  visa_foreigner_rules: { visa_info: '', permits: '' },
   things_to_do: { main_activities: [], nearby_attractions: [] },
-  photo_spots: [],
-  recommended_restaurants: [],
-  recommended_hotels: [],
-  local_foods: [],
-  influencer_videos: [],
+  map_navigation: { google_maps_link: '' },
+  guides: { availability: '', booking_info: '' },
 });
-
-const DynamicObjectArrayField: React.FC<{
-  label: string;
-  items: any[];
-  fields: { name: string; placeholder: string }[];
-  onUpdate: (newItems: any[]) => void;
-}> = ({ label, items, fields, onUpdate }) => {
-  const handleItemChange = (index: number, fieldName: string, value: string) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [fieldName]: value };
-    onUpdate(newItems);
-  };
-
-  const addItem = () => {
-    const newItem = fields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
-    onUpdate([...items, newItem]);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate(items.filter((_, i) => i !== index));
-  };
-
-  return (
-    <div className="space-y-2">
-      <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
-      {items.map((item, index) => (
-        <div key={index} className="flex items-start space-x-2 border p-2 rounded-md bg-gray-50">
-          <div className="flex-grow space-y-1">
-            {fields.map(field => (
-              <input
-                key={field.name}
-                value={item[field.name] || ''}
-                onChange={e => handleItemChange(index, field.name, e.target.value)}
-                placeholder={field.placeholder}
-                className="w-full p-1.5 border rounded text-sm"
-              />
-            ))}
-          </div>
-          <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full mt-1"><Trash2 className="w-4 h-4" /></button>
-        </div>
-      ))}
-      <button type="button" onClick={addItem} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
-        <PlusCircle className="w-4 h-4" />
-        <span>Add {label.replace(/_/g, ' ').slice(0, -1)}</span>
-      </button>
-    </div>
-  );
-};
 
 const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave }) => {
   const [formData, setFormData] = useState<Partial<Omit<Location, 'id' | 'tehsil_id' | 'images'>>>({
@@ -100,7 +56,9 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
         const mergedDetails = Object.keys(defaultDetails).reduce((acc, key) => {
             const defaultSection = defaultDetails[key as keyof typeof defaultDetails];
             const locationSection = locationDetails[key as keyof typeof locationDetails];
-            acc[key as keyof typeof acc] = locationSection ?? defaultSection;
+            acc[key as keyof typeof acc] = typeof defaultSection === 'object' && !Array.isArray(defaultSection) && defaultSection !== null && locationSection !== null
+                ? { ...defaultSection, ...(locationSection || {}) }
+                : locationSection ?? defaultSection;
             return acc;
         }, {} as Location['details']);
 
@@ -134,7 +92,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
         const newState = JSON.parse(JSON.stringify(prev));
         let current = newState.details;
         for (let i = 0; i < keys.length - 1; i++) {
-            if (current[keys[i]] === undefined || current[keys[i]] === null) current[keys[i]] = {};
+            if (!current[keys[i]]) current[keys[i]] = {};
             current = current[keys[i]];
         }
         current[keys[keys.length - 1]] = value;
@@ -152,8 +110,13 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
     setImages(newImages);
   };
 
-  const addImage = () => setImages([...images, { image_url: '' }]);
-  const removeImage = (index: number) => setImages(images.filter((_, i) => i !== index));
+  const addImage = () => {
+    setImages([...images, { image_url: '' }]);
+  };
+
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,8 +136,17 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
     }
 
     if (savedLocation) {
-        await supabase.from('location_images').delete().eq('location_id', savedLocation.id);
-        const imagesToInsert = images.filter(img => img.image_url).map(img => ({ location_id: savedLocation.id, image_url: img.image_url, alt_text: formData.name }));
+        const { error: deleteError } = await supabase.from('location_images').delete().eq('location_id', savedLocation.id);
+        if (deleteError) {
+            setError(`Failed to update images: ${deleteError.message}`);
+            setLoading(false);
+            return;
+        }
+
+        const imagesToInsert = images
+            .filter(img => img.image_url && img.image_url.trim() !== '')
+            .map(img => ({ location_id: savedLocation.id, image_url: img.image_url, alt_text: formData.name }));
+        
         if (imagesToInsert.length > 0) {
             const { error: insertError } = await supabase.from('location_images').insert(imagesToInsert);
             if (insertError) {
@@ -184,6 +156,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
             }
         }
     }
+
     onSave();
     setLoading(false);
   };
@@ -191,7 +164,12 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
   const renderField = (label: string, path: string, type: 'text' | 'number' | 'textarea' = 'text') => {
     const keys = path.split('.');
     let value: any = formData.details;
-    try { keys.forEach(key => { value = value?.[key]; }); } catch (e) { value = ''; }
+    try {
+      keys.forEach(key => { value = value?.[key]; });
+    } catch (e) {
+      value = '';
+    }
+
     return (
       <div className="space-y-1">
         <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
@@ -210,11 +188,23 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
       let current: any = formData.details;
       keys.forEach(key => { current = current?.[key]; });
       value = Array.isArray(current) ? current : [];
-    } catch (e) { value = []; }
+    } catch (e) {
+      value = [];
+    }
 
-    const handleArrayChange = (index: number, newValue: string) => handleDetailChange(path, [...value.slice(0, index), newValue, ...value.slice(index + 1)]);
-    const addToArray = () => handleDetailChange(path, [...value, '']);
-    const removeFromArray = (index: number) => handleDetailChange(path, value.filter((_, i) => i !== index));
+    const handleArrayChange = (index: number, newValue: string) => {
+      const newArray = [...value];
+      newArray[index] = newValue;
+      handleDetailChange(path, newArray);
+    };
+
+    const addToArray = () => {
+      handleDetailChange(path, [...value, '']);
+    };
+
+    const removeFromArray = (index: number) => {
+      handleDetailChange(path, value.filter((_, i) => i !== index));
+    };
 
     return (
       <div className="space-y-2">
@@ -225,7 +215,10 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
             <button type="button" onClick={() => removeFromArray(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
-        <button type="button" onClick={addToArray} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add</span></button>
+        <button type="button" onClick={addToArray} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
+          <PlusCircle className="w-4 h-4" />
+          <span>Add</span>
+        </button>
       </div>
     );
   };
@@ -251,27 +244,14 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
                     <button type="button" onClick={() => removeImage(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
                 </div>
             ))}
-            <button type="button" onClick={addImage} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add Image</span></button>
+            <button type="button" onClick={addImage} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
+                <PlusCircle className="w-4 h-4" />
+                <span>Add Image</span>
+            </button>
         </details>
 
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Photo Spots</summary>
-          <DynamicObjectArrayField label="Photo Spots" items={formData.details?.photo_spots || []} fields={[{name: 'title', placeholder: 'Title'}, {name: 'description', placeholder: 'Description'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('photo_spots', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Restaurants</summary>
-          <DynamicObjectArrayField label="Restaurants" items={formData.details?.recommended_restaurants || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_restaurants', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Hotels</summary>
-          <DynamicObjectArrayField label="Hotels" items={formData.details?.recommended_hotels || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_hotels', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Local Foods</summary>
-          <DynamicObjectArrayField label="Local Foods" items={formData.details?.local_foods || []} fields={[{name: 'name', placeholder: 'Dish Name'}, {name: 'shop', placeholder: 'Shop Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('local_foods', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Influencer Videos</summary>
-          <DynamicObjectArrayField label="Videos" items={formData.details?.influencer_videos || []} fields={[{name: 'title', placeholder: 'Video Title'}, {name: 'video_id', placeholder: 'YouTube Video ID'}, {name: 'influencer_name', placeholder: 'Influencer Name'}]} onUpdate={items => handleDetailChange('influencer_videos', items)} />
-        </details>
-
-        {Object.keys(getDefaultDetails()).filter(k => !['photo_spots', 'recommended_restaurants', 'recommended_hotels', 'local_foods', 'influencer_videos'].includes(k)).map(sectionKey => (
-          <details key={sectionKey} className="border p-4 rounded-lg space-y-2">
+        {Object.keys(formData.details || {}).map(sectionKey => (
+          <details key={sectionKey} className="border p-4 rounded-lg space-y-2" open={sectionKey === 'about'}>
             <summary className="font-medium cursor-pointer capitalize">{sectionKey.replace(/_/g, ' ')}</summary>
             {Object.keys(formData.details?.[sectionKey as keyof typeof formData.details] || {}).map(fieldKey => {
               const value = formData.details?.[sectionKey as keyof typeof formData.details]?.[fieldKey as keyof object];
@@ -283,7 +263,11 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
                     <div key={subKey}>{renderField(`${fieldKey} ${subKey}`, `${sectionKey}.${fieldKey}.${subKey}`)}</div>
                  ));
               }
-              return <div key={fieldKey}>{renderField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>;
+              return (
+                <div key={fieldKey}>
+                  {renderField(fieldKey, `${sectionKey}.${fieldKey}`)}
+                </div>
+              );
             })}
           </details>
         ))}

@@ -43,6 +43,32 @@ export interface LocationImage {
   alt_text?: string;
 }
 
+interface PhotoSpot {
+  title: string;
+  description: string;
+  image_url: string;
+  map_link: string;
+}
+
+interface Recommendation {
+  name: string;
+  image_url: string;
+  map_link: string;
+}
+
+interface LocalFood {
+  name: string;
+  shop: string;
+  image_url: string;
+  map_link: string;
+}
+
+interface InfluencerVideo {
+  title: string;
+  video_id: string;
+  influencer_name: string;
+}
+
 export interface Location {
   id: string;
   tehsil_id: string;
@@ -50,108 +76,91 @@ export interface Location {
   category: string;
   short_intro: string;
   image_url: string;
+  latitude: number | null;
+  longitude: number | null;
   images: LocationImage[];
   details: {
-    about: {
+    about?: {
       historical_background: string;
       cultural_significance: string;
       why_famous: string;
     };
-    opening_hours: {
+    opening_hours?: {
       daily_timings: Record<string, string>;
       weekly_closures: string[];
       seasonal_changes: string;
     };
-    best_time_to_visit: {
+    best_time_to_visit?: {
       best_season: string;
       best_time_of_day: string;
       festival_timing: string;
     };
-    transport: {
+    transport?: {
       nearest_airport: string;
       nearest_railway_station: string;
       last_mile_options: string;
       taxi_cost_estimate: string;
     };
-    safety_risks: {
+    safety_risks?: {
       safety_score: number;
       scams_warnings: string[];
       womens_safety_rating: string;
       emergency_contacts: { name: string; number: string }[];
     };
-    cultural_etiquette: {
+    cultural_etiquette?: {
       dress_code: string;
       dos_donts: string[];
       temple_etiquette: string;
       photography_rules: string;
     };
-    costs_money: {
+    costs_money?: {
       ticket_prices: { local: string; foreigner: string };
       avg_budget_per_day: string;
       haggling_info: string;
       digital_payment_availability: string;
     };
-    amenities: {
+    amenities?: {
       toilets: string;
       wifi: string;
       seating: string;
       water_refills: string;
       cloakrooms: string;
     };
-    food_stay: {
-      local_shops_street_food: string;
-      dishes_to_try: string;
-      recommended_restaurants: string[];
-      nearby_hotels: string[];
+    hygiene_index?: {
+      rating: number;
+      notes: string;
     };
-    events_festivals: {
+    guides?: {
+      availability: string;
+      booking_info: string;
+    };
+    map_navigation?: {
+      google_maps_link: string;
+    };
+    events_festivals?: {
       event_name: string;
       event_date: string;
       type: string;
     };
-    weather_air_quality: {
-      current_temp: string;
-      humidity: string;
-      aqi: string;
-      seasonal_trends: string;
+    things_to_do?: {
+      main_activities: string[];
+      nearby_attractions: string[];
     };
-    accessibility: {
-      wheelchair_access: string;
-      english_speaking_guides: string;
-      foreigner_friendly_services: string;
-    };
-    nearby_essentials: {
-      atms: string;
-      pharmacies: string;
-      hospitals: string;
-      police_stations: string;
-    };
-    crowd_experience: {
-      avg_crowd_density: string;
-      best_crowd_free_hours: string;
-      type_of_visitors: string;
-    };
-    traveler_tips: {
-      hacks: string;
-      hidden_gems: string;
-      scam_avoidance: string;
-      photography_spots: string;
-    };
-    google_reviews: {
-      live_rating: string;
-      top_traveler_quotes: string[];
-    };
-    virtual_tour: {
-      url: string;
-    };
-    hygiene_index: {
-      rating: number;
-      notes: string;
-    };
-    visa_foreigner_rules: {
-      visa_info: string;
-      permits: string;
-    };
+    photo_spots?: PhotoSpot[];
+    recommended_restaurants?: Recommendation[];
+    recommended_hotels?: Recommendation[];
+    local_foods?: LocalFood[];
+    influencer_videos?: InfluencerVideo[];
+    // Deprecated fields, kept for potential data migration
+    food_stay?: any;
+    weather_air_quality?: any;
+    accessibility?: any;
+    nearby_essentials?: any;
+    crowd_experience?: any;
+    traveler_tips?: any;
+    google_reviews?: any;
+    virtual_tour?: any;
+    visa_foreigner_rules?: any;
   };
 }
 

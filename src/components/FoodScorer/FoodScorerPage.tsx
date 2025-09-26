@@ -3,6 +3,7 @@ import Webcam from 'react-webcam';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Zap, Info, RefreshCw, FlipHorizontal, AlertTriangle, X } from 'lucide-react';
 import { runGeminiVisionQuery } from '../../lib/gemini';
+import { Link } from 'react-router-dom';
 
 const FoodScorerPage: React.FC = () => {
   const [mode, setMode] = useState<'scanner' | 'analysing' | 'score'>('scanner');
@@ -123,6 +124,9 @@ const FoodScorerPage: React.FC = () => {
 
   const renderScanner = () => (
     <div className="w-full h-full flex flex-col bg-gray-900 text-white">
+      <div className="absolute top-4 left-4 z-20">
+        <Link to="/" className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white"><X /></Link>
+      </div>
       <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
       
       <div className="flex-grow relative overflow-hidden">
@@ -162,7 +166,7 @@ const FoodScorerPage: React.FC = () => {
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => setFacingMode(p => p === 'user' ? 'environment' : 'user')} className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white"><FlipHorizontal/></motion.button>
         </div>
         <div className="absolute inset-0 flex items-center justify-center p-8 pointer-events-none">
-          <div className="relative w-[280px] h-[280px]">
+          <div className="relative w-full max-w-xs aspect-square">
             <div className="absolute -top-1 -left-1 w-12 h-12 border-t-4 border-l-4 border-orange-500 rounded-tl-xl z-10"></div>
             <div className="absolute -top-1 -right-1 w-12 h-12 border-t-4 border-r-4 border-orange-500 rounded-tr-xl z-10"></div>
             <div className="absolute -bottom-1 -left-1 w-12 h-12 border-b-4 border-l-4 border-orange-500 rounded-bl-xl z-10"></div>
@@ -225,59 +229,61 @@ const FoodScorerPage: React.FC = () => {
     }
     
     return (
-      <div className="w-full h-full bg-gray-900 text-white overflow-y-auto">
-        {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute top-0 left-0 w-full h-64 object-cover opacity-30 [mask-image:linear-gradient(to_bottom,white,transparent)]" />}
-        <div className="relative p-4 pt-10">
+      <div className="w-full h-full bg-gray-900 text-white flex flex-col">
+        {capturedImage && <img src={capturedImage} alt="Captured food" className="absolute top-0 left-0 w-full h-1/2 object-cover opacity-30 [mask-image:linear-gradient(to_bottom,white,transparent)]" />}
+        <div className="relative p-4 flex-grow overflow-y-auto">
           <button onClick={resetScanner} className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full z-10"><X/></button>
-          <h2 className="text-3xl font-bold text-center mb-4">{scoreData.dish_label}</h2>
-          <motion.div initial={{scale:0.5}} animate={{scale:1}} className="flex justify-center my-6">
-            <ScoreRing score={scoreValue} />
-          </motion.div>
-          
-          <div className="pb-8">
-            <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.5}} className="my-6 bg-white/5 p-4 rounded-2xl">
-              <h3 className="font-bold mb-3">Health Breakdown</h3>
-              <div className="space-y-3 text-sm">
-                {Object.entries(scoreData.breakdown).map(([key, value]: [string, any]) => (
-                  <div key={key} className="flex justify-between items-center">
-                    <span className="capitalize text-gray-400">{key}</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">{value.value}</span>
-                      <div className="w-24 h-2 bg-gray-700 rounded-full">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${(value.score / 10) * 100}%` }}
-                          transition={{delay: 0.8}}
-                          className={`h-2 rounded-full ${value.score > 7 ? 'bg-success' : value.score > 4 ? 'bg-amber' : 'bg-danger'}`}
-                        />
+          <div className="pt-8">
+            <h2 className="text-3xl font-bold text-center mb-4">{scoreData.dish_label}</h2>
+            <motion.div initial={{scale:0.5}} animate={{scale:1}} className="flex justify-center my-6">
+              <ScoreRing score={scoreValue} />
+            </motion.div>
+            
+            <div className="pb-8">
+              <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.5}} className="my-6 bg-white/5 p-4 rounded-2xl">
+                <h3 className="font-bold mb-3">Health Breakdown</h3>
+                <div className="space-y-3 text-sm">
+                  {Object.entries(scoreData.breakdown).map(([key, value]: [string, any]) => (
+                    <div key={key} className="flex justify-between items-center">
+                      <span className="capitalize text-gray-400">{key}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">{value.value}</span>
+                        <div className="w-24 h-2 bg-gray-700 rounded-full">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(value.score / 10) * 100}%` }}
+                            transition={{delay: 0.8}}
+                            className={`h-2 rounded-full ${value.score > 7 ? 'bg-success' : value.score > 4 ? 'bg-amber' : 'bg-danger'}`}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.7}} className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
-              <div className="flex items-start space-x-3">
-                <Info className="w-6 h-6 text-orange-400 mt-1 flex-shrink-0"/>
-                <div>
-                  <h4 className="font-semibold text-white">AI Health Note</h4>
-                  <p className="text-sm text-gray-300">{scoreData.explanation}</p>
+                  ))}
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
 
-            <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.9}} className="mt-4">
-              <h4 className="font-semibold text-white mb-2">Healthier Swaps</h4>
-              <ul className="space-y-2">
-                {scoreData.suggestions.map((tip: string, index: number) => (
-                  <li key={index} className="flex items-start space-x-3 text-sm bg-white/5 p-3 rounded-lg">
-                    <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex-shrink-0 border-2 border-gray-900"></div>
-                    <span className="text-gray-300">{tip}</span>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
+              <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.7}} className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
+                <div className="flex items-start space-x-3">
+                  <Info className="w-6 h-6 text-orange-400 mt-1 flex-shrink-0"/>
+                  <div>
+                    <h4 className="font-semibold text-white">AI Health Note</h4>
+                    <p className="text-sm text-gray-300">{scoreData.explanation}</p>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.9}} className="mt-4">
+                <h4 className="font-semibold text-white mb-2">Healthier Swaps</h4>
+                <ul className="space-y-2">
+                  {scoreData.suggestions.map((tip: string, index: number) => (
+                    <li key={index} className="flex items-start space-x-3 text-sm bg-white/5 p-3 rounded-lg">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex-shrink-0 border-2 border-gray-900"></div>
+                      <span className="text-gray-300">{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>
@@ -287,7 +293,7 @@ const FoodScorerPage: React.FC = () => {
   return (
     <div className="relative w-full h-full bg-black flex flex-col">
       <AnimatePresence mode="wait">
-        {mode === 'scanner' && <motion.div key="scanner" exit={{ opacity: 0 }} className="flex-grow flex flex-col">{renderScanner()}</motion.div>}
+        {mode === 'scanner' && <motion.div key="scanner" exit={{ opacity: 0 }} className="w-full h-full flex flex-col">{renderScanner()}</motion.div>}
         {mode === 'analysing' && <motion.div key="analysing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">{renderAnalysis()}</motion.div>}
         {mode === 'score' && <motion.div key="score" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full h-full">{renderScore()}</motion.div>}
       </AnimatePresence>

@@ -72,7 +72,7 @@ const FareCalculatorPage: React.FC = () => {
   const isButtonDisabled = !from.trim() || !to.trim() || !city.trim() || isLoading;
 
   return (
-    <div className="pb-32 bg-gray-50 min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <div className="bg-white p-4 shadow-sm sticky top-0 z-20 flex items-center space-x-4">
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
@@ -80,7 +80,7 @@ const FareCalculatorPage: React.FC = () => {
         <h1 className="text-xl font-bold text-gray-900">Fare Calculator</h1>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="flex-grow overflow-y-auto p-4 space-y-6 pb-28">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
           <div className="space-y-4">
             <div>
@@ -142,13 +142,11 @@ const FareCalculatorPage: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div
-        className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white to-transparent z-10"
-      >
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white to-transparent z-10">
         <motion.button
           onClick={handleCalculate}
           disabled={isButtonDisabled}
-          className="w-full max-w-md mx-auto py-4 bg-orange-500 text-white font-bold rounded-2xl shadow-2xl shadow-orange-300 disabled:from-gray-400 disabled:to-gray-500 disabled:opacity-70 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg transition-all"
+          className="w-full max-w-md mx-auto py-4 bg-orange-500 text-white font-bold rounded-2xl shadow-lg shadow-orange-300 disabled:bg-gray-400 disabled:opacity-70 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg transition-all"
           whileHover={{ scale: isButtonDisabled ? 1 : 1.02 }}
           whileTap={{ scale: isButtonDisabled ? 1 : 0.98 }}
         >
