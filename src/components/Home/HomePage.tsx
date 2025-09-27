@@ -168,7 +168,7 @@ const HomePage: React.FC = () => {
                 <motion.button
                   onClick={loadMoreCities}
                   disabled={loadingMore}
-                  className="px-6 py-2 bg-orange-500 text-white font-semibold rounded-full shadow-md disabled:opacity-50 flex items-center justify-center mx-auto"
+                  className="px-6 py-2 bg-orange-500 text-white font-medium rounded-full shadow-md disabled:opacity-50 flex items-center justify-center mx-auto"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >

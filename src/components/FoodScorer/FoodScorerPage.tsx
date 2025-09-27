@@ -4,8 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Zap, Info, RefreshCw, FlipHorizontal, AlertTriangle, X } from 'lucide-react';
 import { runGeminiVisionQuery } from '../../lib/gemini';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const FoodScorerPage: React.FC = () => {
+  const { canUseFeature, showUpgradeModal, incrementFeatureUsage } = useAuth();
   const [mode, setMode] = useState<'scanner' | 'analysing' | 'score'>('scanner');
   const [scoreData, setScoreData] = useState<any | null>(null);
   const webcamRef = useRef<Webcam>(null);
@@ -19,6 +21,12 @@ const FoodScorerPage: React.FC = () => {
     if (!imageSrc) {
       setScoreData({ error: "Could not capture or load image." });
       setMode('score');
+      return;
+    }
+
+    if (!canUseFeature('food_scanner')) {
+      showUpgradeModal(true);
+      resetScanner();
       return;
     }
 
@@ -55,13 +63,14 @@ const FoodScorerPage: React.FC = () => {
       const parsedResponse = JSON.parse(aiResponse);
       setScoreData(parsedResponse);
       setMode('score');
+      await incrementFeatureUsage('food_scanner');
     } catch (error: any) {
       console.error("Failed to get food score analysis:", error);
       const errorMessage = error.message || "Could not analyze the food. The AI model might be unavailable or the response was not in the correct format. Please try again.";
       setScoreData({ error: errorMessage });
       setMode('score');
     }
-  }, []);
+  }, [canUseFeature, showUpgradeModal, incrementFeatureUsage]);
   
   const handleCapture = useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();

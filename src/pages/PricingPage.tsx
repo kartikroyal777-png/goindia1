@@ -5,14 +5,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const PricingPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile, upgradeToPaid, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [coupon, setCoupon] = useState('');
   const [price, setPrice] = useState(5);
   const [discount, setDiscount] = useState(0);
   const [couponMessage, setCouponMessage] = useState('');
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [upgradeMessage, setUpgradeMessage] = useState('');
 
   const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+  const isPaid = profile?.plan_type === 'paid';
 
   const applyCoupon = () => {
     if (coupon === 'INDIA30') {
@@ -34,6 +37,22 @@ const PricingPage: React.FC = () => {
     }
   };
 
+  const handleUpgrade = async () => {
+    setIsUpgrading(true);
+    setUpgradeMessage('');
+    const { error } = await upgradeToPaid();
+    if (error) {
+      setUpgradeMessage('Upgrade failed. Please try again.');
+    } else {
+      setUpgradeMessage('Upgrade successful! Enjoy your premium features.');
+      await refreshProfile();
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+    }
+    setIsUpgrading(false);
+  };
+
   const FeatureItem: React.FC<{ icon: React.ElementType, text: string }> = ({ icon: Icon, text }) => (
     <li className="flex items-center space-x-3">
       <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
@@ -45,7 +64,7 @@ const PricingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-orange-50 font-sans p-4 sm:p-6 md:p-10">
-      <button onClick={() => navigate('/')} className="absolute top-4 left-4 p-2 rounded-full bg-white/50 hover:bg-white transition-colors z-20">
+      <button onClick={() => navigate(-1)} className="absolute top-4 left-4 p-2 rounded-full bg-white/50 hover:bg-white transition-colors z-20">
         <ArrowLeft className="w-5 h-5 text-gray-800" />
       </button>
 
@@ -54,14 +73,14 @@ const PricingPage: React.FC = () => {
         <p className="text-gray-600 mt-2">Unlock premium features and explore India without limits.</p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isPaid) && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="max-w-2xl mx-auto bg-gray-800 text-white p-4 rounded-2xl mb-8 flex items-center justify-center space-x-3 shadow-lg"
         >
           <Crown className="w-6 h-6 text-yellow-400" />
-          <p className="font-semibold">Admin Access — All Features Unlocked</p>
+          <p className="font-semibold">{isAdmin ? 'Admin Access — All Features Unlocked' : 'Premium Plan Active'}</p>
         </motion.div>
       )}
 
@@ -69,7 +88,7 @@ const PricingPage: React.FC = () => {
         {/* Free Plan */}
         <motion.div
           whileHover={{ y: -5 }}
-          className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200"
+          className={`bg-white rounded-2xl p-6 shadow-lg border-2 ${!isPaid ? 'border-orange-500' : 'border-gray-200'}`}
         >
           <h2 className="text-xl font-semibold text-gray-800 mb-1">Free Plan</h2>
           <p className="text-sm text-gray-500 mb-6">Best for first-time users.</p>
@@ -80,15 +99,15 @@ const PricingPage: React.FC = () => {
             <FeatureItem icon={Wrench} text="Unlimited tool usage" />
           </ul>
           <p className="text-4xl font-semibold text-center">$0</p>
-          <button className="mt-6 w-full py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg">
-            Your Current Plan
+          <button className="mt-6 w-full py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg" disabled>
+            {isPaid ? 'Downgrade (Not available)' : 'Your Current Plan'}
           </button>
         </motion.div>
 
         {/* Paid Plan */}
         <motion.div
           whileHover={{ y: -5 }}
-          className="bg-white rounded-2xl p-6 shadow-xl border-2 border-orange-500 relative overflow-hidden"
+          className={`bg-white rounded-2xl p-6 shadow-xl relative overflow-hidden border-2 ${isPaid ? 'border-orange-500' : 'border-gray-200'}`}
         >
           <div className="absolute -top-10 -right-10 w-28 h-28 bg-orange-500 rounded-full"></div>
           <div className="absolute top-4 right-4 text-white">
@@ -111,10 +130,10 @@ const PricingPage: React.FC = () => {
                 $5.00
               </p>
             )}
-            <p className="text-4xl font-semibold">${isAdmin ? '0' : price.toFixed(2)}</p>
+            <p className="text-4xl font-semibold">${(isAdmin || isPaid) ? '0' : price.toFixed(2)}</p>
             <p className="text-sm text-gray-500">One-time payment</p>
           </div>
-          {!isAdmin && (
+          {!isAdmin && !isPaid && (
             <div className="mt-6">
               <div className="flex space-x-2">
                 <input
@@ -138,9 +157,16 @@ const PricingPage: React.FC = () => {
               )}
             </div>
           )}
-          <button className="mt-4 w-full py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200">
-            {isAdmin ? 'Admin Access Active' : 'Upgrade Now'}
+          <button 
+            onClick={handleUpgrade}
+            disabled={isPaid || isAdmin || isUpgrading}
+            className="mt-4 w-full py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isUpgrading ? 'Processing...' : (isPaid || isAdmin) ? 'Plan Active' : 'Upgrade Now'}
           </button>
+          {upgradeMessage && (
+             <p className="text-sm mt-2 text-center text-green-600">{upgradeMessage}</p>
+          )}
         </motion.div>
       </div>
     </div>

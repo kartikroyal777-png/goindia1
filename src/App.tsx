@@ -28,20 +28,22 @@ import AboutUsPage from './pages/AboutUsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PricingPage from './pages/PricingPage';
+import UpgradeModal from './components/Layout/UpgradeModal';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
-  const { session, user } = useAuth();
+  const { session, user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (loading) return;
     if (!session) {
       navigate('/auth', { replace: true });
     } else if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') {
       navigate('/', { replace: true });
     }
-  }, [session, user, adminOnly, navigate]);
+  }, [session, user, adminOnly, navigate, loading]);
 
-  if (!session) return null;
+  if (loading || !session) return null; // Or a loading spinner
   if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') return null;
 
   return <Outlet />;
@@ -81,6 +83,7 @@ const AppLayout = () => {
       </main>
 
       {showBottomNav && <BottomNavBar />}
+      <UpgradeModal />
     </div>
   );
 };
@@ -93,9 +96,9 @@ function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/tools" element={<ToolsPage />} />
-        <Route path="/food-scorer" element={<FoodScorerPage />} />
         
         <Route element={<ProtectedRoute />}>
+          <Route path="/food-scorer" element={<FoodScorerPage />} />
           <Route path="/planner" element={<TripPlannerPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/notifications" element={<NotificationsPage />} />

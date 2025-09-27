@@ -220,3 +220,13 @@ export interface BargainingPrice {
   fair_price_range: string;
   quoted_price_range: string;
 }
+
+export interface Profile {
+  id: string;
+  updated_at: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  plan_type: 'free' | 'paid';
+  food_scans_used: number;
+  trip_planner_runs: number;
+}

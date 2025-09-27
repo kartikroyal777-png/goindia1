@@ -12,7 +12,7 @@ type Companion = 'solo' | 'couple' | 'family' | 'friends';
 
 const TripPlannerPage: React.FC = () => {
   const [step, setStep] = useState(1);
-  const { user } = useAuth();
+  const { user, canUseFeature, showUpgradeModal, incrementFeatureUsage } = useAuth();
   const navigate = useNavigate();
   const [preferences, setPreferences] = useState<TripPreferences>({
     days: 7,
@@ -65,6 +65,11 @@ const TripPlannerPage: React.FC = () => {
   };
 
   const generateItinerary = async () => {
+    if (!canUseFeature('trip_planner')) {
+      showUpgradeModal(true);
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     const prompt = `
@@ -86,6 +91,7 @@ const TripPlannerPage: React.FC = () => {
       }));
       setItinerary(parsedItinerary);
       setStep(5);
+      await incrementFeatureUsage('trip_planner');
     } catch (e: any) {
       console.error("Failed to generate or parse itinerary:", e);
       setError(e.message || "Sorry, the AI couldn't generate a trip plan. Please try a different destination or check your API key.");
