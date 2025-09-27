@@ -9,7 +9,7 @@ interface LocationCardProps {
 }
 
 const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
-  const imageUrl = location.image_url || location.images?.[0]?.image_url || 'https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400.png';
+  const imageUrl = location.image_url || location.images?.[0]?.image_url || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400.png';
 
   return (
     <motion.div
@@ -22,7 +22,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
         <img src={imageUrl} alt={location.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-3 left-3">
-          <h3 className="text-white font-bold text-lg">{location.name}</h3>
+          <h3 className="text-white font-semibold text-lg">{location.name}</h3>
         </div>
       </div>
       <div className="p-4">
@@ -34,11 +34,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
           </div>
           <div className="flex items-center space-x-1 bg-green-100 px-2 py-1 rounded-full">
             <Shield className="w-3 h-3 text-green-600" />
-            <span className="text-green-700">{location.safety_risks?.safety_score ?? 'N/A'}/10 Safety</span>
-          </div>
-          <div className="flex items-center space-x-1 bg-blue-100 px-2 py-1 rounded-full">
-            <Clock className="w-3 h-3 text-blue-600" />
-            <span className="text-blue-700">{location.basic_info?.opening_hours?.split('(')[0]?.trim() ?? 'N/A'}</span>
+            <span className="text-green-700">{location.details?.safety_risks?.safety_score ?? 'N/A'}/10 Safety</span>
           </div>
         </div>
       </div>

@@ -73,7 +73,7 @@ const AssistantPage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-gray-900">AI Travel Assistant</h1>
-            <p className="text-sm text-gray-500">Powered by Gemini</p>
+            <p className="text-sm text-gray-500">Powered by Qwen</p>
           </div>
         </div>
       </div>

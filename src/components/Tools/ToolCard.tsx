@@ -32,7 +32,7 @@ const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon: Icon, pat
         <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
           <Icon className={`w-6 h-6 ${text}`} />
         </div>
-        <h3 className="font-bold text-lg text-gray-900">{title}</h3>
+        <h3 className="font-semibold text-lg text-gray-900">{title}</h3>
         <p className="text-sm text-gray-600 mt-1">{description}</p>
       </div>
       {comingSoon && (

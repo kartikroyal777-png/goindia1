@@ -88,7 +88,7 @@ const CityPage: React.FC = () => {
         </motion.button>
 
         <div className="absolute bottom-4 left-4 text-white">
-          <h1 className="text-3xl font-bold">{city.name}</h1>
+          <h1 className="text-3xl font-semibold">{city.name}</h1>
           <p className="text-lg">{city.short_tagline}</p>
         </div>
       </div>

@@ -76,7 +76,7 @@ const CurrencyExchangerPage: React.FC = () => {
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Currency Exchanger</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Currency Exchanger</h1>
       </div>
 
       <div className="p-4 space-y-6">
@@ -84,7 +84,7 @@ const CurrencyExchangerPage: React.FC = () => {
           <div className="grid grid-cols-5 gap-2 items-end">
             <div className="col-span-2">
               <label className="text-sm font-medium text-gray-600">Amount</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-gray-50 text-lg font-bold" />
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-gray-50 text-lg font-semibold" />
             </div>
             <div className="col-span-2">
               <label className="text-sm font-medium text-gray-600">From</label>
@@ -107,7 +107,7 @@ const CurrencyExchangerPage: React.FC = () => {
           <motion.button
             onClick={handleConvert}
             disabled={isLoading}
-            className="w-full mt-6 py-3 bg-green-600 text-white font-bold rounded-xl shadow-lg disabled:opacity-60 flex items-center justify-center space-x-2"
+            className="w-full mt-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-lg disabled:opacity-60 flex items-center justify-center space-x-2"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -121,7 +121,7 @@ const CurrencyExchangerPage: React.FC = () => {
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-lg flex items-start space-x-3">
               <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <div>
-                <h4 className="font-bold">Conversion Error</h4>
+                <h4 className="font-semibold">Conversion Error</h4>
                 <p className="text-sm">{error}</p>
               </div>
             </motion.div>
@@ -131,20 +131,20 @@ const CurrencyExchangerPage: React.FC = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div className="bg-white rounded-xl shadow-sm border p-4 text-center">
                 <p className="text-sm text-gray-500">{result.amount} {result.source_currency} equals</p>
-                <p className="text-4xl font-bold text-gray-800 my-2">{result.converted_amount}</p>
+                <p className="text-4xl font-semibold text-gray-800 my-2">{result.converted_amount}</p>
                 <p className="text-gray-600">{result.reverse_conversion}</p>
                 <p className="text-xs text-gray-400 mt-3">Last updated: {result.last_updated}</p>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-bold text-lg mb-2 flex items-center space-x-2"><Building className="w-5 h-5 text-blue-500" /><span>Exchange Options</span></h3>
+                <h3 className="font-semibold text-lg mb-2 flex items-center space-x-2"><Building className="w-5 h-5 text-blue-500" /><span>Exchange Options</span></h3>
                 <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 pl-4">
                   {result.authorized_dealers.map((dealer, i) => <li key={i}>{dealer}</li>)}
                 </ul>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-bold text-lg mb-2 flex items-center space-x-2"><Shield className="w-5 h-5 text-green-500" /><span>Safety Tips</span></h3>
+                <h3 className="font-semibold text-lg mb-2 flex items-center space-x-2"><Shield className="w-5 h-5 text-green-500" /><span>Safety Tips</span></h3>
                 <p className="text-sm text-gray-700 mb-2"><strong>ATM Tip:</strong> {result.atm_tips}</p>
                 <p className="text-sm text-gray-700"><strong>Fraud Alert:</strong> {result.fraud_alert}</p>
               </div>

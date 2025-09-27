@@ -73,7 +73,7 @@ const PhraseForm: React.FC<PhraseFormProps> = ({ phrase, onClose, onSave }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold">{phrase ? 'Edit Phrase' : 'Add New Phrase'}</h2>
+          <h2 className="text-xl font-semibold">{phrase ? 'Edit Phrase' : 'Add New Phrase'}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">

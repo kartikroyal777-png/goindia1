@@ -104,7 +104,7 @@ const HomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md mx-auto"
         >
-          <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
             Discover <span className="text-orange-500">Incredible India</span>
           </h1>
           <p className="text-gray-600 text-center mb-6">

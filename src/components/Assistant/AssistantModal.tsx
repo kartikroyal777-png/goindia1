@@ -77,7 +77,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
             </div>
             <div>
               <h1 className="text-lg font-semibold text-gray-900">AI Travel Assistant</h1>
-              <p className="text-sm text-gray-500">Powered by Gemini</p>
+              <p className="text-sm text-gray-500">Powered by Qwen</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>

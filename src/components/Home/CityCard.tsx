@@ -44,7 +44,7 @@ const CityCard: React.FC<CityCardProps> = ({ city, onClick, index }) => {
         
         {/* City name overlay */}
         <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="text-white font-bold text-lg">{city.name}</h3>
+          <h3 className="text-white font-semibold text-lg">{city.name}</h3>
         </div>
       </div>
 

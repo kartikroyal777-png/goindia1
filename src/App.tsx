@@ -27,6 +27,7 @@ import AppSettingsPage from './pages/AppSettingsPage';
 import AboutUsPage from './pages/AboutUsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
+import PricingPage from './pages/PricingPage';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
   const { session, user } = useAuth();
@@ -51,7 +52,8 @@ const AppLayout = () => {
   const noNavRoutes = ['/auth', '/admin'];
   
   const isFullScreen = [
-    '/food-scorer', 
+    '/food-scorer',
+    '/pricing',
   ].includes(location.pathname);
 
   const isToolPage = location.pathname.startsWith('/tools/');
@@ -103,6 +105,7 @@ function App() {
           <Route path="/about-us" element={<AboutUsPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+          <Route path="/pricing" element={<PricingPage />} />
         </Route>
 
         <Route element={<ProtectedRoute adminOnly={true} />}>

@@ -107,7 +107,7 @@ const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
-      <h3 className="text-lg font-bold">{city ? 'Edit City' : 'Add New City'}</h3>
+      <h3 className="text-lg font-semibold">{city ? 'Edit City' : 'Add New City'}</h3>
       <div className="flex-grow overflow-y-auto pr-2 space-y-4">
         {Object.keys(initialCityState).map(key => {
           if (key === 'id') return null;

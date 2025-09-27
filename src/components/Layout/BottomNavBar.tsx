@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Scan, Wrench, MapPin, User } from 'lucide-react';
+import { Home, Scan, Wrench, MapPin, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const BottomNavBar: React.FC = () => {
@@ -10,7 +10,7 @@ const BottomNavBar: React.FC = () => {
     { path: '/food-scorer', label: 'Food Score', icon: Scan },
     { path: '/tools', label: 'Tools', icon: Wrench },
     { path: '/planner', label: 'Trip Planner', icon: MapPin },
-    { path: '/profile', label: 'Profile', icon: User },
+    { path: '/pricing', label: 'Pricing', icon: CreditCard },
   ];
 
   if (location.pathname.startsWith('/city/') || location.pathname.startsWith('/tehsil/') || location.pathname.startsWith('/location/') || location.pathname === '/auth' || location.pathname.startsWith('/tools/')) {

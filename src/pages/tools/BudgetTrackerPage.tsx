@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Landmark, Hotel, Utensils, ShoppingBag, Plus, Trash2, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { ArrowLeft, Hotel, Utensils, Car, ShoppingBag, Plus, Trash2, TrendingUp, TrendingDown, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { runGeminiQuery } from '../../lib/gemini';
 
@@ -45,7 +45,7 @@ const BudgetTrackerPage: React.FC = () => {
     switch (category) {
       case 'Hotel': return <Hotel className="w-5 h-5 text-blue-500" />;
       case 'Food': return <Utensils className="w-5 h-5 text-green-500" />;
-      case 'Transport': return <Landmark className="w-5 h-5 text-amber-500" />;
+      case 'Transport': return <Car className="w-5 h-5 text-amber-500" />;
       case 'Extras': return <ShoppingBag className="w-5 h-5 text-purple-500" />;
       default: return null;
     }
@@ -110,13 +110,13 @@ const BudgetTrackerPage: React.FC = () => {
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Daily Budget Tracker</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Daily Budget Tracker</h1>
       </div>
 
       <div className="p-4 space-y-6">
         {/* Input Section */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
-          <h2 className="font-bold text-lg mb-4">Plan Your Day</h2>
+          <h2 className="font-semibold text-lg mb-4">Plan Your Day</h2>
           <div className="mb-4">
             <label className="text-sm font-medium text-gray-600">City</label>
             <select value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 p-2 border rounded-lg bg-gray-50">
@@ -153,11 +153,11 @@ const BudgetTrackerPage: React.FC = () => {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-4 text-center">
           <div className="bg-white rounded-xl shadow-sm border p-4">
             <p className="text-sm text-gray-500">Daily Budget</p>
-            <p className="text-2xl font-bold text-gray-800">₹{estimatedTotal.toLocaleString()}</p>
+            <p className="text-2xl font-semibold text-gray-800">₹{estimatedTotal.toLocaleString()}</p>
           </div>
           <div className="bg-white rounded-xl shadow-sm border p-4">
             <p className="text-sm text-gray-500">Weekly Estimate</p>
-            <p className="text-2xl font-bold text-gray-800">₹{(estimatedTotal * 7).toLocaleString()}</p>
+            <p className="text-2xl font-semibold text-gray-800">₹{(estimatedTotal * 7).toLocaleString()}</p>
           </div>
         </motion.div>
 
@@ -169,7 +169,7 @@ const BudgetTrackerPage: React.FC = () => {
               saveDay(Number(actualSpending));
             }
           }}
-          className="w-full py-3 bg-orange-500 text-white font-bold rounded-xl shadow-lg"
+          className="w-full py-3 bg-orange-500 text-white font-semibold rounded-xl shadow-lg"
         >
           Log Today's Spending
         </motion.button>
@@ -179,11 +179,11 @@ const BudgetTrackerPage: React.FC = () => {
           {isLoading && <div className="text-center p-4">Loading analysis...</div>}
           {analysis && !analysis.error && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
-              <h3 className="font-bold text-lg">AI Analysis</h3>
+              <h3 className="font-semibold text-lg">AI Analysis</h3>
               <div className={`flex items-center space-x-2 p-3 rounded-lg ${analysis.difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
                 {analysis.difference >= 0 ? <TrendingUp className="w-6 h-6 text-green-500" /> : <TrendingDown className="w-6 h-6 text-red-500" />}
                 <div>
-                  <p className={`font-bold ${analysis.difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>{analysis.status}</p>
+                  <p className={`font-semibold ${analysis.difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>{analysis.status}</p>
                   <p className="text-sm text-gray-600">
                     {analysis.difference >= 0 ? `You saved ₹${analysis.difference}` : `You overspent by ₹${Math.abs(analysis.difference)}`}
                   </p>
@@ -202,7 +202,7 @@ const BudgetTrackerPage: React.FC = () => {
         {/* History Section */}
         {history.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl shadow-sm border p-4">
-            <h2 className="font-bold text-lg mb-4">Recent History</h2>
+            <h2 className="font-semibold text-lg mb-4">Recent History</h2>
             <div className="space-y-2">
               {history.map(record => {
                 const difference = record.estimated - record.actual;
@@ -212,7 +212,7 @@ const BudgetTrackerPage: React.FC = () => {
                       <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
                       <p className="text-xs text-gray-500">Est: ₹{record.estimated} | Actual: ₹{record.actual}</p>
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-bold ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <div className={`px-2 py-1 rounded-full text-xs font-semibold ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                       {difference >= 0 ? `+₹${difference}` : `-₹${Math.abs(difference)}`}
                     </div>
                   </div>

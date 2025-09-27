@@ -35,7 +35,7 @@ const PriceForm: React.FC<{ price: BargainingPrice | null, onSave: () => void, o
         className="bg-white rounded-lg shadow-xl w-full max-w-md p-6"
         onClick={e => e.stopPropagation()}
       >
-        <h3 className="text-lg font-bold mb-4">{price ? 'Edit Price' : 'Add Price'}</h3>
+        <h3 className="text-lg font-semibold mb-4">{price ? 'Edit Price' : 'Add Price'}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input name="location_name" value={formData.location_name} onChange={e => setFormData({...formData, location_name: e.target.value})} placeholder="Location (e.g., Delhi)" className="w-full p-2 border rounded" required />
           <input name="item_name" value={formData.item_name} onChange={e => setFormData({...formData, item_name: e.target.value})} placeholder="Item (e.g., T-shirt)" className="w-full p-2 border rounded" required />
@@ -83,7 +83,7 @@ const PriceGuideManager: React.FC = () => {
   return (
     <div className="p-6 bg-gray-100 rounded-lg">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Price Guide Manager</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Price Guide Manager</h2>
         <div className="flex space-x-2">
           <button onClick={fetchPrices} disabled={loading} className="p-2 bg-gray-200 rounded-full"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
           <button onClick={() => { setEditingPrice(null); setIsFormOpen(true); }} className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg">

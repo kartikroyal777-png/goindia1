@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, User, Crown, LogIn } from 'lucide-react';
+import { Bell, User, Crown, LogIn, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,7 +23,7 @@ const TopNavBar: React.FC = () => {
               <Crown className="w-5 h-5 text-white" />
             </div>
           </motion.div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-xl font-semibold text-gray-900">
             Go <span className="text-orange-500">India</span>
           </h1>
         </Link>
@@ -31,6 +31,16 @@ const TopNavBar: React.FC = () => {
         <div className="flex items-center space-x-3">
           {session ? (
             <>
+              <Link to="/pricing">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center space-x-2 bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg text-sm font-semibold border border-orange-200"
+                >
+                  <Star className="w-4 h-4 fill-current" />
+                  <span>Upgrade</span>
+                </motion.button>
+              </Link>
               <Link to="/notifications">
                 <motion.button
                   whileHover={{ scale: 1.1 }}

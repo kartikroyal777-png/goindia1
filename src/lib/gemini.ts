@@ -1,101 +1,89 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
-
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_GEMINI_API_KEY;
-
-if (!GOOGLE_API_KEY || GOOGLE_API_KEY.includes('YOUR_API_KEY') || GOOGLE_API_KEY.length < 30) {
-  console.error("VITE_GOOGLE_GEMINI_API_KEY is not configured correctly in .env file.");
-}
-
-const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
-
-const generationConfig = {
-  temperature: 0.7,
-  topK: 1,
-  topP: 1,
-  maxOutputTokens: 8192,
-};
-
-const safetySettings = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-];
+const PROXY_URL = "/.netlify/functions/openrouter-proxy";
 
 const handleApiError = (error: any, apiName: string): string => {
-  console.error(`Error calling ${apiName} API:`, error);
+  console.error(`Error calling ${apiName} API via proxy:`, error);
   const errorMessage = error.message || 'An unknown error occurred.';
-
-  if (errorMessage.includes('API key not valid')) {
-    return `The provided Google Gemini API key is not valid. Please check it in your .env file and ensure the 'Generative Language API' is enabled in your Google Cloud project.`;
+  
+  if (errorMessage.includes('API key is not configured')) {
+    return `The backend proxy is missing the API key. Please ensure OPENROUTER_API_KEY is set in your Netlify deployment settings.`;
   }
-  if (errorMessage.includes('[503]') || errorMessage.includes('overloaded')) {
-    return `The AI model is currently overloaded. This is a temporary issue on Google's side. Please try again in a few moments.`;
-  }
-  if (errorMessage.includes('[400]')) {
-    return `The request was malformed. This may be due to an invalid model name or incorrect parameters in the code. (Details: ${errorMessage})`;
-  }
-  if (errorMessage.includes('permission')) {
-     return `API key does not have permission to access the model. Please check your Google Cloud project settings. (Details: ${errorMessage})`;
-  }
+  
   return `Sorry, an unexpected error occurred with the ${apiName} assistant. Please try again later. (Details: ${errorMessage})`;
 };
 
 const cleanJsonString = (rawText: string): string => {
-  const firstBracket = rawText.indexOf('{');
-  const firstSquareBracket = rawText.indexOf('[');
+  let cleanedText = rawText.trim();
+  
+  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch && jsonMatch[1]) {
+    cleanedText = jsonMatch[1];
+  }
+
+  const firstBracket = cleanedText.indexOf('{');
+  const firstSquareBracket = cleanedText.indexOf('[');
   let start = -1;
 
-  if (firstBracket === -1 && firstSquareBracket === -1) return rawText;
+  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
   if (firstBracket === -1) start = firstSquareBracket;
   else if (firstSquareBracket === -1) start = firstBracket;
   else start = Math.min(firstBracket, firstSquareBracket);
 
-  const lastBracket = rawText.lastIndexOf('}');
-  const lastSquareBracket = rawText.lastIndexOf(']');
+  const lastBracket = cleanedText.lastIndexOf('}');
+  const lastSquareBracket = cleanedText.lastIndexOf(']');
   let end = Math.max(lastBracket, lastSquareBracket);
 
-  if (start === -1 || end === -1) return rawText;
+  if (start === -1 || end === -1) return cleanedText;
 
-  return rawText.substring(start, end + 1);
-}
+  return cleanedText.substring(start, end + 1);
+};
 
-export const runGeminiQuery = async (prompt: string): Promise<string> => {
+const runOpenRouterQuery = async (messages: any[]): Promise<string> => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings, generationConfig });
-    const result = await model.generateContent(prompt);
-    const response = result.response;
+    const response = await fetch(PROXY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Title": "GoIndia Travel App",
+      },
+      body: JSON.stringify({
+        "model": "qwen/qwen2.5-vl-72b-instruct:free",
+        "messages": messages,
+      }),
+    });
 
-    if (response.promptFeedback?.blockReason) {
-      throw new Error(`Your request was blocked for safety reasons: ${response.promptFeedback.blockReason}. Please rephrase.`);
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || `Proxy request failed with status: ${response.status}`);
     }
-    
-    const text = response.text();
+
+    const text = data.choices[0].message.content;
     return cleanJsonString(text);
+
   } catch (error: any) {
-    throw new Error(handleApiError(error, "Google Gemini"));
+    throw new Error(handleApiError(error, "OpenRouter"));
   }
 };
 
+export const runGeminiQuery = async (prompt: string): Promise<string> => {
+  const messages = [{ "role": "user", "content": prompt }];
+  return runOpenRouterQuery(messages);
+};
+
 export const runGeminiVisionQuery = async (prompt: string, base64Image: string): Promise<string> => {
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest", safetySettings, generationConfig });
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: "image/jpeg",
-      },
-    };
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = result.response;
-
-    if (response.promptFeedback?.blockReason) {
-      throw new Error(`Your request was blocked for safety reasons: ${response.promptFeedback.blockReason}. Please rephrase.`);
+  const messages = [
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": prompt },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": `data:image/jpeg;base64,${base64Image}`
+          }
+        }
+      ]
     }
-
-    const text = response.text();
-    return cleanJsonString(text);
-  } catch (error: any) {
-    throw new Error(handleApiError(error, "Google Gemini Vision"));
-  }
+  ];
+  return runOpenRouterQuery(messages);
 };

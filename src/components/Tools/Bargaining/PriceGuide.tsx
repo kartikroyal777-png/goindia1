@@ -45,7 +45,7 @@ const PriceGuide: React.FC = () => {
     <div className="space-y-6">
       {Object.entries(groupedPrices).map(([location, items], locIndex) => (
         <motion.div key={location} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: locIndex * 0.1 }}>
-          <h3 className="font-bold text-lg text-gray-800 mb-2">{location}</h3>
+          <h3 className="font-semibold text-lg text-gray-800 mb-2">{location}</h3>
           <div className="space-y-3">
             {items.map((item, itemIndex) => (
               <div key={item.id} className="bg-white rounded-lg p-4 border shadow-sm">

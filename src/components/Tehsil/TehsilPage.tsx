@@ -42,14 +42,14 @@ const TehsilPage: React.FC = () => {
       // Fetch locations for the tehsil
       const { data: locationsData, error: locationsError } = await supabase
         .from('locations')
-        .select('*')
+        .select('*, details')
         .eq('tehsil_id', tehsilId);
       
       if (locationsError) {
         setError('Could not fetch locations for this area.');
         console.error(locationsError);
       } else {
-        setLocations(locationsData);
+        setLocations(locationsData as Location[]);
       }
       
       setLoading(false);
@@ -84,7 +84,7 @@ const TehsilPage: React.FC = () => {
 
         <div className="absolute bottom-4 left-4 text-white">
           <p className="text-md">{city.name}</p>
-          <h1 className="text-3xl font-bold">{tehsil.name}</h1>
+          <h1 className="text-3xl font-semibold">{tehsil.name}</h1>
         </div>
       </div>
 

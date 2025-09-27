@@ -44,7 +44,7 @@ const ProfilePage: React.FC = () => {
                 <Edit className="w-4 h-4" />
               </button>
             </div>
-            <h1 className="text-xl font-bold mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
+            <h1 className="text-xl font-semibold mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
             <p className="text-orange-100 text-sm">{user?.email}</p>
           </motion.div>
         </div>
@@ -57,7 +57,7 @@ const ProfilePage: React.FC = () => {
                 whileHover={{ scale: 1.02 }}
               >
                 <Crown className="w-6 h-6 text-yellow-400" />
-                <span className="font-bold text-lg">Admin Panel</span>
+                <span className="font-semibold text-lg">Admin Panel</span>
               </motion.div>
             </Link>
           )}

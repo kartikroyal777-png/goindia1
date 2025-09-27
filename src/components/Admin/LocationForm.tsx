@@ -232,9 +232,9 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
-      <h3 className="text-lg font-bold">{location ? 'Edit Location' : 'Add New Location'}</h3>
+      <h3 className="text-lg font-semibold">{location ? 'Edit Location' : 'Add New Location'}</h3>
       <div className="flex-grow overflow-y-auto pr-2 space-y-4">
-        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-bold" />
+        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-semibold" />
         <input value={formData.category} onChange={e => handleSimpleChange('category', e.target.value)} placeholder="Category (e.g., UNESCO World Heritage)" className="w-full p-2 border rounded" />
         <textarea value={formData.short_intro} onChange={e => handleSimpleChange('short_intro', e.target.value)} placeholder="Short Intro" className="w-full p-2 border rounded" rows={2} />
         <input value={formData.image_url} onChange={e => handleSimpleChange('image_url', e.target.value)} placeholder="Main Image URL (Thumbnail)" className="w-full p-2 border rounded" />

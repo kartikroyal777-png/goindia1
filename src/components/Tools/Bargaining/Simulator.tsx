@@ -237,7 +237,7 @@ const Simulator: React.FC = () => {
   return (
     <div className="bg-white rounded-xl shadow-lg border p-4">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-lg">Bargaining Simulator</h3>
+        <h3 className="font-semibold text-lg">Bargaining Simulator</h3>
         <div className="flex items-center space-x-2">
           <Trophy className="w-5 h-5 text-amber-500" />
           <span className="text-sm font-bold text-gray-700">{score}</span>

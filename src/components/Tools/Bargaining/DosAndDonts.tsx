@@ -22,7 +22,7 @@ const DosAndDonts: React.FC = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl p-4 border shadow-sm">
-        <h3 className="font-bold text-lg text-green-600 flex items-center space-x-2 mb-3">
+        <h3 className="font-semibold text-lg text-green-600 flex items-center space-x-2 mb-3">
           <CheckCircle2 />
           <span>Do's</span>
         </h3>
@@ -36,7 +36,7 @@ const DosAndDonts: React.FC = () => {
         </ul>
       </motion.div>
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl p-4 border shadow-sm">
-        <h3 className="font-bold text-lg text-red-600 flex items-center space-x-2 mb-3">
+        <h3 className="font-semibold text-lg text-red-600 flex items-center space-x-2 mb-3">
           <XCircle />
           <span>Don'ts</span>
         </h3>

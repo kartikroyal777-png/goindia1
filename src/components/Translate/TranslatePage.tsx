@@ -103,7 +103,7 @@ const TranslatePage: React.FC = () => {
       <div className="bg-gradient-to-br from-blue-50 to-blue-100 px-4 pt-6 pb-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
           <Globe className="w-12 h-12 text-blue-500 mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Language Helper</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Language Helper</h1>
           <p className="text-gray-600">Translate and learn essential Indian phrases</p>
         </motion.div>
       </div>

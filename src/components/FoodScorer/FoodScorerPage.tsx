@@ -133,7 +133,7 @@ const FoodScorerPage: React.FC = () => {
         {cameraError ? (
           <div className="w-full h-full flex flex-col items-center justify-center text-center p-4 bg-black">
             <AlertTriangle className="w-12 h-12 text-amber-400 mb-4" />
-            <h3 className="text-xl font-bold">Camera Error</h3>
+            <h3 className="text-xl font-semibold">Camera Error</h3>
             <p className="text-gray-400 mt-2">{cameraError}</p>
             <p className="text-xs text-gray-500 mt-4">Please grant camera permissions in your browser settings and refresh. Alternatively, upload an image.</p>
           </div>
@@ -200,7 +200,7 @@ const FoodScorerPage: React.FC = () => {
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
         className="w-16 h-16 border-4 border-white/20 border-t-orange-500 rounded-full mb-6"
       />
-      <h3 className="text-xl font-bold">Analyzing Your Dish...</h3>
+      <h3 className="text-xl font-semibold">Analyzing Your Dish...</h3>
       <p className="text-gray-400">Our AI is checking the ingredients.</p>
     </div>
   );
@@ -216,10 +216,10 @@ const FoodScorerPage: React.FC = () => {
             <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
               <Info className="w-8 h-8 text-danger" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Analysis Failed</h2>
+            <h2 className="text-2xl font-semibold mb-2">Analysis Failed</h2>
             <p className="text-gray-400 mb-6 max-w-sm">{scoreData?.error || "The AI returned data in an unexpected format and a health score could not be determined."}</p>
             <p className="text-xs text-gray-500 mb-6">Ensure your API key is correct and the image is clear.</p>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={resetScanner} className="w-full max-w-xs flex items-center justify-center space-x-2 py-3 bg-orange-500 font-bold rounded-xl shadow-lg">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={resetScanner} className="w-full max-w-xs flex items-center justify-center space-x-2 py-3 bg-orange-500 font-semibold rounded-xl shadow-lg">
               <RefreshCw className="w-5 h-5"/>
               <span>Try Again</span>
             </motion.button>
@@ -234,14 +234,14 @@ const FoodScorerPage: React.FC = () => {
         <div className="relative p-4 flex-grow overflow-y-auto">
           <button onClick={resetScanner} className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full z-10"><X/></button>
           <div className="pt-8">
-            <h2 className="text-3xl font-bold text-center mb-4">{scoreData.dish_label}</h2>
+            <h2 className="text-3xl font-semibold text-center mb-4">{scoreData.dish_label}</h2>
             <motion.div initial={{scale:0.5}} animate={{scale:1}} className="flex justify-center my-6">
               <ScoreRing score={scoreValue} />
             </motion.div>
             
             <div className="pb-8">
               <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} transition={{delay: 0.5}} className="my-6 bg-white/5 p-4 rounded-2xl">
-                <h3 className="font-bold mb-3">Health Breakdown</h3>
+                <h3 className="font-semibold mb-3">Health Breakdown</h3>
                 <div className="space-y-3 text-sm">
                   {Object.entries(scoreData.breakdown).map(([key, value]: [string, any]) => (
                     <div key={key} className="flex justify-between items-center">

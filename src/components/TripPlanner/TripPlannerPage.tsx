@@ -197,10 +197,10 @@ const TripPlannerPage: React.FC = () => {
       case 1: // Days
         return (
           <>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">How many days are you planning?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4 text-center">How many days are you planning?</h2>
             <div className="flex items-center justify-center space-x-4">
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPreferences(p => ({ ...p, days: Math.max(1, p.days - 1) }))} className="p-3 bg-white rounded-full shadow-md"><Minus /></motion.button>
-              <span className="text-5xl font-bold w-24 text-center">{preferences.days}</span>
+              <span className="text-5xl font-semibold w-24 text-center">{preferences.days}</span>
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPreferences(p => ({ ...p, days: p.days + 1 }))} className="p-3 bg-white rounded-full shadow-md"><Plus /></motion.button>
             </div>
           </>
@@ -208,7 +208,7 @@ const TripPlannerPage: React.FC = () => {
       case 2: // Destination
         return (
           <>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">Where do you want to go?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4 text-center">Where do you want to go?</h2>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input type="text" value={preferences.destination} onChange={e => setPreferences(p => ({ ...p, destination: e.target.value }))} placeholder="e.g., Jaipur, Kerala, Goa" className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500" />
@@ -224,7 +224,7 @@ const TripPlannerPage: React.FC = () => {
       case 3: // Style
         return (
           <>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">What's your travel style?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">What's your travel style?</h2>
             <div className="grid grid-cols-2 gap-4">
               {styleOptions.map(({ id, label, icon: Icon }) => (
                 <motion.button key={id} onClick={() => setPreferences(p => ({ ...p, style: id }))} className={`p-4 border-2 rounded-xl text-center transition-colors ${preferences.style === id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:border-orange-300'}`}>
@@ -238,7 +238,7 @@ const TripPlannerPage: React.FC = () => {
       case 4: // Companions
         return (
           <>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Who are you traveling with?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Who are you traveling with?</h2>
             <div className="grid grid-cols-2 gap-4">
               {companionOptions.map(({ id, label, icon: Icon }) => (
                 <motion.button key={id} onClick={() => setPreferences(p => ({ ...p, companions: id }))} className={`p-4 border-2 rounded-xl text-center transition-colors ${preferences.companions === id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:border-orange-300'}`}>
@@ -261,7 +261,7 @@ const TripPlannerPage: React.FC = () => {
           transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           className="w-16 h-16 border-4 border-gray-300 border-t-orange-500 rounded-full mb-6"
         />
-        <h3 className="text-xl font-bold">Crafting your adventure...</h3>
+        <h3 className="text-xl font-semibold">Crafting your adventure...</h3>
         <p className="text-gray-600">This might take a moment.</p>
       </div>
     );
@@ -277,7 +277,7 @@ const TripPlannerPage: React.FC = () => {
           <motion.button onClick={handleBack} className="p-2 rounded-full hover:bg-gray-100 flex items-center space-x-2">
             <ArrowLeft className="w-5 h-5" />
           </motion.button>
-          <h1 className="text-xl font-bold text-gray-900 text-center">{preferences.destination} Trip</h1>
+          <h1 className="text-xl font-semibold text-gray-900 text-center">{preferences.destination} Trip</h1>
           <div className="flex items-center space-x-1">
             <motion.button onClick={handleSaveTrip} disabled={isSaving} className="p-2 rounded-full hover:bg-gray-100"><Save className={`w-5 h-5 ${isSaving ? 'text-gray-400' : 'text-gray-600'}`} /></motion.button>
             <motion.button onClick={handleSaveToFile} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 rounded-full hover:bg-gray-100"><FileDown className="w-5 h-5 text-gray-600" /></motion.button>
@@ -297,7 +297,7 @@ const TripPlannerPage: React.FC = () => {
         <AnimatePresence mode="wait">
           <motion.div key={activeDay} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="p-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-800">{currentDayData?.title}</h3>
+              <h3 className="text-lg font-semibold text-gray-800">{currentDayData?.title}</h3>
               <div className="flex items-center space-x-2 text-gray-600"><WeatherIcon className="w-5 h-5" /><span className="font-medium text-sm">28°C</span></div>
             </div>
             <div className="space-y-4">
@@ -310,7 +310,7 @@ const TripPlannerPage: React.FC = () => {
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-xs font-semibold text-orange-500 mb-1 uppercase tracking-wider">{activity.time}</p>
-                          <h4 className="font-bold text-gray-800 mb-2">{activity.title}</h4>
+                          <h4 className="font-semibold text-gray-800 mb-2">{activity.title}</h4>
                         </div>
                         <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setEditingActivity(activity)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full"><Edit className="w-4 h-4" /></button>
@@ -380,7 +380,7 @@ const ActivityForm: React.FC<{activity: Activity, onSave: (activity: Activity) =
   };
   return (
     <div className="space-y-3">
-      <input name="title" value={formData.title} onChange={handleChange} className="w-full font-bold text-gray-800 border-b-2 focus:outline-none focus:border-orange-500" />
+      <input name="title" value={formData.title} onChange={handleChange} className="w-full font-semibold text-gray-800 border-b-2 focus:outline-none focus:border-orange-500" />
       <select name="time" value={formData.time} onChange={handleChange} className="w-full text-xs font-semibold text-orange-500 uppercase tracking-wider border-b-2 focus:outline-none focus:border-orange-500">
         <option>Morning</option>
         <option>Afternoon</option>

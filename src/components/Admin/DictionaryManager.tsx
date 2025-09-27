@@ -64,7 +64,7 @@ const DictionaryManager: React.FC = () => {
   return (
     <div className="p-6 bg-gray-100 rounded-lg">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Dictionary Manager</h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Dictionary Manager</h2>
         <div className="flex space-x-2">
           <button onClick={fetchPhrases} disabled={loading} className="p-2 bg-gray-200 rounded-full hover:bg-gray-300 disabled:opacity-50"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
           <button onClick={handleAdd} className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg shadow-sm hover:bg-orange-600">
