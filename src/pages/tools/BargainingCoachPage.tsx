@@ -37,7 +37,7 @@ const BargainingCoachPage: React.FC = () => {
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Bargaining Coach</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Bargaining Coach</h1>
       </div>
 
       <div className="sticky top-[72px] bg-white/80 backdrop-blur-sm z-10 border-b">

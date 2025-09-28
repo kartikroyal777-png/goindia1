@@ -12,7 +12,7 @@ export interface CityCategory {
 }
 
 export interface City {
-  id: string;
+  id:string;
   name: string;
   state: string;
   description: string;
@@ -227,6 +227,6 @@ export interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   plan_type: 'free' | 'paid';
-  food_scans_used: number;
-  trip_planner_runs: number;
+  food_scanner_used: number;
+  trip_planner_used: number;
 }

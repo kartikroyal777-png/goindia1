@@ -59,7 +59,7 @@ const NotificationsPage: React.FC = () => {
           >
             <ArrowLeft className="w-5 h-5 text-gray-800" />
           </motion.button>
-          <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
         </div>
         <button onClick={fetchNotifications} disabled={loading} className="p-2 rounded-full hover:bg-gray-100">
           <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
@@ -85,7 +85,7 @@ const NotificationsPage: React.FC = () => {
                 {getIcon(notif.type)}
               </div>
               <div className="flex-1">
-                <p className="font-medium text-gray-800">{notif.title}</p>
+                <p className="text-gray-800">{notif.title}</p>
                 <p className="text-sm text-gray-600">{notif.message}</p>
                 <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
               </div>

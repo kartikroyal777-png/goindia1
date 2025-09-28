@@ -56,7 +56,7 @@ const ToolsPage: React.FC = () => {
           className="text-center"
         >
           <Wrench className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-medium text-gray-900 mb-2">
             All <span className="text-orange-500">Essential Tools</span>
           </h1>
           <p className="text-gray-600">Your one-stop utility kit for traveling in India.</p>

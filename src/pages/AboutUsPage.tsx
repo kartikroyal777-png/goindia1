@@ -12,12 +12,12 @@ const AboutUsPage = () => {
         <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </motion.button>
-        <h1 className="text-xl font-bold text-gray-900">About Us</h1>
+        <h1 className="text-xl font-semibold text-gray-900">About Us</h1>
       </div>
       <div className="p-4 space-y-6">
         <motion.div initial={{opacity: 0, y:20}} animate={{opacity: 1, y:0}} className="bg-white rounded-xl shadow-sm border p-6">
           <Sparkles className="w-8 h-8 text-orange-500 mb-3" />
-          <h2 className="font-bold text-xl mb-2">Our Brand Story</h2>
+          <h2 className="font-semibold text-xl mb-2">Our Brand Story</h2>
           <p className="text-gray-600 leading-relaxed">
             Traveling across India can feel overwhelming for foreigners — language barriers, safety concerns, transport confusion, scams, and cultural differences often discourage many from truly experiencing the country.
           </p>
@@ -30,7 +30,7 @@ const AboutUsPage = () => {
         </motion.div>
         <motion.div initial={{opacity: 0, y:20}} animate={{opacity: 1, y:0}} transition={{delay: 0.2}} className="bg-white rounded-xl shadow-sm border p-6">
           <Target className="w-8 h-8 text-green-500 mb-3" />
-          <h2 className="font-bold text-xl mb-2">Our Mission</h2>
+          <h2 className="font-semibold text-xl mb-2">Our Mission</h2>
           <p className="text-gray-600 italic text-lg">
             ✨ “To make India beginner-friendly for every traveler.”
           </p>

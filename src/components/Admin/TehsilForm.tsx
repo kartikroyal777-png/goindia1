@@ -52,7 +52,7 @@ const TehsilForm: React.FC<TehsilFormProps> = ({ tehsil, cityId, onSave }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
-      <h3 className="text-lg font-semibold">{tehsil ? 'Edit Tehsil' : 'Add New Tehsil'}</h3>
+      <h3 className="text-lg font-medium">{tehsil ? 'Edit Tehsil' : 'Add New Tehsil'}</h3>
       <div className="flex-grow overflow-y-auto pr-2 space-y-4">
         {Object.keys(initialTehsilState).map(key => {
           if (key === 'id' || key === 'city_id') return null;

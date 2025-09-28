@@ -51,12 +51,12 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Edit Profile</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Edit Profile</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleUpdate}>
           <div className="mb-4">
-            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+            <label htmlFor="fullName" className="block text-sm text-gray-700 mb-2">Full Name</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -72,7 +72,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose }) => {
           <motion.button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 disabled:opacity-50"
+            className="w-full bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-orange-600 disabled:opacity-50"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

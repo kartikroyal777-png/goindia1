@@ -36,7 +36,7 @@ const SavedPlacesPage = () => {
         <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </motion.button>
-        <h1 className="text-xl font-bold text-gray-900">Saved Places</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Saved Places</h1>
       </div>
       <div className="p-4">
         {loading ? (

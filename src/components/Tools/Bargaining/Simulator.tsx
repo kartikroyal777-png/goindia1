@@ -237,16 +237,16 @@ const Simulator: React.FC = () => {
   return (
     <div className="bg-white rounded-xl shadow-lg border p-4">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-lg">Bargaining Simulator</h3>
+        <h3 className="font-medium text-lg">Bargaining Simulator</h3>
         <div className="flex items-center space-x-2">
           <Trophy className="w-5 h-5 text-amber-500" />
-          <span className="text-sm font-bold text-gray-700">{score}</span>
+          <span className="text-sm font-semibold text-gray-700">{score}</span>
         </div>
       </div>
       
       <div className="mb-4 flex items-center justify-center space-x-1 p-1 bg-gray-100 rounded-full">
         {(Object.keys(scenarios) as Array<keyof typeof scenarios>).map(lvl => (
-            <button key={lvl} onClick={() => setLevel(lvl)} className={`w-full px-3 py-1.5 text-sm font-semibold rounded-full capitalize transition-colors ${level === lvl ? 'bg-rose-500 text-white shadow' : 'text-gray-600 hover:bg-white'}`}>
+            <button key={lvl} onClick={() => setLevel(lvl)} className={`w-full px-3 py-1.5 text-sm font-medium rounded-full capitalize transition-colors ${level === lvl ? 'bg-rose-500 text-white shadow' : 'text-gray-600 hover:bg-white'}`}>
                 {lvl}
             </button>
         ))}
@@ -275,7 +275,7 @@ const Simulator: React.FC = () => {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center mx-auto mb-2 ${finalMessage.success ? 'bg-green-200' : 'bg-red-200'}`}>
                 {finalMessage.success ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
               </div>
-              <p className="font-semibold">{finalMessage.text}</p>
+              <p className="font-medium">{finalMessage.text}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -287,14 +287,14 @@ const Simulator: React.FC = () => {
           <motion.button
             key={i}
             onClick={() => handleOptionClick(opt)}
-            className="w-full p-3 bg-white border-2 border-orange-500 text-orange-500 rounded-lg font-semibold text-sm text-center hover:bg-orange-50"
+            className="w-full p-3 bg-white border-2 border-orange-500 text-orange-500 rounded-lg font-medium text-sm text-center hover:bg-orange-50"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             {opt.text}
           </motion.button>
         )) : (
-          <motion.button onClick={startNewGame} className="w-full md:col-span-2 p-3 bg-orange-500 text-white rounded-lg font-semibold text-sm text-center flex items-center justify-center space-x-2">
+          <motion.button onClick={startNewGame} className="w-full md:col-span-2 p-3 bg-orange-500 text-white rounded-lg font-medium text-sm text-center flex items-center justify-center space-x-2">
             <RefreshCw className="w-4 h-4" />
             <span>Play Again</span>
           </motion.button>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, MapPin, Camera, Wrench, Map, X, Star, Crown } from 'lucide-react';
+import { ArrowLeft, Check, MapPin, Camera, Wrench, Map, Star, Crown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -55,7 +55,7 @@ const PricingPage: React.FC = () => {
 
   const FeatureItem: React.FC<{ icon: React.ElementType, text: string }> = ({ icon: Icon, text }) => (
     <li className="flex items-center space-x-3">
-      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
         <Icon className="w-3 h-3 text-green-600" />
       </div>
       <span className="text-gray-700">{text}</span>
@@ -69,7 +69,7 @@ const PricingPage: React.FC = () => {
       </button>
 
       <div className="text-center mb-10">
-        <h1 className="text-3xl sm:text-4xl font-semibold text-orange-600">Upgrade Your GoIndia Experience</h1>
+        <h1 className="text-3xl sm:text-4xl font-medium text-orange-600">Upgrade Your GoIndia Experience</h1>
         <p className="text-gray-600 mt-2">Unlock premium features and explore India without limits.</p>
       </div>
 
@@ -80,7 +80,7 @@ const PricingPage: React.FC = () => {
           className="max-w-2xl mx-auto bg-gray-800 text-white p-4 rounded-2xl mb-8 flex items-center justify-center space-x-3 shadow-lg"
         >
           <Crown className="w-6 h-6 text-yellow-400" />
-          <p className="font-semibold">{isAdmin ? 'Admin Access — All Features Unlocked' : 'Premium Plan Active'}</p>
+          <p>{isAdmin ? 'Admin Access — All Features Unlocked' : 'Premium Plan Active'}</p>
         </motion.div>
       )}
 
@@ -88,9 +88,9 @@ const PricingPage: React.FC = () => {
         {/* Free Plan */}
         <motion.div
           whileHover={{ y: -5 }}
-          className={`bg-white rounded-2xl p-6 shadow-lg border-2 ${!isPaid ? 'border-orange-500' : 'border-gray-200'}`}
+          className={`bg-white rounded-2xl p-6 shadow-lg border-2 ${!isPaid && !isAdmin ? 'border-orange-500' : 'border-gray-200'}`}
         >
-          <h2 className="text-xl font-semibold text-gray-800 mb-1">Free Plan</h2>
+          <h2 className="text-xl font-medium text-gray-800 mb-1">Free Plan</h2>
           <p className="text-sm text-gray-500 mb-6">Best for first-time users.</p>
           <ul className="space-y-3 mb-8">
             <FeatureItem icon={MapPin} text="Explore 10 cities" />
@@ -99,24 +99,21 @@ const PricingPage: React.FC = () => {
             <FeatureItem icon={Wrench} text="Unlimited tool usage" />
           </ul>
           <p className="text-4xl font-semibold text-center">$0</p>
-          <button className="mt-6 w-full py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg" disabled>
-            {isPaid ? 'Downgrade (Not available)' : 'Your Current Plan'}
+          <button className="mt-6 w-full py-3 bg-gray-200 text-gray-800 rounded-lg" disabled>
+            {isPaid || isAdmin ? 'Your Previous Plan' : 'Your Current Plan'}
           </button>
         </motion.div>
 
         {/* Paid Plan */}
         <motion.div
           whileHover={{ y: -5 }}
-          className={`bg-white rounded-2xl p-6 shadow-xl relative overflow-hidden border-2 ${isPaid ? 'border-orange-500' : 'border-gray-200'}`}
+          className={`bg-white rounded-2xl p-6 shadow-xl relative overflow-hidden border-2 ${(isPaid || isAdmin) ? 'border-orange-500' : 'border-gray-200'}`}
         >
-          <div className="absolute -top-10 -right-10 w-28 h-28 bg-orange-500 rounded-full"></div>
-          <div className="absolute top-4 right-4 text-white">
-            <Star className="w-6 h-6 fill-current" />
-          </div>
-          <span className="absolute top-2 left-2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold transform -rotate-6">
+          <div className="absolute -top-10 -right-10 w-28 h-28 bg-orange-500 rounded-full opacity-20"></div>
+          <span className="absolute top-2 left-2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs transform -rotate-6">
             Most Popular
           </span>
-          <h2 className="text-xl font-semibold text-gray-800 mb-1 mt-8">One-Time Plan</h2>
+          <h2 className="text-xl font-medium text-gray-800 mb-1 mt-8">One-Time Plan</h2>
           <p className="text-sm text-gray-500 mb-6">The ultimate travel toolkit.</p>
           <ul className="space-y-3 mb-8">
             <FeatureItem icon={MapPin} text="Explore unlimited cities" />
@@ -145,7 +142,7 @@ const PricingPage: React.FC = () => {
                 />
                 <button
                   onClick={applyCoupon}
-                  className="bg-gray-800 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-700"
+                  className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
                 >
                   Apply
                 </button>
@@ -160,7 +157,7 @@ const PricingPage: React.FC = () => {
           <button 
             onClick={handleUpgrade}
             disabled={isPaid || isAdmin || isUpgrading}
-            className="mt-4 w-full py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="mt-4 w-full py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isUpgrading ? 'Processing...' : (isPaid || isAdmin) ? 'Plan Active' : 'Upgrade Now'}
           </button>

@@ -84,7 +84,7 @@ const TehsilPage: React.FC = () => {
 
         <div className="absolute bottom-4 left-4 text-white">
           <p className="text-md">{city.name}</p>
-          <h1 className="text-3xl font-semibold">{tehsil.name}</h1>
+          <h1 className="text-3xl">{tehsil.name}</h1>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ const TehsilPage: React.FC = () => {
       <div className="p-4">
         <div className="flex items-center space-x-2 mb-4">
           <Landmark className="w-5 h-5 text-orange-500" />
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl text-gray-900">
             Popular Locations
           </h2>
         </div>

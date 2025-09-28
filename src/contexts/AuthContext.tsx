@@ -14,6 +14,8 @@ const PLAN_LIMITS = {
   },
 };
 
+type Feature = 'food_scanner' | 'trip_planner';
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -21,8 +23,8 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => void;
   isAdmin: boolean;
-  canUseFeature: (feature: 'food_scanner' | 'trip_planner') => boolean;
-  incrementFeatureUsage: (feature: 'food_scanner' | 'trip_planner') => Promise<void>;
+  canUseFeature: (feature: Feature) => boolean;
+  incrementFeatureUsage: (feature: Feature) => Promise<void>;
   upgradeToPaid: () => Promise<{ error: any }>;
   isUpgradeModalOpen: boolean;
   showUpgradeModal: (show: boolean) => void;
@@ -38,7 +40,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  const isAdmin = profile?.id === 'kartikroyal777@gmail.com';
+  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
 
   const fetchProfile = useCallback(async (user: User) => {
     try {
@@ -91,28 +93,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const canUseFeature = (feature: 'food_scanner' | 'trip_planner'): boolean => {
+  const canUseFeature = (feature: Feature): boolean => {
     if (isAdmin) return true;
     if (!profile) return false;
+    
     const limit = PLAN_LIMITS[profile.plan_type][feature];
-    const used = profile[`${feature}_used`];
+    const usageKey = feature === 'food_scanner' ? 'food_scanner_used' : 'trip_planner_used';
+    const used = profile[usageKey] || 0;
+    
     return used < limit;
   };
 
-  const incrementFeatureUsage = async (feature: 'food_scanner' | 'trip_planner') => {
+  const incrementFeatureUsage = async (feature: Feature) => {
     if (!profile || !user) return;
     if (!canUseFeature(feature)) return;
 
-    const usedKey = `${feature}_used`;
-    const newCount = profile[usedKey] + 1;
+    const usageKey = feature === 'food_scanner' ? 'food_scanner_used' : 'trip_planner_used';
+    const newCount = (profile[usageKey] || 0) + 1;
 
     const { error } = await supabase
       .from('profiles')
-      .update({ [usedKey]: newCount })
+      .update({ [usageKey]: newCount })
       .eq('id', user.id);
     
     if (!error) {
-      setProfile(prev => prev ? { ...prev, [usedKey]: newCount } : null);
+      setProfile(prev => prev ? { ...prev, [usageKey]: newCount } : null);
     } else {
       console.error(`Error incrementing ${feature} usage:`, error);
     }

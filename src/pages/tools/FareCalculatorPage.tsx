@@ -77,7 +77,7 @@ const FareCalculatorPage: React.FC = () => {
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </Link>
-        <h1 className="text-xl font-semibold text-gray-900">Fare Calculator</h1>
+        <h1 className="text-xl font-medium text-gray-900">Fare Calculator</h1>
       </div>
 
       <div className="flex-grow overflow-y-auto p-4 space-y-6 pb-28">
@@ -103,7 +103,7 @@ const FareCalculatorPage: React.FC = () => {
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-lg flex items-start space-x-3">
               <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <div>
-                <h4 className="font-semibold">Calculation Error</h4>
+                <h4 className="font-medium">Calculation Error</h4>
                 <p className="text-sm">{error}</p>
               </div>
             </motion.div>
@@ -112,8 +112,8 @@ const FareCalculatorPage: React.FC = () => {
           {result && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-semibold text-lg mb-3">Fare Estimate 💸</h3>
-                <p className="text-3xl font-semibold text-gray-800">{result.fare_estimate_inr}</p>
+                <h3 className="font-medium text-lg mb-3">Fare Estimate 💸</h3>
+                <p className="text-3xl font-medium text-gray-800">{result.fare_estimate_inr}</p>
                 <p className="text-gray-600">(≈ {result.fare_estimate_usd} USD)</p>
                 <div className="mt-3 text-sm text-gray-500 flex items-center space-x-4">
                   <span>~{result.distance_km} km</span>
@@ -122,17 +122,17 @@ const FareCalculatorPage: React.FC = () => {
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-semibold text-lg mb-2 flex items-center space-x-2"><AlertTriangle className="w-5 h-5 text-red-500" /><span>Scam Alert</span></h3>
+                <h3 className="font-medium text-lg mb-2 flex items-center space-x-2"><AlertTriangle className="w-5 h-5 text-red-500" /><span>Scam Alert</span></h3>
                 <p className="text-sm text-gray-700">{result.scam_alert}</p>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-semibold text-lg mb-2 flex items-center space-x-2"><Shield className="w-5 h-5 text-green-500" /><span>Safety Tip</span></h3>
+                <h3 className="font-medium text-lg mb-2 flex items-center space-x-2"><Shield className="w-5 h-5 text-green-500" /><span>Safety Tip</span></h3>
                 <p className="text-sm text-gray-700">{result.tips}</p>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-semibold text-lg mb-2 flex items-center space-x-2"><Car className="w-5 h-5 text-blue-500" /><span>Alternatives</span></h3>
+                <h3 className="font-medium text-lg mb-2 flex items-center space-x-2"><Car className="w-5 h-5 text-blue-500" /><span>Alternatives</span></h3>
                 <div className="flex space-x-4 text-sm text-gray-700">
                   {result.alternatives.map((alt, i) => <span key={i}>{alt}</span>)}
                 </div>
@@ -146,7 +146,7 @@ const FareCalculatorPage: React.FC = () => {
         <motion.button
           onClick={handleCalculate}
           disabled={isButtonDisabled}
-          className="w-full max-w-md mx-auto py-4 bg-orange-500 text-white font-semibold rounded-2xl shadow-lg shadow-orange-300 disabled:bg-gray-400 disabled:opacity-70 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg transition-all"
+          className="w-full max-w-md mx-auto py-4 bg-orange-500 text-white font-medium rounded-2xl shadow-lg shadow-orange-300 disabled:bg-gray-400 disabled:opacity-70 disabled:shadow-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-lg transition-all"
           whileHover={{ scale: isButtonDisabled ? 1 : 1.02 }}
           whileTap={{ scale: isButtonDisabled ? 1 : 0.98 }}
         >

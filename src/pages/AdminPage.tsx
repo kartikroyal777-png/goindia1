@@ -42,7 +42,7 @@ const AdminPage: React.FC = () => {
     <div className="flex min-h-screen bg-gray-50">
       <aside className="w-64 bg-gray-900 text-white flex flex-col">
         <div className="p-6 border-b border-gray-700">
-          <h1 className="text-2xl font-semibold">Admin Panel</h1>
+          <h1 className="text-2xl font-medium">Admin Panel</h1>
           <p className="text-sm text-gray-400 truncate">{user?.email}</p>
         </div>
         <nav className="flex-1 p-4 space-y-2">

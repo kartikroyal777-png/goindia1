@@ -34,17 +34,17 @@ const CityCard: React.FC<CityCardProps> = ({ city, onClick, index }) => {
         {/* Popularity badge */}
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1">
           <Star className="w-3 h-3 text-yellow-500 fill-current" />
-          <span className="text-xs font-medium text-gray-700">{city.popularity_score}</span>
+          <span className="text-xs text-gray-700">{city.popularity_score}</span>
         </div>
         
         {/* State badge */}
-        <div className="absolute top-3 left-3 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+        <div className="absolute top-3 left-3 bg-orange-500 text-white px-2 py-1 rounded-full text-xs">
           {city.state}
         </div>
         
         {/* City name overlay */}
         <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="text-white font-semibold text-lg">{city.name}</h3>
+          <h3 className="text-white text-lg font-medium">{city.name}</h3>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ const CityCard: React.FC<CityCardProps> = ({ city, onClick, index }) => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="text-orange-500 text-sm font-medium hover:text-orange-600 transition-colors"
+            className="text-orange-500 text-sm hover:text-orange-600 transition-colors"
           >
             Explore →
           </motion.button>

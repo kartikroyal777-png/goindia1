@@ -41,7 +41,7 @@ const MyTripsPage = () => {
         <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </motion.button>
-        <h1 className="text-xl font-bold text-gray-900">My Trips</h1>
+        <h1 className="text-xl font-semibold text-gray-900">My Trips</h1>
       </div>
       <div className="p-4">
         {loading ? (
@@ -73,7 +73,7 @@ const MyTripsPage = () => {
               >
                 <div className="flex justify-between items-start">
                     <div>
-                        <h3 className="font-bold text-lg">{trip.trip_details.preferences.destination}</h3>
+                        <h3 className="font-semibold text-lg">{trip.trip_details.preferences.destination}</h3>
                         <p className="text-sm text-gray-500">{trip.trip_details.preferences.days} days, {trip.trip_details.preferences.style} style</p>
                         <p className="text-xs text-gray-400 mt-1">Created on {new Date(trip.created_at).toLocaleDateString()}</p>
                     </div>
@@ -83,7 +83,7 @@ const MyTripsPage = () => {
                     </div>
                 </div>
                 <div className="mt-4 border-t pt-2">
-                    <p className="text-sm font-semibold mb-1">Itinerary Highlights:</p>
+                    <p className="text-sm font-medium mb-1">Itinerary Highlights:</p>
                     <ul className="list-disc list-inside text-sm text-gray-600 truncate">
                         {trip.trip_details.itinerary.slice(0, 2).map(day => (
                             <li key={day.day}>{day.title}</li>

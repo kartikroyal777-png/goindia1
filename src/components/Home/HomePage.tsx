@@ -29,23 +29,33 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
+      setError(null);
       
-      const [citiesRes, categoriesRes] = await Promise.all([
-        supabase.from('cities').select('id, name, state, short_tagline, thumbnail_url, popularity_score, safety_score, best_time_to_visit, city_categories(category_id)'),
-        supabase.from('categories').select('*')
+      const [citiesResult, categoriesResult] = await Promise.allSettled([
+        supabase.from('cities').select('*, city_categories(category_id)'),
+        supabase.from('categories').select('*').order('name')
       ]);
 
-      if (citiesRes.error) {
-        setError('Could not fetch cities. Please try again later.');
-        console.error(citiesRes.error);
+      let errors: string[] = [];
+
+      if (citiesResult.status === 'fulfilled' && !citiesResult.value.error) {
+        setAllCities(citiesResult.value.data || []);
       } else {
-        setAllCities(citiesRes.data as City[]);
+        const cityError = citiesResult.status === 'rejected' ? citiesResult.reason : (citiesResult.value as any).error;
+        console.error("City fetch error:", cityError);
+        errors.push(`Could not fetch cities: ${cityError?.message || 'Unknown error'}`);
       }
 
-      if (categoriesRes.error) {
-        console.error("Could not fetch categories", categoriesRes.error);
+      if (categoriesResult.status === 'fulfilled' && !categoriesResult.value.error) {
+        setAllCategories(categoriesResult.value.data || []);
       } else {
-        setAllCategories(categoriesRes.data);
+        const categoryError = categoriesResult.status === 'rejected' ? categoriesResult.reason : (categoriesResult.value as any).error;
+        console.error("Category fetch error:", categoryError);
+        errors.push(`Could not fetch categories: ${categoryError?.message || 'Unknown error'}`);
+      }
+
+      if (errors.length > 0) {
+        setError(errors.join(' '));
       }
 
       setLoading(false);
@@ -58,21 +68,22 @@ const HomePage: React.FC = () => {
   };
 
   const applyFiltersAndSort = useCallback(() => {
-    let filtered = allCities;
+    let filtered = [...allCities];
     if (selectedCategory) {
       filtered = filtered.filter(city => 
         city.city_categories?.some(cc => cc.category_id === selectedCategory)
       );
     }
     if (searchQuery) {
+      const lowerCaseQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(city =>
-        city.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        city.state.toLowerCase().includes(searchQuery.toLowerCase())
+        city.name.toLowerCase().includes(lowerCaseQuery) ||
+        city.state.toLowerCase().includes(lowerCaseQuery)
       );
     }
     
     if (!searchQuery && !selectedCategory) {
-      filtered.sort((a, b) => b.popularity_score - a.popularity_score);
+      filtered.sort((a, b) => (b.popularity_score || 0) - (a.popularity_score || 0));
     }
 
     setFilteredCities(filtered);
@@ -104,7 +115,7 @@ const HomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md mx-auto"
         >
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
+          <h1 className="text-2xl font-medium text-gray-900 mb-2 text-center">
             Discover <span className="text-orange-500">Incredible India</span>
           </h1>
           <p className="text-gray-600 text-center mb-6">
@@ -122,7 +133,7 @@ const HomePage: React.FC = () => {
 
       <div className="px-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-medium text-gray-900">
             {searchQuery || selectedCategory ? `Results (${filteredCities.length})` : 'Popular Destinations'}
           </h2>
         </div>
@@ -148,7 +159,7 @@ const HomePage: React.FC = () => {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">🔍</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No destinations found</h3>
+            <h3 className="text-lg text-gray-900 mb-2">No destinations found</h3>
             <p className="text-gray-500">Try adjusting your search or changing the category.</p>
           </motion.div>
         ) : (
@@ -168,7 +179,7 @@ const HomePage: React.FC = () => {
                 <motion.button
                   onClick={loadMoreCities}
                   disabled={loadingMore}
-                  className="px-6 py-2 bg-orange-500 text-white font-medium rounded-full shadow-md disabled:opacity-50 flex items-center justify-center mx-auto"
+                  className="px-6 py-2 bg-orange-500 text-white rounded-full shadow-md disabled:opacity-50 flex items-center justify-center mx-auto"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >

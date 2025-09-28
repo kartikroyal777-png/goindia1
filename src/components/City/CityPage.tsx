@@ -28,7 +28,7 @@ const CityPage: React.FC = () => {
         .single();
       
       if (cityError || !cityData) {
-        setError('Could not find the requested city.');
+        setError(`Could not find the requested city: ${cityError?.message || 'Not found'}`);
         console.error(cityError);
         setLoading(false);
         return;
@@ -42,7 +42,7 @@ const CityPage: React.FC = () => {
         .eq('city_id', cityId);
       
       if (tehsilsError) {
-        setError('Could not fetch areas for this city.');
+        setError(`Could not fetch areas for this city: ${tehsilsError.message}`);
         console.error(tehsilsError);
       } else {
         setTehsils(tehsilsData);
@@ -99,22 +99,22 @@ const CityPage: React.FC = () => {
         <div className="grid grid-cols-3 gap-4 text-center">
           <div className="bg-white p-3 rounded-lg shadow-sm">
             <MapPin className="w-5 h-5 text-orange-500 mx-auto mb-1" />
-            <p className="text-sm font-medium">{city.state}</p>
+            <p className="text-sm">{city.state}</p>
           </div>
           <div className="bg-white p-3 rounded-lg shadow-sm">
             <Shield className="w-5 h-5 text-green-500 mx-auto mb-1" />
-            <p className="text-sm font-medium">{city.safety_score}/10 Safety</p>
+            <p className="text-sm">{city.safety_score}/10 Safety</p>
           </div>
           <div className="bg-white p-3 rounded-lg shadow-sm">
             <Thermometer className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-            <p className="text-sm font-medium">{city.best_time_to_visit}</p>
+            <p className="text-sm">{city.best_time_to_visit}</p>
           </div>
         </div>
       </div>
 
       {/* Tehsils List */}
       <div className="p-4">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore Areas in {city.name}</h2>
+        <h2 className="text-xl font-medium text-gray-900 mb-4">Explore Areas in {city.name}</h2>
         <div className="grid grid-cols-1 gap-4">
           {tehsils.length > 0 ? tehsils.map((tehsil, index) => (
             <motion.div

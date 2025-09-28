@@ -22,13 +22,13 @@ import CurrencyExchangerPage from './pages/tools/CurrencyExchangerPage';
 import BudgetTrackerPage from './pages/tools/BudgetTrackerPage';
 import BargainingCoachPage from './pages/tools/BargainingCoachPage';
 import TranslatePage from './pages/TranslatePage';
-import AssistantModal from './components/Assistant/AssistantModal';
 import AppSettingsPage from './pages/AppSettingsPage';
 import AboutUsPage from './pages/AboutUsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import PricingPage from './pages/PricingPage';
 import UpgradeModal from './components/Layout/UpgradeModal';
+import FullScreenLoader from './components/Layout/FullScreenLoader';
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
   const { session, user, loading } = useAuth();
@@ -43,7 +43,8 @@ const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }
     }
   }, [session, user, adminOnly, navigate, loading]);
 
-  if (loading || !session) return null; // Or a loading spinner
+  if (loading) return <FullScreenLoader />;
+  if (!session) return null;
   if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') return null;
 
   return <Outlet />;
@@ -61,7 +62,7 @@ const AppLayout = () => {
   const isToolPage = location.pathname.startsWith('/tools/');
 
   const showTopNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen && !isToolPage;
-  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen && !isToolPage;
+  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path));
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -92,6 +93,7 @@ function App() {
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
 
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
@@ -108,7 +110,6 @@ function App() {
           <Route path="/about-us" element={<AboutUsPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-          <Route path="/pricing" element={<PricingPage />} />
         </Route>
 
         <Route element={<ProtectedRoute adminOnly={true} />}>

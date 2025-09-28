@@ -44,7 +44,7 @@ const ProfilePage: React.FC = () => {
                 <Edit className="w-4 h-4" />
               </button>
             </div>
-            <h1 className="text-xl font-semibold mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
+            <h1 className="text-xl font-medium mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
             <p className="text-orange-100 text-sm">{user?.email}</p>
           </motion.div>
         </div>
@@ -57,7 +57,7 @@ const ProfilePage: React.FC = () => {
                 whileHover={{ scale: 1.02 }}
               >
                 <Crown className="w-6 h-6 text-yellow-400" />
-                <span className="font-semibold text-lg">Admin Panel</span>
+                <span className="text-lg">Admin Panel</span>
               </motion.div>
             </Link>
           )}
@@ -74,7 +74,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <item.icon className="w-5 h-5 text-gray-500" />
-                      <span className="font-medium text-gray-800">{item.label}</span>
+                      <span className="text-gray-800">{item.label}</span>
                     </div>
                     <span className="text-gray-400">›</span>
                   </motion.div>
@@ -95,7 +95,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <div className="flex items-center space-x-3">
                       <item.icon className="w-5 h-5 text-gray-500" />
-                      <span className="font-medium text-gray-800">{item.label}</span>
+                      <span className="text-gray-800">{item.label}</span>
                     </div>
                     <span className="text-gray-400">›</span>
                   </motion.div>
@@ -111,7 +111,7 @@ const ProfilePage: React.FC = () => {
             whileTap={{ scale: 0.98 }}
           >
             <LogOut className="w-5 h-5" />
-            <span className="font-medium">Sign Out</span>
+            <span>Sign Out</span>
           </motion.button>
         </div>
       </div>

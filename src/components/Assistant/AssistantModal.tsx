@@ -76,7 +76,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
               <Bot className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">AI Travel Assistant</h1>
+              <h1 className="text-lg font-medium text-gray-900">AI Travel Assistant</h1>
               <p className="text-sm text-gray-500">Powered by Qwen</p>
             </div>
           </div>

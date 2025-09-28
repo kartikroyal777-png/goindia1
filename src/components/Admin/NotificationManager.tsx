@@ -51,7 +51,7 @@ const NotificationManager: React.FC = () => {
   return (
     <div className="p-6 bg-gray-100 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-8">
       <div>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Send Notification</h2>
+        <h2 className="text-2xl font-medium text-gray-800 mb-6">Send Notification</h2>
         <form onSubmit={handleSend} className="space-y-4 p-6 bg-white rounded-lg shadow">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
@@ -98,7 +98,7 @@ const NotificationManager: React.FC = () => {
 
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold text-gray-800">Recent Notifications</h2>
+          <h2 className="text-2xl font-medium text-gray-800">Recent Notifications</h2>
           <button onClick={fetchNotifications} disabled={loading} className="p-2 bg-gray-200 rounded-full hover:bg-gray-300 disabled:opacity-50"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
         </div>
         <div className="space-y-3">
@@ -106,7 +106,7 @@ const NotificationManager: React.FC = () => {
             <div key={notif.id} className="bg-white p-4 rounded-lg shadow flex items-start space-x-3">
               <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center"><Bell className="w-5 h-5 text-gray-600" /></div>
               <div>
-                <p className="font-semibold text-gray-800">{notif.title}</p>
+                <p className="font-medium text-gray-800">{notif.title}</p>
                 <p className="text-sm text-gray-600">{notif.message}</p>
                 <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
               </div>

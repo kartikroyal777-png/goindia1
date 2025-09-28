@@ -151,7 +151,7 @@ const LocationDetailPage: React.FC = () => {
             <InfoItem icon={Shield} label="Overall Safety Score" value={`${d.safety_risks?.safety_score || 'N/A'}/10`} />
             <InfoItem icon={Heart} label="Women's Safety" value={d.safety_risks?.womens_safety_rating} />
             <div className="mt-3">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Common Scams to Avoid:</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">Common Scams to Avoid:</p>
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">{d.safety_risks?.scams_warnings?.map((scam, i) => <li key={i}>{scam}</li>)}</ul>
             </div>
           </DetailCard>
@@ -160,7 +160,7 @@ const LocationDetailPage: React.FC = () => {
             <InfoItem icon={Camera} label="Photography Rules" value={d.cultural_etiquette?.photography_rules} />
             <InfoItem icon={Building2} label="Temple Etiquette" value={d.cultural_etiquette?.temple_etiquette} />
              <div className="mt-3">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Do's & Don'ts:</p>
+              <p className="text-sm font-medium text-gray-600 mb-1">Do's & Don'ts:</p>
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">{d.cultural_etiquette?.dos_donts?.map((tip, i) => <li key={i}>{tip}</li>)}</ul>
             </div>
           </DetailCard>
@@ -199,9 +199,9 @@ const LocationDetailPage: React.FC = () => {
           {weather ? (
             <DetailCard icon={Cloud} title="Live Weather & AQI">
                 <div className="flex justify-around items-center text-center">
-                  <div><p className="text-2xl font-bold">{Math.round(weather.main.temp)}°C</p><p className="text-xs capitalize">{weather.weather[0].description}</p></div>
+                  <div><p className="text-2xl font-semibold">{Math.round(weather.main.temp)}°C</p><p className="text-xs capitalize">{weather.weather[0].description}</p></div>
                   <div><Wind className="w-6 h-6 mx-auto text-gray-500" /><p className="text-sm">{weather.wind.speed} m/s</p></div>
-                  <div><p className={`text-2xl font-bold ${getAqiInfo(weather.aqi).color}`}>{weather.aqi}</p><p className="text-xs">AQI ({getAqiInfo(weather.aqi).text})</p></div>
+                  <div><p className={`text-2xl font-semibold ${getAqiInfo(weather.aqi).color}`}>{weather.aqi}</p><p className="text-xs">AQI ({getAqiInfo(weather.aqi).text})</p></div>
                 </div>
             </DetailCard>
           ) : null}
@@ -218,15 +218,15 @@ const LocationDetailPage: React.FC = () => {
   };
 
   const DetailCard: React.FC<{icon: React.ElementType, title: string, children: React.ReactNode}> = ({icon: Icon, title, children}) => (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">{title && <h3 className="font-semibold text-gray-800 mb-3 flex items-center space-x-2"><Icon className="w-5 h-5 text-orange-500" /><span>{title}</span></h3>}{children}</motion.div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">{title && <h3 className="font-medium text-gray-800 mb-3 flex items-center space-x-2"><Icon className="w-5 h-5 text-orange-500" /><span>{title}</span></h3>}{children}</motion.div>
   );
-  const StatCard: React.FC<{icon: React.ElementType, label: string, value: string | React.ReactNode}> = ({icon: Icon, label, value}) => (<div className="bg-white rounded-xl shadow-sm border p-3 text-center"><Icon className="w-6 h-6 text-orange-500 mx-auto mb-1"/><p className="text-xs text-gray-500">{label}</p><p className="font-semibold text-gray-800">{value}</p></div>);
-  const InfoItem: React.FC<{icon?: React.ElementType, label: string, value: string | React.ReactNode}> = ({icon: Icon, label, value}) => (value ? <div className="mt-2 flex justify-between items-center text-sm border-b border-gray-100 pb-2"><p className="text-gray-500 flex items-center space-x-2">{Icon && <Icon className="w-4 h-4 text-gray-400" />}<span>{label}</span></p><p className="text-gray-800 font-semibold text-right">{value}</p></div> : null);
+  const StatCard: React.FC<{icon: React.ElementType, label: string, value: string | React.ReactNode}> = ({icon: Icon, label, value}) => (<div className="bg-white rounded-xl shadow-sm border p-3 text-center"><Icon className="w-6 h-6 text-orange-500 mx-auto mb-1"/><p className="text-xs text-gray-500">{label}</p><p className="font-medium text-gray-800">{value}</p></div>);
+  const InfoItem: React.FC<{icon?: React.ElementType, label: string, value: string | React.ReactNode}> = ({icon: Icon, label, value}) => (value ? <div className="mt-2 flex justify-between items-center text-sm border-b border-gray-100 pb-2"><p className="text-gray-500 flex items-center space-x-2">{Icon && <Icon className="w-4 h-4 text-gray-400" />}<span>{label}</span></p><p className="text-gray-800 font-medium text-right">{value}</p></div> : null);
   const SectionWithCarousel: React.FC<{title: string, icon: React.ElementType, items: any[], renderItem: (item: any) => React.ReactNode}> = ({title, icon: Icon, items, renderItem}) => (items && items.length > 0 ? <DetailCard icon={Icon} title={title}><div className="flex space-x-4 overflow-x-auto scrollbar-hide -m-2 p-2">{items.map((item, i) => <div key={i} className="flex-shrink-0 w-64">{renderItem(item)}</div>)}</div></DetailCard> : null);
-  const PhotoSpotCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-semibold text-sm">{item.title}</p><p className="text-xs text-gray-600">{item.description}</p></div></a>);
-  const RecommendationCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-semibold text-sm">{item.name}</p></div></a>);
-  const LocalFoodCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-semibold text-sm">{item.name}</p><p className="text-xs text-gray-600">{item.shop}</p></div></a>);
-  const VideoCard: React.FC<{item: any}> = ({item}) => (<a href={`https://www.youtube.com/watch?v=${item.video_id}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><div className="relative"><img src={`https://i.ytimg.com/vi/${item.video_id}/hqdefault.jpg`} className="w-full h-32 object-cover" /><div className="absolute inset-0 flex items-center justify-center bg-black/30"><Youtube className="w-10 h-10 text-white" /></div></div><div className="p-3"><p className="font-semibold text-sm">{item.title}</p><p className="text-xs text-gray-600">by {item.influencer_name}</p></div></a>);
+  const PhotoSpotCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-medium text-sm">{item.title}</p><p className="text-xs text-gray-600">{item.description}</p></div></a>);
+  const RecommendationCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-medium text-sm">{item.name}</p></div></a>);
+  const LocalFoodCard: React.FC<{item: any}> = ({item}) => (<a href={item.map_link || '#'} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><img src={item.image_url} className="w-full h-32 object-cover" /><div className="p-3"><p className="font-medium text-sm">{item.name}</p><p className="text-xs text-gray-600">{item.shop}</p></div></a>);
+  const VideoCard: React.FC<{item: any}> = ({item}) => (<a href={`https://www.youtube.com/watch?v=${item.video_id}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden shadow-md bg-white h-full hover:shadow-xl transition-shadow"><div className="relative"><img src={`https://i.ytimg.com/vi/${item.video_id}/hqdefault.jpg`} className="w-full h-32 object-cover" /><div className="absolute inset-0 flex items-center justify-center bg-black/30"><Youtube className="w-10 h-10 text-white" /></div></div><div className="p-3"><p className="font-medium text-sm">{item.title}</p><p className="text-xs text-gray-600">by {item.influencer_name}</p></div></a>);
 
   return (
     <div className="bg-gray-100 min-h-screen pb-10">
@@ -240,7 +240,7 @@ const LocationDetailPage: React.FC = () => {
                 <Heart className={`w-5 h-5 transition-all ${isSaved ? 'text-red-500 fill-current' : 'text-gray-800'}`} />
             </motion.button>
         </div>
-        <div className="absolute bottom-4 left-4 text-white z-10"><p className="text-md bg-black/40 px-2 py-1 rounded-md inline-block">{location.category}</p><h1 className="text-4xl font-semibold mt-1">{location.name}</h1><p className="text-lg text-gray-200">{location.tehsil.name}, {location.tehsil.city?.name}</p></div>
+        <div className="absolute bottom-4 left-4 text-white z-10"><p className="text-md bg-black/40 px-2 py-1 rounded-md inline-block">{location.category}</p><h1 className="text-4xl font-medium mt-1">{location.name}</h1><p className="text-lg text-gray-200">{location.tehsil.name}, {location.tehsil.city?.name}</p></div>
       </div>
 
       <div className="sticky top-0 bg-gray-100/80 backdrop-blur-sm z-10 border-b"><div className="flex justify-center space-x-1 overflow-x-auto scrollbar-hide px-2">{tabs.map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex-shrink-0 flex items-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'}`}><tab.icon className="w-4 h-4" /><span>{tab.label}</span>{activeTab === tab.id && (<motion.div layoutId="locationTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />)}</button>))}</div></div>

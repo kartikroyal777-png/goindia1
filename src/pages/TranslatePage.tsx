@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Volume2, Copy, RotateCcw, Globe, BookOpen, EyeOff, Eye, Loader2, ArrowLeft } from 'lucide-react';
+import { Volume2, Copy, RotateCcw, BookOpen, Eye, Loader2, ArrowLeft } from 'lucide-react';
 import { runGeminiQuery } from '../lib/gemini';
 import { supabase } from '../lib/supabase';
-import { Phrase } from '../../types';
+import { Phrase } from '../types';
 import { Link } from 'react-router-dom';
 
 const TranslatePage: React.FC = () => {
@@ -24,7 +24,7 @@ const TranslatePage: React.FC = () => {
       setError(null);
       const { data, error } = await supabase.from('phrases').select('*').order('category').order('en');
       if (error) {
-        setError("Could not load phrases. Please try again later.");
+        setError(`Could not load phrases: ${error.message}`);
         console.error(error);
       } else if (data) {
         const grouped = data.reduce((acc, phrase) => {
@@ -113,7 +113,7 @@ const TranslatePage: React.FC = () => {
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">Language Helper</h1>
+        <h1 className="text-xl text-gray-900">Language Helper</h1>
       </div>
 
       <div className="p-4">
@@ -132,7 +132,7 @@ const TranslatePage: React.FC = () => {
           <div className="p-4 border-b border-gray-100">
             <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} placeholder="Type text..." className="w-full h-24 resize-none focus:outline-none text-gray-900 placeholder-gray-500" />
             <div className="flex items-center justify-end mt-2">
-              <motion.button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm disabled:opacity-50" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 {isTranslating ? 'Translating...' : 'Translate'}
               </motion.button>
             </div>
@@ -160,19 +160,21 @@ const TranslatePage: React.FC = () => {
           <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
         ) : error ? (
           <div className="text-center text-red-500">{error}</div>
+        ) : Object.keys(phraseCategories).length === 0 ? (
+          <div className="text-center text-gray-500 py-8">No phrases found in the dictionary.</div>
         ) : (
           displayCategories.map(([category, phrases]) => (
             <div key={category} className="mb-6">
               <div className="flex items-center space-x-2 mb-4">
                 <BookOpen className="w-5 h-5 text-blue-500" />
-                <h2 className="text-lg font-semibold text-gray-900">{category}</h2>
+                <h2 className="text-lg font-medium text-gray-900">{category}</h2>
               </div>
               <div className="space-y-3">
                 {phrases.map((phrase, index) => (
                   <motion.div key={phrase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900">{phrase.en}</p>
+                        <p className="text-gray-900">{phrase.en}</p>
                         <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
                         <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
                       </div>
@@ -188,7 +190,7 @@ const TranslatePage: React.FC = () => {
         )}
         {!showAdultContent && phraseCategories[adultCategoryTitle] && (
            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-             <h3 className="font-semibold text-red-800">Adult Content Filter</h3>
+             <h3 className="font-medium text-red-800">Adult Content Filter</h3>
              <p className="text-sm text-red-700 my-2">For educational purposes, a section with common slang and explicit words is available. Viewer discretion is advised.</p>
              <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md flex items-center justify-center mx-auto space-x-2">
               <Eye className="w-4 h-4" />

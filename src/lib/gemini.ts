@@ -46,18 +46,30 @@ const runOpenRouterQuery = async (messages: any[]): Promise<string> => {
         "X-Title": "GoIndia Travel App",
       },
       body: JSON.stringify({
-        "model": "qwen/qwen2.5-vl-72b-instruct:free",
+        "model": "qwen/qwen-2.5-72b-chat",
         "messages": messages,
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-        throw new Error(data.error || `Proxy request failed with status: ${response.status}`);
+      const errorText = await response.text();
+      let errorBody;
+      try {
+        errorBody = JSON.parse(errorText);
+      } catch (e) {
+        // If the response is not JSON, use the raw text as the error.
+        throw new Error(errorText || `Proxy request failed with status: ${response.status}`);
+      }
+      // If the response is JSON, it should contain an 'error' property from our proxy.
+      throw new Error(errorBody.error || `Proxy request failed with status: ${response.status}`);
     }
 
-    const text = data.choices[0].message.content;
+    const data = await response.json();
+
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) {
+      throw new Error("Received an empty response from the AI assistant.");
+    }
     return cleanJsonString(text);
 
   } catch (error: any) {

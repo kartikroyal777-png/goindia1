@@ -9,7 +9,7 @@ interface LocationCardProps {
 }
 
 const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
-  const imageUrl = location.image_url || location.images?.[0]?.image_url || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400.png';
+  const imageUrl = location.image_url || location.images?.[0]?.image_url || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400.png';
 
   return (
     <motion.div
@@ -22,7 +22,7 @@ const LocationCard: React.FC<LocationCardProps> = ({ location, onClick }) => {
         <img src={imageUrl} alt={location.name} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-3 left-3">
-          <h3 className="text-white font-semibold text-lg">{location.name}</h3>
+          <h3 className="text-white text-lg">{location.name}</h3>
         </div>
       </div>
       <div className="p-4">

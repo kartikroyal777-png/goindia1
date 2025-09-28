@@ -18,7 +18,7 @@ const TehsilCard: React.FC<TehsilCardProps> = ({ tehsil, onClick }) => {
     >
       <img src={tehsil.thumbnail_url} alt={tehsil.name} className="w-1/3 h-auto object-cover" />
       <div className="p-4 flex-1">
-        <h3 className="font-semibold text-lg text-gray-900">{tehsil.name}</h3>
+        <h3 className="text-lg text-gray-900">{tehsil.name}</h3>
         <p className="text-sm text-gray-600 mb-3 line-clamp-2">{tehsil.description}</p>
         <div className="flex items-center justify-between text-sm text-gray-500">
           <div className="flex items-center space-x-1">

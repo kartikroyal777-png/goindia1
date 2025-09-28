@@ -24,7 +24,7 @@ const AuthPage: React.FC = () => {
           <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-lg">
             <Crown className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white drop-shadow-lg">
+          <h1 className="text-4xl font-semibold text-white drop-shadow-lg">
             Go <span className="text-orange-300">India</span>
           </h1>
         </div>
