@@ -1,0 +1,4 @@
+// This file is deprecated. AI features have been migrated to use the Groq API.
+// See src/lib/groq.ts for the new implementation.
+// This file can be safely deleted.
+export {};
