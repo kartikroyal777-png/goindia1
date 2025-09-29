@@ -1,14 +1,15 @@
-const PROXY_URL = "/.netlify/functions/openrouter-proxy";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
-const handleApiError = (error: any, apiName: string): string => {
-  console.error(`Error calling ${apiName} API via proxy:`, error);
-  const errorMessage = error.message || 'An unknown error occurred.';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const handleApiError = (error: any): string => {
+  console.error("Error calling Gemini API:", error);
   
-  if (errorMessage.includes('API key is not configured')) {
-    return `The backend proxy is missing the API key. Please ensure OPENROUTER_API_KEY is set in your Netlify deployment settings.`;
+  if (!GEMINI_API_KEY) {
+    return `The VITE_GEMINI_API_KEY is missing. Please ensure it's set in your .env file.`;
   }
-  
-  return `Sorry, an unexpected error occurred with the ${apiName} assistant. Please try again later. (Details: ${errorMessage})`;
+
+  return `Sorry, an unexpected error occurred with the AI assistant. Please try again later. (Details: ${error.message || 'Unknown error'})`;
 };
 
 const cleanJsonString = (rawText: string): string => {
@@ -37,65 +38,64 @@ const cleanJsonString = (rawText: string): string => {
   return cleanedText.substring(start, end + 1);
 };
 
-const runOpenRouterQuery = async (messages: any[]): Promise<string> => {
+let genAI: GoogleGenerativeAI | null = null;
+if (GEMINI_API_KEY) {
+  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+}
+
+const model = genAI?.getGenerativeModel({
+  model: "gemini-1.5-flash-latest",
+});
+
+const safetySettings = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+];
+
+function fileToGenerativePart(base64Data: string, mimeType: string) {
+  return {
+    inlineData: {
+      data: base64Data,
+      mimeType
+    },
+  };
+}
+
+export const runGeminiQuery = async (prompt: string): Promise<string> => {
+  if (!model) {
+    throw new Error(handleApiError({ message: 'Gemini API key not configured' }));
+  }
+
   try {
-    const response = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Title": "GoIndia Travel App",
-      },
-      body: JSON.stringify({
-        "model": "qwen/qwen-2.5-72b-chat",
-        "messages": messages,
-      }),
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        safetySettings,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorBody;
-      try {
-        errorBody = JSON.parse(errorText);
-      } catch (e) {
-        // If the response is not JSON, use the raw text as the error.
-        throw new Error(errorText || `Proxy request failed with status: ${response.status}`);
-      }
-      // If the response is JSON, it should contain an 'error' property from our proxy.
-      throw new Error(errorBody.error || `Proxy request failed with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    const text = data.choices?.[0]?.message?.content;
-    if (!text) {
-      throw new Error("Received an empty response from the AI assistant.");
-    }
+    const response = result.response;
+    const text = response.text();
     return cleanJsonString(text);
-
   } catch (error: any) {
-    throw new Error(handleApiError(error, "OpenRouter"));
+    throw new Error(handleApiError(error));
   }
 };
 
-export const runGeminiQuery = async (prompt: string): Promise<string> => {
-  const messages = [{ "role": "user", "content": prompt }];
-  return runOpenRouterQuery(messages);
-};
-
 export const runGeminiVisionQuery = async (prompt: string, base64Image: string): Promise<string> => {
-  const messages = [
-    {
-      "role": "user",
-      "content": [
-        { "type": "text", "text": prompt },
-        {
-          "type": "image_url",
-          "image_url": {
-            "url": `data:image/jpeg;base64,${base64Image}`
-          }
-        }
-      ]
-    }
-  ];
-  return runOpenRouterQuery(messages);
+  if (!model) {
+    throw new Error(handleApiError({ message: 'Gemini API key not configured' }));
+  }
+
+  try {
+    const imagePart = fileToGenerativePart(base64Image, "image/jpeg");
+    const result = await model.generateContent({
+        contents: [{ role: "user", parts: [imagePart, { text: prompt }] }],
+        safetySettings,
+    });
+    const response = result.response;
+    const text = response.text();
+    return cleanJsonString(text);
+  } catch (error: any) {
+    throw new Error(handleApiError(error));
+  }
 };

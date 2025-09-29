@@ -29,6 +29,16 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import PricingPage from './pages/PricingPage';
 import UpgradeModal from './components/Layout/UpgradeModal';
 import FullScreenLoader from './components/Layout/FullScreenLoader';
+import { AlertTriangle } from 'lucide-react';
+
+const AppInitError: React.FC<{ message: string }> = ({ message }) => (
+  <div className="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center text-center p-4">
+    <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+    <h2 className="text-xl font-semibold text-gray-800">Application Error</h2>
+    <p className="text-gray-600 mt-2">Could not load the application. Please try refreshing the page.</p>
+    <p className="text-xs text-gray-500 mt-4 bg-gray-200 p-2 rounded-md font-mono max-w-lg">{message}</p>
+  </div>
+);
 
 const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
   const { session, user, loading } = useAuth();
@@ -90,6 +100,16 @@ const AppLayout = () => {
 };
 
 function App() {
+  const { loading, error } = useAuth();
+
+  if (loading) {
+    return <FullScreenLoader />;
+  }
+
+  if (error) {
+    return <AppInitError message={error} />;
+  }
+  
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />

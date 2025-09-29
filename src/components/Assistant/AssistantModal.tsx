@@ -77,14 +77,14 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
             </div>
             <div>
               <h1 className="text-lg font-medium text-gray-900">AI Travel Assistant</h1>
-              <p className="text-sm text-gray-500">Powered by Qwen</p>
+              <p className="text-sm text-gray-500">Powered by Gemini</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
           {messages.map((message) => (
             <motion.div
               key={message.id}
@@ -96,7 +96,7 @@ const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
                 {message.type === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-gray-600" />}
               </div>
               <div className={`px-4 py-3 rounded-2xl ${message.type === 'user' ? 'bg-orange-500 text-white rounded-br-none' : 'bg-gray-100 text-gray-900 rounded-bl-none'}`}>
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
               </div>
             </motion.div>
           ))}

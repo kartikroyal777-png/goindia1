@@ -121,7 +121,7 @@ const CurrencyExchangerPage: React.FC = () => {
               <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <div>
                 <h4 className="font-medium">Conversion Error</h4>
-                <p className="text-sm">{error}</p>
+                <p className="text-sm">{typeof error === 'string' ? error : JSON.stringify(error)}</p>
               </div>
             </motion.div>
           )}

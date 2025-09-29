@@ -39,7 +39,7 @@ const LocationDetailPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: dbError } = await supabase.from('locations').select('*, tehsil:tehsils(*, city:cities(*)), images:location_images(*)').eq('id', locationId).single();
+      const { data, error: dbError } = await supabase.from('locations').select('*, details, tehsil:tehsils(*, city:cities(*)), images:location_images(*)').eq('id', locationId).single();
       if (dbError || !data) throw dbError || new Error('Location not found');
       setLocation(data as unknown as LocationWithDetails);
 
@@ -96,7 +96,7 @@ const LocationDetailPage: React.FC = () => {
   const prevImage = () => setCurrentImageIndex(p => (p - 1 + images.length) % images.length);
 
   if (loading) return <div className="p-4 text-center">Loading location details...</div>;
-  if (error || !location) return <div className="p-4 text-center text-red-500">{error || 'Location not found.'}</div>;
+  if (error || !location) return <div className="p-4 text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error) || 'Location not found.'}</div>;
   
   const d = location.details || {};
 
@@ -240,7 +240,7 @@ const LocationDetailPage: React.FC = () => {
                 <Heart className={`w-5 h-5 transition-all ${isSaved ? 'text-red-500 fill-current' : 'text-gray-800'}`} />
             </motion.button>
         </div>
-        <div className="absolute bottom-4 left-4 text-white z-10"><p className="text-md bg-black/40 px-2 py-1 rounded-md inline-block">{location.category}</p><h1 className="text-4xl font-medium mt-1">{location.name}</h1><p className="text-lg text-gray-200">{location.tehsil.name}, {location.tehsil.city?.name}</p></div>
+        <div className="absolute bottom-4 left-4 text-white z-10"><p className="text-md bg-black/40 px-2 py-1 rounded-md inline-block">{location.category}</p><h1 className="text-4xl font-medium mt-1">{location.name}</h1><p className="text-lg text-gray-200">{location.tehsil?.name}, {location.tehsil?.city?.name}</p></div>
       </div>
 
       <div className="sticky top-0 bg-gray-100/80 backdrop-blur-sm z-10 border-b"><div className="flex justify-center space-x-1 overflow-x-auto scrollbar-hide px-2">{tabs.map(tab => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex-shrink-0 flex items-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-orange-500' : 'text-gray-500 hover:text-orange-500'}`}><tab.icon className="w-4 h-4" /><span>{tab.label}</span>{activeTab === tab.id && (<motion.div layoutId="locationTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />)}</button>))}</div></div>

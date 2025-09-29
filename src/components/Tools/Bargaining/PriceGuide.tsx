@@ -33,7 +33,7 @@ const PriceGuide: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-center text-red-500">{error}</div>;
+    return <div className="text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>;
   }
 
   const groupedPrices = prices.reduce((acc, price) => {

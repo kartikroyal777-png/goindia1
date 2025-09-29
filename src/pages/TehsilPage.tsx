@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Landmark } from 'lucide-react';
-import LocationCard from './LocationCard';
-import { Tehsil, Location, City } from '../../types';
-import { supabase } from '../../lib/supabase';
+import LocationCard from '../components/Tehsil/LocationCard';
+import { Tehsil, Location, City } from '../types';
+import { supabase } from '../lib/supabase';
 
 const TehsilPage: React.FC = () => {
   const { tehsilId } = useParams<{ tehsilId: string }>();
@@ -42,7 +42,7 @@ const TehsilPage: React.FC = () => {
       // Fetch locations for the tehsil
       const { data: locationsData, error: locationsError } = await supabase
         .from('locations')
-        .select('*, details')
+        .select('*, details, images:location_images(*)')
         .eq('tehsil_id', tehsilId);
       
       if (locationsError) {
@@ -63,7 +63,7 @@ const TehsilPage: React.FC = () => {
   }
 
   if (error || !tehsil || !city) {
-    return <div className="p-4 text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error) || 'Area not found.'}</div>;
+    return <div className="p-4 text-center text-red-500">{error || 'Area not found.'}</div>;
   }
 
   return (

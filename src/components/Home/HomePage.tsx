@@ -149,7 +149,7 @@ const HomePage: React.FC = () => {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-12 text-red-500">{error}</div>
+          <div className="text-center py-12 text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>
         ) : displayedCities.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}

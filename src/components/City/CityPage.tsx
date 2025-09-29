@@ -68,7 +68,7 @@ const CityPage: React.FC = () => {
   }
 
   if (error || !city) {
-    return <div className="p-4 text-center text-red-500">{error || 'City not found.'}</div>;
+    return <div className="p-4 text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error) || 'City not found.'}</div>;
   }
 
   return (

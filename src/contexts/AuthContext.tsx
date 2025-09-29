@@ -21,6 +21,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  error: string | null;
   signOut: () => void;
   isAdmin: boolean;
   canUseFeature: (feature: Feature) => boolean;
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const isAdmin = user?.email === 'kartikroyal777@gmail.com';
@@ -58,33 +60,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   useEffect(() => {
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user);
+        }
+
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+          setSession(session);
+          const currentUser = session?.user ?? null;
+          setUser(currentUser);
+          if (event === 'SIGNED_IN' && currentUser) {
+            await fetchProfile(currentUser);
+          }
+          if (event === 'SIGNED_OUT') {
+            setProfile(null);
+          }
+        });
+
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      } catch (e: any) {
+        console.error('Auth Initialization Error:', e);
+        if (e.message.includes("supabaseUrl")) {
+            setError("Supabase configuration is invalid. Please check your environment variables.");
+        } else {
+            setError(e.message || 'Failed to initialize authentication.');
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    getInitialSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (event === 'SIGNED_IN' && currentUser) {
-        await fetchProfile(currentUser);
-      }
-      if (event === 'SIGNED_OUT') {
-        setProfile(null);
-      }
-    });
-
+    const subscription = initializeAuth();
+    
     return () => {
-      authListener.subscription.unsubscribe();
-    };
+        subscription.then(cleanup => cleanup && cleanup());
+    }
   }, [fetchProfile]);
   
   const refreshProfile = async () => {
@@ -143,6 +161,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     profile,
     loading,
+    error,
     signOut: () => supabase.auth.signOut(),
     isAdmin,
     canUseFeature,

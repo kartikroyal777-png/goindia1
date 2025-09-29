@@ -159,7 +159,7 @@ const TranslatePage: React.FC = () => {
         {loadingPhrases ? (
           <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
         ) : error ? (
-          <div className="text-center text-red-500">{error}</div>
+          <div className="text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>
         ) : Object.keys(phraseCategories).length === 0 ? (
           <div className="text-center text-gray-500 py-8">No phrases found in the dictionary.</div>
         ) : (
