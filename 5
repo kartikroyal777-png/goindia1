@@ -1,12 +1,6 @@
-# Netlify build configuration for a Vite React application
 [build]
-  # Command to build the project
   command = "yarn build"
-  # The directory to publish, which contains the built assets
   publish = "dist"
 
-# Redirect rule for Single-Page Applications (SPA) to handle client-side routing
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[functions]
+  directory = "netlify/functions"

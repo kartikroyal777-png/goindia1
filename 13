@@ -1,179 +1,301 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { City, Tehsil, Location } from '../../types';
-import { PlusCircle, Edit, Trash2, RefreshCw, ChevronRight, Home } from 'lucide-react';
-import CityForm from './CityForm';
-import TehsilForm from './TehsilForm';
-import LocationForm from './LocationForm';
+import { Location, LocationImage } from '../../types';
+import { Trash2, PlusCircle } from 'lucide-react';
 
-type View = 'cities' | 'tehsils' | 'locations';
-type FormState = {
-  type: View | null;
-  mode: 'add' | 'edit';
-  data: City | Tehsil | Location | null;
-};
+interface LocationFormProps {
+  location: Location | null;
+  tehsilId: string;
+  onSave: () => void;
+}
 
-const ContentManager: React.FC = () => {
-  const [view, setView] = useState<View>('cities');
-  const [items, setItems] = useState<(City | Tehsil | Location)[]>([]);
-  const [selectedCity, setSelectedCity] = useState<City | null>(null);
-  const [selectedTehsil, setSelectedTehsil] = useState<Tehsil | null>(null);
-  const [formState, setFormState] = useState<FormState>({ type: null, mode: 'add', data: null });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const getDefaultDetails = (): Location['details'] => ({
+  about: { historical_background: '', cultural_significance: '', why_famous: '' },
+  opening_hours: { daily_timings: {}, weekly_closures: [], seasonal_changes: '' },
+  best_time_to_visit: { best_season: '', best_time_of_day: '', festival_timing: '' },
+  transport: { nearest_airport: '', nearest_railway_station: '', last_mile_options: '', taxi_cost_estimate: '' },
+  safety_risks: { safety_score: 5, scams_warnings: [], womens_safety_rating: '', emergency_contacts: [] },
+  cultural_etiquette: { dress_code: '', dos_donts: [], temple_etiquette: '', photography_rules: '' },
+  costs_money: { ticket_prices: { local: '', foreigner: '' }, avg_budget_per_day: '', haggling_info: '', digital_payment_availability: '' },
+  amenities: { toilets: '', wifi: '', seating: '', water_refills: '', cloakrooms: '' },
+  hygiene_index: { rating: 3, notes: '' },
+  guides: { availability: '', booking_info: '' },
+  map_navigation: { google_maps_link: '' },
+  events_festivals: { event_name: '', event_date: '', type: '' },
+  things_to_do: { main_activities: [], nearby_attractions: [] },
+  photo_spots: [],
+  recommended_restaurants: [],
+  recommended_hotels: [],
+  local_foods: [],
+  influencer_videos: [],
+});
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setFormState({ type: null, mode: 'add', data: null });
-
-    let query;
-    if (view === 'locations' && selectedTehsil) {
-      query = supabase.from('locations').select('*, images:location_images(*)').eq('tehsil_id', selectedTehsil.id);
-    } else if (view === 'tehsils' && selectedCity) {
-      query = supabase.from('tehsils').select('*').eq('city_id', selectedCity.id);
-    } else {
-      query = supabase.from('cities').select('*, city_categories(categories(*))');
-    }
-
-    const { data, error: fetchError } = await query.order('name');
-    if (fetchError) {
-      setError(fetchError.message);
-    } else {
-      setItems(data as any);
-    }
-    setLoading(false);
-  }, [view, selectedCity, selectedTehsil]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleDrillDown = (item: City | Tehsil) => {
-    if ('state' in item) { // It's a City
-      setSelectedCity(item);
-      setView('tehsils');
-    } else { // It's a Tehsil
-      setSelectedTehsil(item);
-      setView('locations');
-    }
+const DynamicObjectArrayField: React.FC<{
+  label: string;
+  items: any[];
+  fields: { name: string; placeholder: string }[];
+  onUpdate: (newItems: any[]) => void;
+}> = ({ label, items, fields, onUpdate }) => {
+  const handleItemChange = (index: number, fieldName: string, value: string) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [fieldName]: value };
+    onUpdate(newItems);
   };
 
-  const handleBreadcrumbClick = (targetView: View) => {
-    if (targetView === 'cities') {
-      setSelectedCity(null);
-      setSelectedTehsil(null);
-    }
-    if (targetView === 'tehsils') {
-      setSelectedTehsil(null);
-    }
-    setView(targetView);
+  const addItem = () => {
+    const newItem = fields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
+    onUpdate([...items, newItem]);
   };
 
-  const handleAdd = () => {
-    setFormState({ type: view, mode: 'add', data: null });
+  const removeItem = (index: number) => {
+    onUpdate(items.filter((_, i) => i !== index));
   };
-
-  const handleEdit = (item: City | Tehsil | Location) => {
-    setFormState({ type: view, mode: 'edit', data: item });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
-      setLoading(true);
-      const { error: deleteError } = await supabase.from(view).delete().eq('id', id);
-      if (deleteError) {
-        setError(deleteError.message);
-      } else {
-        fetchData();
-      }
-      setLoading(false);
-    }
-  };
-
-  const renderForm = () => {
-    if (!formState.type) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full text-gray-500">
-          <Edit className="w-16 h-16 mb-4" />
-          <p>Select an item to edit or</p>
-          <p>click "Add New" to create one.</p>
-        </div>
-      );
-    }
-
-    const onSave = () => {
-      setFormState({ type: null, mode: 'add', data: null });
-      fetchData();
-    };
-
-    switch (formState.type) {
-      case 'cities':
-        return <CityForm city={formState.mode === 'edit' ? formState.data as City : null} onSave={onSave} />;
-      case 'tehsils':
-        if (!selectedCity) return <div className="p-4 text-center text-gray-500">Please select a city first.</div>;
-        return <TehsilForm tehsil={formState.mode === 'edit' ? formState.data as Tehsil : null} cityId={selectedCity.id} onSave={onSave} />;
-      case 'locations':
-        if (!selectedTehsil) return <div className="p-4 text-center text-gray-500">Please select a tehsil first.</div>;
-        return <LocationForm location={formState.mode === 'edit' ? formState.data as Location : null} tehsilId={selectedTehsil.id} onSave={onSave} />;
-      default:
-        return null;
-    }
-  };
-  
-  const getItemName = (item: any) => item.name;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-10rem)]">
-      <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center text-sm text-gray-500">
-            <Home onClick={() => handleBreadcrumbClick('cities')} className="w-4 h-4 mr-2 cursor-pointer hover:text-orange-500" />
-            {selectedCity && <><ChevronRight className="w-4 h-4" /><span onClick={() => handleBreadcrumbClick('tehsils')} className="cursor-pointer hover:text-orange-500">{selectedCity.name}</span></>}
-            {selectedTehsil && <><ChevronRight className="w-4 h-4" /><span className="text-gray-700 font-medium">{selectedTehsil.name}</span></>}
-          </div>
-          <div className="flex space-x-2">
-            <button onClick={fetchData} disabled={loading} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 disabled:opacity-50"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
-            <button onClick={handleAdd} className="flex items-center space-x-1 px-3 py-1.5 bg-orange-500 text-white rounded-lg shadow-sm hover:bg-orange-600 text-sm">
-              <PlusCircle className="w-4 h-4" />
-              <span>Add New</span>
-            </button>
-          </div>
-        </div>
-
-        {loading ? <p>Loading...</p> : error ? <p className="text-red-500">{error}</p> : (
-          <ul className="space-y-2">
-            {items.map(item => (
-              <li key={item.id} className={`p-2 rounded-lg cursor-pointer flex justify-between items-center transition-colors ${formState.data?.id === item.id ? 'bg-orange-100' : 'hover:bg-gray-50'}`}>
-                <span onClick={() => handleEdit(item)} className="flex-grow font-medium text-gray-800">{getItemName(item)}</span>
-                <div className="flex items-center space-x-1 flex-shrink-0">
-                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
-                  {view !== 'locations' && <button onClick={() => handleDrillDown(item as City | Tehsil)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded-full"><ChevronRight className="w-5 h-5" /></button>}
-                </div>
-              </li>
+    <div className="space-y-2">
+      <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+      {(items || []).map((item, index) => (
+        <div key={index} className="flex items-start space-x-2 border p-2 rounded-md bg-gray-50">
+          <div className="flex-grow space-y-1">
+            {fields.map(field => (
+              <input
+                key={field.name}
+                value={item[field.name] || ''}
+                onChange={e => handleItemChange(index, field.name, e.target.value)}
+                placeholder={field.placeholder}
+                className="w-full p-1.5 border rounded text-sm"
+              />
             ))}
-             {items.length === 0 && <p className="text-center text-gray-500 mt-8">No {view} found.</p>}
-          </ul>
-        )}
-      </div>
-
-      <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-sm overflow-y-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={formState.type + formState.data?.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="h-full"
-          >
-            {renderForm()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+          </div>
+          <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full mt-1"><Trash2 className="w-4 h-4" /></button>
+        </div>
+      ))}
+      <button type="button" onClick={addItem} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
+        <PlusCircle className="w-4 h-4" />
+        <span>Add {label.replace(/_/g, ' ').slice(0, -1)}</span>
+      </button>
     </div>
   );
 };
 
-export default ContentManager;
+const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave }) => {
+  const [formData, setFormData] = useState<Partial<Omit<Location, 'id' | 'tehsil_id' | 'images'>>>({
+    name: '',
+    category: '',
+    short_intro: '',
+    image_url: '',
+    latitude: null,
+    longitude: null,
+    details: getDefaultDetails(),
+  });
+  const [images, setImages] = useState<Partial<LocationImage>[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location) {
+        const defaultDetails = getDefaultDetails();
+        const locationDetails = location.details || {};
+        
+        const mergedDetails = Object.keys(defaultDetails).reduce((acc, key) => {
+            const defaultSection = defaultDetails[key as keyof typeof defaultDetails];
+            const locationSection = locationDetails[key as keyof typeof locationDetails];
+            acc[key as keyof typeof acc] = locationSection ?? defaultSection;
+            return acc;
+        }, {} as Location['details']);
+
+        setFormData({
+            name: location.name,
+            category: location.category,
+            short_intro: location.short_intro,
+            image_url: location.image_url,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            details: mergedDetails
+        });
+        setImages(location.images || []);
+    } else {
+        setFormData({
+            name: '',
+            category: '',
+            short_intro: '',
+            image_url: '',
+            latitude: null,
+            longitude: null,
+            details: getDefaultDetails(),
+        });
+        setImages([]);
+    }
+  }, [location]);
+
+  const handleDetailChange = (path: string, value: any) => {
+    setFormData(prev => {
+        const keys = path.split('.');
+        const newState = JSON.parse(JSON.stringify(prev));
+        let current = newState.details;
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (current[keys[i]] === undefined || current[keys[i]] === null) current[keys[i]] = {};
+            current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = value;
+        return newState;
+    });
+  };
+
+  const handleSimpleChange = (field: keyof Omit<Location, 'id' | 'tehsil_id' | 'images' | 'details'>, value: any) => {
+    setFormData(prev => ({...prev, [field]: value}));
+  };
+
+  const handleImageChange = (index: number, value: string) => {
+    const newImages = [...images];
+    newImages[index].image_url = value;
+    setImages(newImages);
+  };
+
+  const addImage = () => setImages([...images, { image_url: '' }]);
+  const removeImage = (index: number) => setImages(images.filter((_, i) => i !== index));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    const dataToSave = { ...formData, tehsil_id: tehsilId };
+
+    const { data: savedLocation, error: locationError } = location?.id
+      ? await supabase.from('locations').update(dataToSave).eq('id', location.id).select().single()
+      : await supabase.from('locations').insert(dataToSave).select().single();
+
+    if (locationError) {
+      setError(locationError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (savedLocation) {
+        await supabase.from('location_images').delete().eq('location_id', savedLocation.id);
+        const imagesToInsert = images.filter(img => img.image_url).map(img => ({ location_id: savedLocation.id, image_url: img.image_url, alt_text: formData.name }));
+        if (imagesToInsert.length > 0) {
+            const { error: insertError } = await supabase.from('location_images').insert(imagesToInsert);
+            if (insertError) {
+                setError(`Failed to insert new images: ${insertError.message}`);
+                setLoading(false);
+                return;
+            }
+        }
+    }
+    onSave();
+    setLoading(false);
+  };
+
+  const renderField = (label: string, path: string, type: 'text' | 'number' | 'textarea' = 'text') => {
+    const keys = path.split('.');
+    let value: any = formData.details;
+    try { keys.forEach(key => { value = value?.[key]; }); } catch (e) { value = ''; }
+    return (
+      <div className="space-y-1">
+        <label className="text-xs font-medium capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        {type === 'textarea' ?
+          <textarea value={value || ''} onChange={e => handleDetailChange(path, e.target.value)} className="w-full p-2 border rounded" rows={3} /> :
+          <input type={type} value={value || ''} onChange={e => handleDetailChange(path, type === 'number' ? parseFloat(e.target.value) : e.target.value)} className="w-full p-2 border rounded" />
+        }
+      </div>
+    );
+  };
+  
+  const renderArrayField = (label: string, path: string) => {
+    const keys = path.split('.');
+    let value: string[] = [];
+    try {
+      let current: any = formData.details;
+      keys.forEach(key => { current = current?.[key]; });
+      value = Array.isArray(current) ? current : [];
+    } catch (e) { value = []; }
+
+    const handleArrayChange = (index: number, newValue: string) => handleDetailChange(path, [...value.slice(0, index), newValue, ...value.slice(index + 1)]);
+    const addToArray = () => handleDetailChange(path, [...value, '']);
+    const removeFromArray = (index: number) => handleDetailChange(path, value.filter((_, i) => i !== index));
+
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-medium capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        {value.map((item, index) => (
+          <div key={index} className="flex items-center space-x-2">
+            <input value={item} onChange={(e) => handleArrayChange(index, e.target.value)} className="w-full p-2 border rounded" />
+            <button type="button" onClick={() => removeFromArray(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={addToArray} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add</span></button>
+      </div>
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
+      <h3 className="text-lg font-medium">{location ? 'Edit Location' : 'Add New Location'}</h3>
+      <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-medium" />
+        <input value={formData.category} onChange={e => handleSimpleChange('category', e.target.value)} placeholder="Category (e.g., UNESCO World Heritage)" className="w-full p-2 border rounded" />
+        <textarea value={formData.short_intro} onChange={e => handleSimpleChange('short_intro', e.target.value)} placeholder="Short Intro" className="w-full p-2 border rounded" rows={2} />
+        <input value={formData.image_url} onChange={e => handleSimpleChange('image_url', e.target.value)} placeholder="Main Image URL (Thumbnail)" className="w-full p-2 border rounded" />
+        <div className="grid grid-cols-2 gap-4">
+          <input type="number" step="any" value={formData.latitude || ''} onChange={e => handleSimpleChange('latitude', parseFloat(e.target.value))} placeholder="Latitude" className="w-full p-2 border rounded" />
+          <input type="number" step="any" value={formData.longitude || ''} onChange={e => handleSimpleChange('longitude', parseFloat(e.target.value))} placeholder="Longitude" className="w-full p-2 border rounded" />
+        </div>
+
+        <details className="border p-4 rounded-lg space-y-2" open>
+            <summary className="font-medium cursor-pointer">Image Gallery</summary>
+            {images.map((img, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                    <input value={img.image_url || ''} onChange={e => handleImageChange(index, e.target.value)} placeholder="Image URL" className="w-full p-2 border rounded" />
+                    <button type="button" onClick={() => removeImage(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
+                </div>
+            ))}
+            <button type="button" onClick={addImage} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add Image</span></button>
+        </details>
+
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Photo Spots</summary>
+          <DynamicObjectArrayField label="Photo Spots" items={formData.details?.photo_spots || []} fields={[{name: 'title', placeholder: 'Title'}, {name: 'description', placeholder: 'Description'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('photo_spots', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Restaurants</summary>
+          <DynamicObjectArrayField label="Restaurants" items={formData.details?.recommended_restaurants || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_restaurants', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Hotels</summary>
+          <DynamicObjectArrayField label="Hotels" items={formData.details?.recommended_hotels || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_hotels', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Local Foods</summary>
+          <DynamicObjectArrayField label="Local Foods" items={formData.details?.local_foods || []} fields={[{name: 'name', placeholder: 'Dish Name'}, {name: 'shop', placeholder: 'Shop Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('local_foods', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Influencer Videos</summary>
+          <DynamicObjectArrayField label="Videos" items={formData.details?.influencer_videos || []} fields={[{name: 'title', placeholder: 'Video Title'}, {name: 'video_id', placeholder: 'YouTube Video ID'}, {name: 'influencer_name', placeholder: 'Influencer Name'}]} onUpdate={items => handleDetailChange('influencer_videos', items)} />
+        </details>
+
+        {Object.keys(getDefaultDetails()).filter(k => !['photo_spots', 'recommended_restaurants', 'recommended_hotels', 'local_foods', 'influencer_videos'].includes(k)).map(sectionKey => (
+          <details key={sectionKey} className="border p-4 rounded-lg space-y-2">
+            <summary className="font-medium cursor-pointer capitalize">{sectionKey.replace(/_/g, ' ')}</summary>
+            {Object.keys(formData.details?.[sectionKey as keyof typeof formData.details] || {}).map(fieldKey => {
+              const value = formData.details?.[sectionKey as keyof typeof formData.details]?.[fieldKey as keyof object];
+              if (Array.isArray(value)) {
+                return <div key={fieldKey}>{renderArrayField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>
+              }
+              if (typeof value === 'object' && value !== null) {
+                 return Object.keys(value).map(subKey => (
+                    <div key={subKey}>{renderField(`${fieldKey} ${subKey}`, `${sectionKey}.${fieldKey}.${subKey}`)}</div>
+                 ));
+              }
+              return <div key={fieldKey}>{renderField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>;
+            })}
+          </details>
+        ))}
+      </div>
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+      <div className="flex justify-end space-x-3 pt-4 border-t">
+        <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 text-sm font-medium">
+          {loading ? 'Saving...' : 'Save Location'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+export default LocationForm;

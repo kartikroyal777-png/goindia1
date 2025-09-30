@@ -1,101 +1,60 @@
 /*
-# [Fix & Feature] Correct Categories and Add Image/Category Tables
-This migration corrects a previous seeding error and properly introduces new tables for advanced content management, including city categories and multiple location images.
+# [Operation Name]
+Location Schema Overhaul
 
-## Query Description:
-This script creates three new tables: `categories`, `city_categories`, and `location_images`, and correctly seeds the `categories` table.
-- `categories`: Stores a central list of categories (e.g., Forts, Beaches).
-- `city_categories`: A join table linking cities to these categories (many-to-many).
-- `location_images`: Allows associating multiple image URLs with a single location.
-This script is idempotent; it uses `IF NOT EXISTS` and `ON CONFLICT` clauses to prevent errors if run multiple times.
+## Query Description: [This operation completely overhauls the `locations` table to support a much richer, structured data format. It drops several old columns and replaces them with new `jsonb` columns to store detailed information about each location as per the new requirements. This is a destructive change for the dropped columns, but necessary for the new features.]
 
 ## Metadata:
 - Schema-Category: "Structural"
-- Impact-Level: "Low"
-- Requires-Backup: false
-- Reversible: true (by dropping the created tables)
+- Impact-Level: "High"
+- Requires-Backup: true
+- Reversible: false
 
 ## Structure Details:
-- **New Tables:**
-  - `public.categories` (id, name, icon, emoji, created_at)
-  - `public.city_categories` (city_id, category_id)
-  - `public.location_images` (id, location_id, image_url, alt_text, created_at)
+- **Table Affected:** `public.locations`
+- **Columns Dropped:** `basic_info`, `access_transport`, `safety_risks`, `local_insights`, `costs_money`, `amenities`, `food_stay`.
+- **Columns Added:** `about_location`, `opening_hours`, `best_time_to_visit_v2`, `getting_here`, `safety_risks_v2`, `local_insights_v2`, `costs_money_v2`, `amenities_v2`, `food_stay_v2`, `events_festivals`, `weather_air_quality`, `accessibility`, `nearby_essentials`, `crowd_experience`, `traveler_tips`, `google_reviews`, `virtual_tour`. All new columns are of type `jsonb`.
 
 ## Security Implications:
-- RLS Status: Enabled on all new tables.
-- Policy Changes: Yes. New policies are created to allow public read access and grant full admin control to 'kartikroyal777@gmail.com'.
-- Auth Requirements: Admin role is required for write operations.
+- RLS Status: Unchanged. Existing policies will apply.
+- Policy Changes: No.
+- Auth Requirements: Admin privileges required to run this migration.
 
 ## Performance Impact:
-- Indexes: Primary keys and foreign keys are indexed automatically.
-- Triggers: None.
-- Estimated Impact: Negligible on existing operations.
+- Indexes: No indexes are added or removed.
+- Triggers: No triggers are affected.
+- Estimated Impact: This is a schema change and will be fast on tables with few rows. It will require a full table rewrite, which could be slow on very large tables.
 */
 
--- Step 1: Create the 'categories' table to store different content categories.
-CREATE TABLE IF NOT EXISTS public.categories (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name character varying NOT NULL UNIQUE,
-    icon character varying,
-    emoji character varying,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
+-- Step 1: Drop all old, deprecated columns from the locations table.
+-- Using IF EXISTS to make the script safe and re-runnable.
+ALTER TABLE public.locations
+  DROP COLUMN IF EXISTS basic_info,
+  DROP COLUMN IF EXISTS access_transport,
+  DROP COLUMN IF EXISTS safety_risks,
+  DROP COLUMN IF EXISTS local_insights,
+  DROP COLUMN IF EXISTS costs_money,
+  DROP COLUMN IF EXISTS amenities,
+  DROP COLUMN IF EXISTS food_stay;
 
--- Step 2: Enable Row Level Security and define policies for the 'categories' table.
-ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.categories;
-CREATE POLICY "Enable read access for all users" ON public.categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage categories" ON public.categories;
-CREATE POLICY "Admins can manage categories" ON public.categories FOR ALL
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
-
-
--- Step 3: Create the 'city_categories' join table.
-CREATE TABLE IF NOT EXISTS public.city_categories (
-    city_id uuid NOT NULL REFERENCES public.cities(id) ON DELETE CASCADE,
-    category_id uuid NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    PRIMARY KEY (city_id, category_id)
-);
-
--- Step 4: Enable Row Level Security and define policies for the 'city_categories' table.
-ALTER TABLE public.city_categories ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.city_categories;
-CREATE POLICY "Enable read access for all users" ON public.city_categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage city categories" ON public.city_categories;
-CREATE POLICY "Admins can manage city categories" ON public.city_categories FOR ALL
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
-
-
--- Step 5: Create the 'location_images' table.
-CREATE TABLE IF NOT EXISTS public.location_images (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    location_id uuid NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
-    image_url text NOT NULL,
-    alt_text text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
--- Step 6: Enable Row Level Security and define policies for the 'location_images' table.
-ALTER TABLE public.location_images ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.location_images;
-CREATE POLICY "Enable read access for all users" ON public.location_images FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage location images" ON public.location_images;
-CREATE POLICY "Admins can manage location images" ON public.location_images FOR ALL
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
-
--- Step 7: Seed the 'categories' table with initial data.
--- This uses ON CONFLICT to prevent errors if the migration is run again.
-INSERT INTO public.categories (name, icon, emoji) VALUES
-('Forts', 'castle', '🏰'),
-('Lakes', 'waves', '🌊'),
-('Beaches', 'palmtree', '🏝️'),
-('Temples', 'building', '🛕'),
-('Wildlife', 'trees', '🐅'),
-('Trekking', 'mountain', '⛰️'),
-('Food', 'utensils', '🍛'),
-('Markets', 'shopping-bag', '🛍️')
-ON CONFLICT (name) DO NOTHING;
+-- Step 2: Add all the new, comprehensive JSONB columns.
+-- We use a `_v2` suffix where a similar name might have existed to avoid conflicts.
+-- The default value is an empty JSON object.
+ALTER TABLE public.locations
+  ADD COLUMN IF NOT EXISTS about_location jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS opening_hours jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS best_time_to_visit_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS getting_here jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS safety_risks_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS local_insights_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS costs_money_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS amenities_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS food_stay_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS events_festivals jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS weather_air_quality jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS accessibility jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS nearby_essentials jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS crowd_experience jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS traveler_tips jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS google_reviews jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS virtual_tour jsonb DEFAULT '{}'::jsonb;

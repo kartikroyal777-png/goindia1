@@ -1,223 +1,103 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Hotel, Utensils, Car, ShoppingBag, Plus, Trash2, TrendingUp, TrendingDown, Info } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { runGroqQuery } from '../../lib/groq';
+/*
+          # [Initial Schema and Data Seed]
+          This migration script sets up the foundational database structure for the Go India application and populates it with initial data for cities, tehsils, and locations.
 
-interface BudgetItem {
-  id: string;
-  category: 'Hotel' | 'Food' | 'Transport' | 'Extras';
-  amount: number;
-}
+          ## Query Description: [This script creates the 'cities', 'tehsils', and 'locations' tables, establishes foreign key relationships, enables Row Level Security (RLS) for data protection, and defines policies to allow public read access. It then inserts a curated set of initial data to make the app functional immediately. This operation is safe for a new database but should be reviewed carefully if applied to an existing one.]
+          
+          ## Metadata:
+          - Schema-Category: ["Structural", "Data"]
+          - Impact-Level: ["Medium"]
+          - Requires-Backup: [false]
+          - Reversible: [false]
+          
+          ## Structure Details:
+          - Tables Created: cities, tehsils, locations
+          - Columns Added: Multiple columns across the three tables for storing travel data.
+          - Constraints Added: Primary Keys, Foreign Keys.
+          
+          ## Security Implications:
+          - RLS Status: [Enabled]
+          - Policy Changes: [Yes]
+          - Auth Requirements: [None for read, policies are public]
+          
+          ## Performance Impact:
+          - Indexes: [Primary key indexes are automatically created.]
+          - Triggers: [None]
+          - Estimated Impact: [Low. Establishes the initial schema.]
+          */
 
-interface DailyRecord {
-  date: string;
-  estimated: number;
-  actual: number;
-}
+-- 1. Create cities table
+CREATE TABLE public.cities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    state TEXT,
+    description TEXT,
+    short_tagline TEXT,
+    thumbnail_url TEXT,
+    popularity_score INT,
+    safety_score INT,
+    best_time_to_visit TEXT,
+    weather_info TEXT
+);
 
-const BudgetTrackerPage: React.FC = () => {
-  const [city, setCity] = useState('Delhi');
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([
-    { id: 'hotel1', category: 'Hotel', amount: 2000 },
-    { id: 'food1', category: 'Food', amount: 1000 },
-    { id: 'transport1', category: 'Transport', amount: 500 },
-  ]);
-  const [history, setHistory] = useState<DailyRecord[]>([]);
-  const [analysis, setAnalysis] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+-- 2. Create tehsils table
+CREATE TABLE public.tehsils (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    city_id UUID REFERENCES public.cities(id),
+    name TEXT NOT NULL,
+    description TEXT,
+    thumbnail_url TEXT,
+    category TEXT,
+    safety_rating INT,
+    location_count INT
+);
 
-  const estimatedTotal = budgetItems.reduce((sum, item) => sum + item.amount, 0);
+-- 3. Create locations table
+CREATE TABLE public.locations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tehsil_id UUID REFERENCES public.tehsils(id),
+    name TEXT NOT NULL,
+    category TEXT,
+    short_intro TEXT,
+    image_url TEXT,
+    coordinates JSONB,
+    basic_info JSONB,
+    access_transport JSONB,
+    safety_risks JSONB,
+    local_insights JSONB,
+    costs_money JSONB,
+    amenities JSONB,
+    food_stay JSONB
+);
 
-  const addBudgetItem = (category: 'Hotel' | 'Food' | 'Transport' | 'Extras') => {
-    setBudgetItems([...budgetItems, { id: Date.now().toString(), category, amount: 0 }]);
-  };
+-- 4. Enable RLS for all tables
+ALTER TABLE public.cities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tehsils ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 
-  const updateBudgetItem = (id: string, amount: number) => {
-    setBudgetItems(budgetItems.map(item => item.id === id ? { ...item, amount } : item));
-  };
+-- 5. Create policies for public read access
+CREATE POLICY "Allow public read access to cities" ON public.cities FOR SELECT USING (true);
+CREATE POLICY "Allow public read access to tehsils" ON public.tehsils FOR SELECT USING (true);
+CREATE POLICY "Allow public read access to locations" ON public.locations FOR SELECT USING (true);
 
-  const removeBudgetItem = (id: string) => {
-    setBudgetItems(budgetItems.filter(item => item.id !== id));
-  };
+-- 6. Seed initial data
+-- Cities
+INSERT INTO public.cities (id, name, state, description, short_tagline, thumbnail_url, popularity_score, safety_score, best_time_to_visit, weather_info) VALUES
+('a8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c1', 'Agra', 'Uttar Pradesh', 'Home to the magnificent Taj Mahal and rich Mughal heritage', 'The City of Love', 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&h=300&fit=crop', 95, 8, 'October to March', 'Cool and pleasant winters, hot summers'),
+('b8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c2', 'Jaipur', 'Rajasthan', 'The vibrant pink city known for palaces, forts, and colorful bazaars', 'The Pink City', 'https://images.unsplash.com/photo-1599661046289-e31897846364?w=400&h=300&fit=crop', 92, 8, 'October to March', 'Desert climate with cool winters'),
+('c8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c3', 'Varanasi', 'Uttar Pradesh', 'Ancient spiritual capital on the banks of sacred Ganges river', 'Spiritual Heart of India', 'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=400&h=300&fit=crop', 88, 7, 'October to March', 'Hot summers, pleasant winters'),
+('d8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c4', 'Goa', 'Goa', 'Tropical paradise with pristine beaches and Portuguese heritage', 'Beach Capital of India', 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400&h=300&fit=crop', 90, 9, 'November to February', 'Tropical climate with monsoons'),
+('e8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c5', 'Kerala', 'Kerala', 'God''s own country with backwaters, hill stations, and spices', 'God''s Own Country', 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400&h=300&fit=crop', 87, 9, 'September to March', 'Tropical climate with heavy monsoons'),
+('f8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c6', 'Delhi', 'Delhi', 'Capital city blending ancient history with modern urban life', 'Heart of India', 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=400&h=300&fit=crop', 93, 7, 'October to March', 'Extreme seasons with pollution concerns');
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'Hotel': return <Hotel className="w-5 h-5 text-blue-500" />;
-      case 'Food': return <Utensils className="w-5 h-5 text-green-500" />;
-      case 'Transport': return <Car className="w-5 h-5 text-amber-500" />;
-      case 'Extras': return <ShoppingBag className="w-5 h-5 text-purple-500" />;
-      default: return null;
-    }
-  };
+-- Tehsils
+INSERT INTO public.tehsils (id, city_id, name, description, thumbnail_url, category, safety_rating, location_count) VALUES
+('a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4', 'a8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c1', 'Central Agra', 'Historic core with Taj Mahal and Agra Fort', 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=300&h=200&fit=crop', 'Heritage', 8, 1),
+('b1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d5', 'a8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c1', 'North Agra', 'Mehtab Bagh and peaceful riverside areas', 'https://images.unsplash.com/photo-1548013146-72479768bada?w=300&h=200&fit=crop', 'Nature', 7, 0),
+('c1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d6', 'b8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c2', 'Amer', 'Majestic forts and royal history', 'https://images.unsplash.com/photo-1534423892324-269ca0b93183?w=300&h=200&fit=crop', 'Heritage', 9, 1),
+('d1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d7', 'b8f9b2c1-8e1d-4a8f-b2c1-8e1d4a8fb2c2', 'City Palace Area', 'The vibrant heart of the Pink City', 'https://images.unsplash.com/photo-1603262339346-d8c29a8a015c?w=300&h=200&fit=crop', 'Culture & Markets', 8, 0);
 
-  const handleAnalysis = async () => {
-    setIsLoading(true);
-    setAnalysis(null);
-    const prompt = `
-      Analyze this daily travel budget for ${city}, India.
-      Estimated Budget: Hotel: ${budgetItems.find(i=>i.category==='Hotel')?.amount || 0} INR, Food: ${budgetItems.find(i=>i.category==='Food')?.amount || 0} INR, Transport: ${budgetItems.find(i=>i.category==='Transport')?.amount || 0} INR, Extras: ${budgetItems.find(i=>i.category==='Extras')?.amount || 0} INR.
-      Total: ${estimatedTotal} INR.
-      Provide a JSON object with:
-      1. "status": "Overspent" | "Saved" | "On Track".
-      2. "difference": a number (negative for overspent).
-      3. "saving_tips": An array of 3 short, actionable money-saving tips specific to ${city}.
-      
-      Example JSON:
-      {
-        "status": "On Track",
-        "difference": 100,
-        "saving_tips": [
-          "Use the Delhi Metro instead of taxis to save on transport.",
-          "Eat at local dhabas for authentic and cheap meals.",
-          "Look for budget guesthouses in Paharganj."
-        ]
-      }
-    `;
-
-    try {
-      const response = await runGroqQuery(prompt);
-      const parsedResponse = JSON.parse(response);
-      setAnalysis(parsedResponse);
-    } catch (e) {
-      console.error(e);
-      setAnalysis({ error: "Could not get analysis." });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const savedHistory = localStorage.getItem('budgetHistory');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
-  }, []);
-
-  const saveDay = (actual: number) => {
-    const today = new Date().toISOString().split('T')[0];
-    const newRecord: DailyRecord = { date: today, estimated: estimatedTotal, actual };
-    const updatedHistory = [newRecord, ...history.filter(h => h.date !== today)].slice(0, 7);
-    setHistory(updatedHistory);
-    localStorage.setItem('budgetHistory', JSON.stringify(updatedHistory));
-    handleAnalysis();
-  };
-
-  return (
-    <div className="pb-24 bg-gray-50 min-h-screen">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-medium text-gray-900">Daily Budget Tracker</h1>
-      </div>
-
-      <div className="p-4 space-y-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
-          <h2 className="font-medium text-lg mb-4">Plan Your Day</h2>
-          <div className="mb-4">
-            <label className="text-sm font-medium text-gray-600">City</label>
-            <select value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 p-2 border rounded-lg bg-gray-50">
-              <option>Delhi</option>
-              <option>Mumbai</option>
-              <option>Jaipur</option>
-              <option>Goa</option>
-            </select>
-          </div>
-          <div className="space-y-3">
-            {budgetItems.map(item => (
-              <div key={item.id} className="flex items-center space-x-2">
-                <div className="flex items-center space-x-2 flex-grow">
-                  {getCategoryIcon(item.category)}
-                  <span className="font-medium w-20">{item.category}</span>
-                </div>
-                <input
-                  type="number"
-                  value={item.amount}
-                  onChange={e => updateBudgetItem(item.id, parseInt(e.target.value) || 0)}
-                  className="w-24 p-2 border rounded-lg text-right"
-                />
-                <span className="font-medium">INR</span>
-                <button onClick={() => removeBudgetItem(item.id)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            ))}
-          </div>
-          <div className="flex space-x-2 mt-4">
-            <button onClick={() => addBudgetItem('Extras')} className="text-sm flex items-center space-x-1 text-blue-600"><Plus className="w-4 h-4" /><span>Add Item</span></button>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-4 text-center">
-          <div className="bg-white rounded-xl shadow-sm border p-4">
-            <p className="text-sm text-gray-500">Daily Budget</p>
-            <p className="text-2xl font-medium text-gray-800">₹{estimatedTotal.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border p-4">
-            <p className="text-sm text-gray-500">Weekly Estimate</p>
-            <p className="text-2xl font-medium text-gray-800">₹{(estimatedTotal * 7).toLocaleString()}</p>
-          </div>
-        </motion.div>
-
-        <motion.button 
-          onClick={() => {
-            const actualSpending = prompt("Enter today's actual spending (INR):");
-            if (actualSpending && !isNaN(Number(actualSpending))) {
-              saveDay(Number(actualSpending));
-            }
-          }}
-          className="w-full py-3 bg-orange-500 text-white font-medium rounded-xl shadow-lg"
-        >
-          Log Today's Spending
-        </motion.button>
-
-        <AnimatePresence>
-          {isLoading && <div className="text-center p-4">Loading analysis...</div>}
-          {analysis && !analysis.error && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
-              <h3 className="font-medium text-lg">AI Analysis</h3>
-              <div className={`flex items-center space-x-2 p-3 rounded-lg ${analysis.difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                {analysis.difference >= 0 ? <TrendingUp className="w-6 h-6 text-green-500" /> : <TrendingDown className="w-6 h-6 text-red-500" />}
-                <div>
-                  <p className={`font-medium ${analysis.difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>{analysis.status}</p>
-                  <p className="text-sm text-gray-600">
-                    {analysis.difference >= 0 ? `You saved ₹${analysis.difference}` : `You overspent by ₹${Math.abs(analysis.difference)}`}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2 flex items-center space-x-2"><Info className="w-4 h-4 text-blue-500"/><span>Money-Saving Tips for {city}</span></h4>
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 pl-4">
-                  {analysis.saving_tips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}
-                </ul>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {history.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl shadow-sm border p-4">
-            <h2 className="font-medium text-lg mb-4">Recent History</h2>
-            <div className="space-y-2">
-              {history.map(record => {
-                const difference = record.estimated - record.actual;
-                return (
-                  <div key={record.date} className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                    <div>
-                      <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                      <p className="text-xs text-gray-500">Est: ₹{record.estimated} | Actual: ₹{record.actual}</p>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {difference >= 0 ? `+₹${difference}` : `-₹${Math.abs(difference)}`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default BudgetTrackerPage;
+-- Locations
+INSERT INTO public.locations (id, tehsil_id, name, category, short_intro, image_url, coordinates, basic_info, access_transport, safety_risks, local_insights, costs_money, amenities, food_stay) VALUES
+('abc-123', 'a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4', 'Taj Mahal', 'Heritage Monument', 'An immense mausoleum of white marble, built in Agra between 1631 and 1648 by order of the Mughal emperor Shah Jahan in memory of his favourite wife.', 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&h=600&fit=crop', '{"lat": 27.1751, "lng": 78.0421}', '{"opening_hours": "Sunrise to Sunset (Closed Fridays)", "best_time_to_visit": "Sunrise or sunset for best lighting and fewer crowds.", "entry_fee": {"local": "₹50", "foreigner": "₹1100 + ₹200 (mausoleum)"}}', '{"nearest_airport": "Agra Airport (AGR) - 13km", "public_transport_guide": "Take an auto-rickshaw or e-rickshaw from any part of the city. No cars allowed within 500m.", "taxi_fare_estimate": "₹200-300 from city center (one way)", "last_mile_access": "Electric bus or golf cart from the ticket counter.", "travel_time_from_center": "20-30 minutes"}', '{"safety_score": 9, "common_scams": ["Unofficial \"guides\" at the entrance", "Overpriced souvenirs", "Fake photographers"], "pickpocket_risk": "Medium", "emergency_contacts": [{"name": "Tourist Police", "number": "1363"}, {"name": "Local Police", "number": "112"}]}', '{"cultural_etiquette": ["Dress modestly", "No food or smoking inside", "Photography of the main mausoleum interior is prohibited."], "local_phrases": [{"phrase": "Ticket kahan milega?", "translation": "Where can I get a ticket?", "pronunciation": "ticket ka-HAAN mil-AY-ga"}, {"phrase": "Photo le sakte hain?", "translation": "Can I take a photo?", "pronunciation": "photo lay SAK-tay hain"}], "food_safety_note": "Stick to bottled water. Eat at reputable restaurants outside the complex.", "women_specific_tips": ["Generally very safe due to high security.", "Be cautious of overly friendly strangers."]}', '{"average_budget": "₹1500 per person (including ticket)", "nearby_atms": "Available near the ticket counters.", "digital_payments_accepted": true, "haggling_needed": "Yes, for rickshaws and souvenirs."}', '{"toilets": "Available", "wifi_signal": "Weak", "seating": true, "water_refill_points": true}', '{"nearby_restaurants": [{"name": "Pinch of Spice", "rating": 4.5}, {"name": "Esphahan", "rating": 4.8}], "local_specialty": "Petha (a sweet)"}'),
+('def-456', 'c1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d6', 'Amer Fort', 'Heritage Fort', 'A majestic fort with a blend of Rajput and Mughal architecture, offering stunning views and intricate designs.', 'https://images.unsplash.com/photo-1534423892324-269ca0b93183?w=800&h=600&fit=crop', '{"lat": 26.9855, "lng": 75.8513}', '{"opening_hours": "8:00 AM - 5:30 PM", "best_time_to_visit": "Early morning to avoid heat and crowds.", "entry_fee": {"local": "₹100", "foreigner": "₹500"}}', '{"nearest_airport": "Jaipur International Airport (JAI) - 22km", "public_transport_guide": "Local bus no. 5 from Ajmeri Gate. Auto-rickshaws are common.", "taxi_fare_estimate": "₹400-500 from city center (one way)", "last_mile_access": "Walk up the hill or take a jeep (recommended over elephant rides).", "travel_time_from_center": "30-45 minutes"}', '{"safety_score": 8, "common_scams": ["Overpriced elephant rides", "Hawkers selling gems of \"questionable\" quality."], "pickpocket_risk": "Medium", "emergency_contacts": [{"name": "Tourist Police", "number": "1363"}]}', '{"cultural_etiquette": ["Wear comfortable walking shoes.", "Consider hiring an official guide inside."], "local_phrases": [{"phrase": "Raasta kidhar hai?", "translation": "Which way is it?", "pronunciation": "RAAS-ta KID-har hai"}], "food_safety_note": "Eat at the restaurant inside the fort or back in the city.", "women_specific_tips": ["Safe during the day. Avoid walking in isolated areas of the fort alone."]}', '{"average_budget": "₹800 per person (including ticket)", "nearby_atms": "Not available at the fort, use ATMs in Amer town.", "digital_payments_accepted": true, "haggling_needed": "Yes, for taxis and souvenirs."}', '{"toilets": "Available", "wifi_signal": "Weak", "seating": true, "water_refill_points": false}', '{"nearby_restaurants": [{"name": "1135 AD", "rating": 4.6}], "local_specialty": "Dal Baati Churma"}');

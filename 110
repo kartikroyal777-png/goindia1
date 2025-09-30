@@ -1,7 +1,30 @@
-{
-    "files": [],
-    "references": [
-      { "path": "./tsconfig.app.json" },
-      { "path": "./tsconfig.node.json" }
-    ]
-  }
+/*
+# [Operation Name]
+Add Feature Usage Columns to Profiles
+
+## Query Description: [This operation adds two new columns, `food_scanner_used` and `trip_planner_used`, to the `profiles` table to track feature usage for different subscription plans. This change is non-destructive and will not affect existing data.]
+
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table: `public.profiles`
+- Columns Added: `food_scanner_used` (integer), `trip_planner_used` (integer)
+
+## Security Implications:
+- RLS Status: [Enabled]
+- Policy Changes: [No]
+- Auth Requirements: [None]
+
+## Performance Impact:
+- Indexes: [None]
+- Triggers: [None]
+- Estimated Impact: [Low. Adding columns with default values may cause a brief lock on the table during the migration.]
+*/
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS food_scanner_used INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS trip_planner_used INTEGER NOT NULL DEFAULT 0;

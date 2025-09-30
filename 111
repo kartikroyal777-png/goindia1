@@ -1,24 +1,32 @@
-{
-    "compilerOptions": {
-      "target": "ES2020",
-      "useDefineForClassFields": true,
-      "lib": ["ES2020", "DOM", "DOM.Iterable"],
-      "module": "ESNext",
-      "skipLibCheck": true,
+/*
+# [Operation Name]
+Add Feature Usage Columns to Profiles
 
-      /* Bundler mode */
-      "moduleResolution": "bundler",
-      "allowImportingTsExtensions": true,
-      "isolatedModules": true,
-      "moduleDetection": "force",
-      "noEmit": true,
-      "jsx": "react-jsx",
+## Query Description: [This operation adds `trip_planner_used` and `food_scanner_used` columns to the `profiles` table to track feature usage for different subscription plans. This change is non-destructive and essential for the application's feature-gating logic to function correctly.]
 
-      /* Linting */
-      "strict": true,
-      "noUnusedLocals": true,
-      "noUnusedParameters": true,
-      "noFallthroughCasesInSwitch": true
-    },
-    "include": ["src"]
-  }
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table: `public.profiles`
+- Columns Added:
+  - `trip_planner_used` (integer, default 0)
+  - `food_scanner_used` (integer, default 0)
+
+## Security Implications:
+- RLS Status: [Enabled]
+- Policy Changes: [No]
+- Auth Requirements: [None for this migration]
+
+## Performance Impact:
+- Indexes: [None]
+- Triggers: [None]
+- Estimated Impact: [Negligible. Adding columns with default values to an existing table might take a moment on very large tables, but is generally a fast operation.]
+*/
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS trip_planner_used INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN IF NOT EXISTS food_scanner_used INTEGER NOT NULL DEFAULT 0;

@@ -1,24 +1,49 @@
-{
-    "compilerOptions": {
-      "target": "ES2020",
-      "useDefineForClassFields": true,
-      "lib": ["ES2020", "DOM", "DOM.Iterable"],
-      "module": "ESNext",
-      "skipLibCheck": true,
-
-      /* Bundler mode */
-      "moduleResolution": "bundler",
-      "allowImportingTsExtensions": true,
-      "isolatedModules": true,
-      "moduleDetection": "force",
-      "noEmit": true,
-      "jsx": "react-jsx",
-
-      /* Linting */
-      "strict": true,
-      "noUnusedLocals": true,
-      "noUnusedParameters": true,
-      "noFallthroughCasesInSwitch": true
-    },
-    "include": ["src"]
+const cleanJsonString = (rawText: string): string => {
+  let cleanedText = rawText.trim();
+  
+  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch && jsonMatch[1]) {
+    cleanedText = jsonMatch[1];
   }
+
+  const firstBracket = cleanedText.indexOf('{');
+  const firstSquareBracket = cleanedText.indexOf('[');
+  let start = -1;
+
+  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
+  if (firstBracket === -1) start = firstSquareBracket;
+  else if (firstSquareBracket === -1) start = firstBracket;
+  else start = Math.min(firstBracket, firstSquareBracket);
+
+  const lastBracket = cleanedText.lastIndexOf('}');
+  const lastSquareBracket = cleanedText.lastIndexOf(']');
+  let end = Math.max(lastBracket, lastSquareBracket);
+
+  if (start === -1 || end === -1) return cleanedText;
+
+  return cleanedText.substring(start, end + 1);
+};
+
+export const runGroqQuery = async (prompt: string): Promise<string> => {
+  try {
+    const response = await fetch('/.netlify/functions/groq-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.content || "";
+    return cleanJsonString(text);
+  } catch (error: any) {
+    console.error("Error calling Groq proxy:", error);
+    throw new Error(error.message || 'An unexpected error occurred.');
+  }
+};

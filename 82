@@ -1,89 +1,110 @@
 /*
-          # [Feature: Admin & Location Enhancements]
-          This migration adds tables for category management and enhances locations to support multiple images.
+          # Create Phrases Table
+          This migration creates a new table `public.phrases` to store translation data for the app and seeds it with initial content.
 
-          ## Query Description: [This script creates a 'categories' table, a 'city_categories' join table to link cities to categories, and adds an 'image_urls' array to the 'locations' table. It populates the new tables with existing data from the application's hardcoded values. This is a structural change and is not easily reversible without losing the new relationships.]
-          
+          ## Query Description: 
+          This operation is structural and safe. It creates a new table and populates it. It does not affect any existing data. Row Level Security is enabled to allow public read access, while only the specified admin user can write, update, or delete entries.
+
           ## Metadata:
-          - Schema-Category: ["Structural"]
-          - Impact-Level: ["Medium"]
-          - Requires-Backup: [true]
-          - Reversible: [false]
+          - Schema-Category: "Structural"
+          - Impact-Level: "Low"
+          - Requires-Backup: false
+          - Reversible: true (by dropping the table)
           
           ## Structure Details:
-          - Creates table: `public.categories`
-          - Creates table: `public.city_categories`
-          - Alters table: `public.locations` (adds `image_urls` column)
+          - Table: `public.phrases`
+          - Columns: `id`, `category`, `en`, `hi`, `pronunciation`, `is_adult`, `created_at`
           
           ## Security Implications:
-          - RLS Status: [Enabled]
-          - Policy Changes: [Yes]
-          - Auth Requirements: [Admin policies are applied for write access.]
+          - RLS Status: Enabled
+          - Policy Changes: Yes (Adds policies for read and admin write access)
+          - Auth Requirements: Admin role for write operations.
           
           ## Performance Impact:
-          - Indexes: [Primary keys and foreign keys are indexed.]
-          - Triggers: [None]
-          - Estimated Impact: [Low performance impact on existing queries.]
+          - Indexes: Primary key index on `id`.
+          - Triggers: None
+          - Estimated Impact: Negligible.
           */
 
--- 1. Create categories table
-CREATE TABLE public.categories (
-    id uuid NOT NULL DEFAULT gen_random_uuid(),
-    name text NOT NULL,
-    icon text NOT NULL,
-    emoji text NOT NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    CONSTRAINT categories_pkey PRIMARY KEY (id),
-    CONSTRAINT categories_name_key UNIQUE (name)
+CREATE TABLE public.phrases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category TEXT NOT NULL,
+    en TEXT NOT NULL,
+    hi TEXT NOT NULL,
+    pronunciation TEXT,
+    is_adult BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable read access for all users" ON public.categories FOR SELECT USING (true);
-CREATE POLICY "Enable insert for admins" ON public.categories FOR INSERT WITH CHECK ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable update for admins" ON public.categories FOR UPDATE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable delete for admins" ON public.categories FOR DELETE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
 
--- 2. Populate categories table from existing mock data
-INSERT INTO public.categories (id, name, icon, emoji) VALUES
-('a1b2c3d4-e5f6-7890-1234-567890abcdef', 'Forts', 'castle', '🏰'),
-('b2c3d4e5-f6a7-8901-2345-67890abcdef1', 'Lakes', 'waves', '🌊'),
-('c3d4e5f6-a7b8-9012-3456-7890abcdef2', 'Beaches', 'palmtree', '🏝️'),
-('d4e5f6a7-b8c9-0123-4567-890abcdef3', 'Temples', 'building', '🛕'),
-('e5f6a7b8-c9d0-1234-5678-90abcdef4', 'Wildlife', 'trees', '🐅'),
-('f6a7b8c9-d0e1-2345-6789-0abcdef5', 'Trekking', 'mountain', '⛰️'),
-('a7b8c9d0-e1f2-3456-7890-1abcdef6', 'Food', 'utensils', '🍛'),
-('b8c9d0e1-f2a3-4567-8901-bcdef1234567', 'Markets', 'shopping-bag', '🛍️');
+COMMENT ON TABLE public.phrases IS 'Stores phrases for the translation feature.';
 
--- 3. Create city_categories join table
-CREATE TABLE public.city_categories (
-    city_id uuid NOT NULL,
-    category_id uuid NOT NULL,
-    CONSTRAINT city_categories_pkey PRIMARY KEY (city_id, category_id),
-    CONSTRAINT city_categories_city_id_fkey FOREIGN KEY (city_id) REFERENCES public.cities(id) ON DELETE CASCADE,
-    CONSTRAINT city_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE
-);
-ALTER TABLE public.city_categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable read access for all users" ON public.city_categories FOR SELECT USING (true);
-CREATE POLICY "Enable insert for admins" ON public.city_categories FOR INSERT WITH CHECK ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable update for admins" ON public.city_categories FOR UPDATE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable delete for admins" ON public.city_categories FOR DELETE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
+ALTER TABLE public.phrases ENABLE ROW LEVEL SECURITY;
 
--- 4. Populate city_categories from old hardcoded map
--- This populates the relationships based on the previous logic in the app.
-INSERT INTO public.city_categories (city_id, category_id)
-SELECT c.id, cat.id
-FROM public.cities c, public.categories cat
-WHERE (c.name = 'Agra' AND cat.name IN ('Forts', 'Temples'))
-   OR (c.name = 'Jaipur' AND cat.name IN ('Forts', 'Temples', 'Markets'))
-   OR (c.name = 'Varanasi' AND cat.name IN ('Temples', 'Food'))
-   OR (c.name = 'Goa' AND cat.name IN ('Beaches', 'Food'))
-   OR (c.name = 'Kerala' AND cat.name IN ('Lakes', 'Beaches', 'Wildlife'))
-   OR (c.name = 'Delhi' AND cat.name IN ('Forts', 'Temples', 'Markets', 'Food'))
-ON CONFLICT (city_id, category_id) DO NOTHING;
+CREATE POLICY "Public phrases are viewable by everyone." ON public.phrases FOR SELECT USING (true);
 
--- 5. Add image_urls array to locations table to support multiple images
-ALTER TABLE public.locations ADD COLUMN image_urls text[] DEFAULT ARRAY[]::text[] NOT NULL;
+CREATE POLICY "Admins can manage phrases." ON public.phrases FOR ALL 
+USING (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com') 
+WITH CHECK (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com');
 
--- Update existing locations to have their main image in the new array
-UPDATE public.locations
-SET image_urls = array_append(image_urls, image_url)
-WHERE image_url IS NOT NULL;
+-- Seed Data
+INSERT INTO public.phrases (category, en, hi, pronunciation, is_adult) VALUES
+('Survival & Polite', 'Hello', 'नमस्ते', 'namaste', false),
+('Survival & Polite', 'Thank you', 'धन्यवाद', 'dhanyavaad', false),
+('Survival & Polite', 'Please', 'कृपया', 'kripya', false),
+('Survival & Polite', 'Sorry / Excuse me', 'माफ़ कीजिए', 'maaf kijie', false),
+('Survival & Polite', 'Yes', 'हाँ / जी', 'haan / ji', false),
+('Survival & Polite', 'No', 'नहीं', 'nahī̃', false),
+('Survival & Polite', 'OK', 'ठीक है', 'ṭhīk hai', false),
+('Survival & Polite', 'How much?', 'कितना हुआ?', 'kitnā huā?', false),
+('Survival & Polite', 'Water', 'पानी', 'pānī', false),
+('Survival & Polite', 'Food', 'खाना', 'khānā', false),
+('Survival & Polite', 'Where is the bathroom?', 'बाथरूम कहाँ है?', 'bathroom kahān hai?', false),
+('Survival & Polite', 'Let''s go', 'चलो', 'chalo', false),
+('Survival & Polite', 'Help', 'सहायता', 'sahāytā', false),
+('Survival & Polite', 'Police', 'पुलिस', 'pulis', false),
+('Survival & Polite', 'Hospital', 'हस्पताल', 'haspatal', false),
+('Directions & Transport', 'Left', 'बाएँ', 'bāē̃', false),
+('Directions & Transport', 'Right', 'दाएँ', 'dāē̃', false),
+('Directions & Transport', 'Straight', 'सीधे', 'sīdhe', false),
+('Directions & Transport', 'Stop', 'रुको', 'ruko', false),
+('Directions & Transport', 'Station', 'स्टेशन', 'sṭeśan', false),
+('Directions & Transport', 'Train', 'रेलगाड़ी', 'relgāṛī', false),
+('Directions & Transport', 'Taxi', 'टैक्सी', 'ṭaiksī', false),
+('Directions & Transport', 'Auto-rickshaw', 'ऑटो', 'oṭo', false),
+('Directions & Transport', 'Fare', 'किराया', 'kirāyā', false),
+('Directions & Transport', 'Ticket', 'टिकट', 'ṭikaṭ', false),
+('Shopping & Bargaining', 'What''s the price?', 'क्या कीमत है?', 'kya qīmat hai?', false),
+('Shopping & Bargaining', 'It''s expensive', 'महँगा है', 'mahãgā hai', false),
+('Shopping & Bargaining', 'Cheap', 'सस्ता', 'sastā', false),
+('Shopping & Bargaining', 'Reduce the price', 'दाम कम करो', 'dām kam karo', false),
+('Shopping & Bargaining', 'Show me', 'दिखाइए', 'dikhāiye', false),
+('Shopping & Bargaining', 'Money', 'पैसा', 'paisā', false),
+('Food & Drink', 'Tea', 'चाय', 'chāy', false),
+('Food & Drink', 'Coffee', 'कॉफ़ी', 'kāfī', false),
+('Food & Drink', 'Sugar', 'चीनी', 'chīnī', false),
+('Food & Drink', 'Salt', 'नमक', 'namak', false),
+('Food & Drink', 'Spice', 'मिर्च', 'mirc', false),
+('Food & Drink', 'Flat-bread', 'रोटी', 'roṭī', false),
+('Food & Drink', 'Rice', 'चावल', 'chāwal', false),
+('Food & Drink', 'Lentils', 'दाल', 'dāl', false),
+('Food & Drink', 'Vegetables', 'सब्ज़ी', 'sabzī', false),
+('Food & Drink', 'Cold', 'ठंडा', 'ṭhaṇḍā', false),
+('Food & Drink', 'Hot', 'गरम', 'garam', false),
+('Food & Drink', 'Bill', 'बिल', 'bil', false),
+('Slang / Cool Words', 'Dude / Pal', 'यार', 'yār', false),
+('Slang / Cool Words', 'Awesome', 'झकास', 'jhakās', false),
+('Slang / Cool Words', 'Cool / Chilled', 'मस्त', 'mast', false),
+('Slang / Cool Words', 'Carefree', 'बिंदास', 'bindās', false),
+('Slang / Cool Words', 'Hack / Workaround', 'जुगाड़', 'jugāṛ', false),
+('Slang & Adult (18+)', 'Idiot / Fool', 'चूतिया', 'chūṭiyā', true),
+('Slang & Adult (18+)', 'Sister-f*er (common curse)', 'भेंचो', 'bhencho', true),
+('Slang & Adult (18+)', 'Mother-f*er (strong curse)', 'मादरचोद', 'mādarchod', true),
+('Slang & Adult (18+)', 'Bastard / Rascal', 'हरामी', 'harāmī', true),
+('Slang & Adult (18+)', 'Assh*le', 'गांडू', 'gāṇḍu', true),
+('Slang & Adult (18+)', 'Wh*re', 'रंडी', 'ranḍī', true),
+('Slang & Adult (18+)', 'Son of a dog', 'कुत्ते का पिल्ला', 'kutte ka pillā', true),
+('Slang & Adult (18+)', 'Idiot (lit. owl)', 'उल्लू', 'ullū', true),
+('Slang & Adult (18+)', 'Fool', 'बेवक़ूफ़', 'bevakūf', true),
+('Slang & Adult (18+)', 'Pimp', 'भड़वा', 'bhaṛvā', true),
+('Slang & Adult (18+)', 'Sh*t', 'टट्टी', 'ṭaṭṭī', true),
+('Slang & Adult (18+)', 'Piss', 'मूत', 'mūt', true);

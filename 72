@@ -1,83 +1,232 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Handshake, Tag, BookOpen, Check, X, Gamepad2, MessageCircle } from 'lucide-react';
-import PriceGuide from '../../components/Tools/Bargaining/PriceGuide';
-import CommonPhrases from '../../components/Tools/Bargaining/CommonPhrases';
-import DosAndDonts from '../../components/Tools/Bargaining/DosAndDonts';
-import Simulator from '../../components/Tools/Bargaining/Simulator';
-import CrowdsourcedTips from '../../components/Tools/Bargaining/CrowdsourcedTips';
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  emoji: string;
+}
 
-const tabs = [
-  { id: 'simulator', label: 'Simulator', icon: Gamepad2 },
-  { id: 'prices', label: 'Price Guide', icon: Tag },
-  { id: 'phrases', label: 'Phrases', icon: BookOpen },
-  { id: 'dos_donts', label: 'Do\'s & Don\'ts', icon: Check },
-  { id: 'tips', label: 'User Tips', icon: MessageCircle },
-];
+export interface CityCategory {
+  city_id: string;
+  category_id: string;
+  categories?: Category; // Make optional as we might only fetch the ID
+}
 
-const BargainingCoachPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('simulator');
+export interface City {
+  id:string;
+  name: string;
+  state: string;
+  description: string;
+  short_tagline: string;
+  thumbnail_url: string;
+  popularity_score: number;
+  safety_score: number;
+  best_time_to_visit: string;
+  weather_info: string;
+  city_categories?: CityCategory[];
+}
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'prices': return <PriceGuide />;
-      case 'phrases': return <CommonPhrases />;
-      case 'dos_donts': return <DosAndDonts />;
-      case 'tips': return <CrowdsourcedTips />;
-      case 'simulator':
-      default:
-        return <Simulator />;
-    }
+export interface Tehsil {
+  id: string;
+  city_id: string;
+  name: string;
+  description: string;
+  thumbnail_url: string;
+  category: string;
+  safety_rating: number;
+  location_count: number;
+}
+
+export interface LocationImage {
+  id: string;
+  location_id: string;
+  image_url: string;
+  alt_text?: string;
+}
+
+interface PhotoSpot {
+  title: string;
+  description: string;
+  image_url: string;
+  map_link: string;
+}
+
+interface Recommendation {
+  name: string;
+  image_url: string;
+  map_link: string;
+}
+
+interface LocalFood {
+  name: string;
+  shop: string;
+  image_url: string;
+  map_link: string;
+}
+
+interface InfluencerVideo {
+  title: string;
+  video_id: string;
+  influencer_name: string;
+}
+
+export interface Location {
+  id: string;
+  tehsil_id: string;
+  name: string;
+  category: string;
+  short_intro: string;
+  image_url: string;
+  latitude: number | null;
+  longitude: number | null;
+  images: LocationImage[];
+  details: {
+    about?: {
+      historical_background: string;
+      cultural_significance: string;
+      why_famous: string;
+    };
+    opening_hours?: {
+      daily_timings: Record<string, string>;
+      weekly_closures: string[];
+      seasonal_changes: string;
+    };
+    best_time_to_visit?: {
+      best_season: string;
+      best_time_of_day: string;
+      festival_timing: string;
+    };
+    transport?: {
+      nearest_airport: string;
+      nearest_railway_station: string;
+      last_mile_options: string;
+      taxi_cost_estimate: string;
+    };
+    safety_risks?: {
+      safety_score: number;
+      scams_warnings: string[];
+      womens_safety_rating: string;
+      emergency_contacts: { name: string; number: string }[];
+    };
+    cultural_etiquette?: {
+      dress_code: string;
+      dos_donts: string[];
+      temple_etiquette: string;
+      photography_rules: string;
+    };
+    costs_money?: {
+      ticket_prices: { local: string; foreigner: string };
+      avg_budget_per_day: string;
+      haggling_info: string;
+      digital_payment_availability: string;
+    };
+    amenities?: {
+      toilets: string;
+      wifi: string;
+      seating: string;
+      water_refills: string;
+      cloakrooms: string;
+    };
+    hygiene_index?: {
+      rating: number;
+      notes: string;
+    };
+    guides?: {
+      availability: string;
+      booking_info: string;
+    };
+    map_navigation?: {
+      google_maps_link: string;
+    };
+    events_festivals?: {
+      event_name: string;
+      event_date: string;
+      type: string;
+    };
+    things_to_do?: {
+      main_activities: string[];
+      nearby_attractions: string[];
+    };
+    photo_spots?: PhotoSpot[];
+    recommended_restaurants?: Recommendation[];
+    recommended_hotels?: Recommendation[];
+    local_foods?: LocalFood[];
+    influencer_videos?: InfluencerVideo[];
   };
+}
 
-  return (
-    <div className="pb-24 bg-gray-50 min-h-screen">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-20 flex items-center space-x-4">
-        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-semibold text-gray-900">Bargaining Coach</h1>
-      </div>
+export interface SavedPlace {
+  user_id: string;
+  location_id: string;
+  locations: Location; // For joined data
+}
 
-      <div className="sticky top-[72px] bg-white/80 backdrop-blur-sm z-10 border-b">
-        <div className="flex space-x-1 overflow-x-auto scrollbar-hide px-2">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative flex-shrink-0 flex items-center space-x-2 py-3 px-3 text-sm font-medium transition-colors ${
-                activeTab === tab.id ? 'text-rose-500' : 'text-gray-500 hover:text-rose-500'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="bargainTab"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500"
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-      
-      <div className="p-4">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {renderContent()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-};
+export interface TripPreferences {
+  days: number;
+  destination: string;
+  style: 'cultural' | 'romantic' | 'family' | 'adventure';
+  companions: 'solo' | 'couple' | 'family' | 'friends';
+}
 
-export default BargainingCoachPage;
+export interface SavedTrip {
+  id: string;
+  user_id: string;
+  created_at: string;
+  trip_details: {
+    preferences: TripPreferences;
+    itinerary: DayPlan[];
+  }
+}
+
+export interface DayPlan {
+  day: number;
+  title: string;
+  activities: Activity[];
+}
+
+export interface Activity {
+  id: string;
+  time: 'Morning' | 'Afternoon' | 'Evening';
+  title: string;
+  description: string;
+  type: 'spot' | 'hotel' | 'food';
+  google_maps_link?: string;
+}
+
+export interface SafetyAlert {
+  id: string;
+  location: string;
+  type: 'scam' | 'safety' | 'general';
+  severity: 'low' | 'medium' | 'high';
+  title: string;
+  description: string;
+  reported_at: string;
+  verified: boolean;
+}
+
+export interface Phrase {
+  id: string;
+  category: string;
+  en: string;
+  hi: string;
+  pronunciation: string | null;
+  is_adult: boolean;
+  created_at: string;
+}
+
+export interface BargainingPrice {
+  id: string;
+  location_name: string;
+  item_name: string;
+  fair_price_range: string;
+  quoted_price_range: string;
+}
+
+export interface Profile {
+  id: string;
+  updated_at: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  plan_type: 'free' | 'paid';
+  food_scanner_used: number;
+  trip_planner_used: number;
+}

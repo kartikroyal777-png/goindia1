@@ -1,121 +1,120 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import { Bell, Send, RefreshCw } from 'lucide-react';
+import { BargainingPrice } from '../../types';
+import { PlusCircle, Edit, Trash2, RefreshCw, X } from 'lucide-react';
 
-interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  type: 'info' | 'promo' | 'alert';
-  created_at: string;
-}
+const PriceForm: React.FC<{ price: BargainingPrice | null, onSave: () => void, onClose: () => void }> = ({ price, onSave, onClose }) => {
+  const [formData, setFormData] = useState({
+    location_name: price?.location_name || '',
+    item_name: price?.item_name || '',
+    fair_price_range: price?.fair_price_range || '',
+    quoted_price_range: price?.quoted_price_range || '',
+  });
+  const [loading, setLoading] = useState(false);
 
-const NotificationManager: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [newNotif, setNewNotif] = useState({ title: '', message: '', type: 'info' as Notification['type'] });
-  const [isSending, setIsSending] = useState(false);
-
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(10);
-    if (fetchError) {
-      setError(fetchError.message);
-    } else {
-      setNotifications(data as Notification[]);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSending(true);
-    setError(null);
-    const { error: insertError } = await supabase.from('notifications').insert(newNotif);
-    if (insertError) {
-      setError(insertError.message);
-    } else {
-      setNewNotif({ title: '', message: '', type: 'info' });
-      fetchNotifications();
-    }
-    setIsSending(false);
+    setLoading(true);
+    const { error } = price?.id
+      ? await supabase.from('bargaining_price_guide').update(formData).eq('id', price.id)
+      : await supabase.from('bargaining_price_guide').insert(formData);
+    
+    if (!error) onSave();
+    setLoading(false);
   };
 
   return (
-    <div className="p-6 bg-gray-100 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div>
-        <h2 className="text-2xl font-medium text-gray-800 mb-6">Send Notification</h2>
-        <form onSubmit={handleSend} className="space-y-4 p-6 bg-white rounded-lg shadow">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
-            <input
-              id="title"
-              type="text"
-              value={newNotif.title}
-              onChange={e => setNewNotif(p => ({ ...p, title: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              required
-            />
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6"
+        onClick={e => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-medium mb-4">{price ? 'Edit Price' : 'Add Price'}</h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input name="location_name" value={formData.location_name} onChange={e => setFormData({...formData, location_name: e.target.value})} placeholder="Location (e.g., Delhi)" className="w-full p-2 border rounded" required />
+          <input name="item_name" value={formData.item_name} onChange={e => setFormData({...formData, item_name: e.target.value})} placeholder="Item (e.g., T-shirt)" className="w-full p-2 border rounded" required />
+          <input name="fair_price_range" value={formData.fair_price_range} onChange={e => setFormData({...formData, fair_price_range: e.target.value})} placeholder="Fair Price (e.g., ₹150-300)" className="w-full p-2 border rounded" />
+          <input name="quoted_price_range" value={formData.quoted_price_range} onChange={e => setFormData({...formData, quoted_price_range: e.target.value})} placeholder="Quoted Price (e.g., ₹600-800)" className="w-full p-2 border rounded" />
+          <div className="flex justify-end space-x-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+            <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded disabled:opacity-50">{loading ? 'Saving...' : 'Save'}</button>
           </div>
-          <div>
-            <label htmlFor="message" className="block text-sm font-medium text-gray-700">Message</label>
-            <textarea
-              id="message"
-              value={newNotif.message}
-              onChange={e => setNewNotif(p => ({ ...p, message: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              rows={3}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700">Type</label>
-            <select
-              id="type"
-              value={newNotif.type}
-              onChange={e => setNewNotif(p => ({ ...p, type: e.target.value as Notification['type'] }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-            >
-              <option value="info">Info</option>
-              <option value="promo">Promo</option>
-              <option value="alert">Alert</option>
-            </select>
-          </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" disabled={isSending} className="w-full flex justify-center items-center space-x-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50">
-            <Send className="w-5 h-5" />
-            <span>{isSending ? 'Sending...' : 'Send Notification'}</span>
-          </button>
         </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const PriceGuideManager: React.FC = () => {
+  const [prices, setPrices] = useState<BargainingPrice[]>([]);
+  const [editingPrice, setEditingPrice] = useState<BargainingPrice | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrices = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('bargaining_price_guide').select('*').order('location_name').order('item_name');
+    if (error) setError(error.message);
+    else setPrices(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchPrices() }, [fetchPrices]);
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure?')) {
+      await supabase.from('bargaining_price_guide').delete().eq('id', id);
+      fetchPrices();
+    }
+  };
+
+  const handleSave = () => {
+    setIsFormOpen(false);
+    fetchPrices();
+  };
+
+  return (
+    <div className="p-6 bg-gray-100 rounded-lg">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-medium text-gray-800">Price Guide Manager</h2>
+        <div className="flex space-x-2">
+          <button onClick={fetchPrices} disabled={loading} className="p-2 bg-gray-200 rounded-full"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
+          <button onClick={() => { setEditingPrice(null); setIsFormOpen(true); }} className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg">
+            <PlusCircle className="w-5 h-5" /><span>Add Price</span>
+          </button>
+        </div>
       </div>
 
-      <div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-medium text-gray-800">Recent Notifications</h2>
-          <button onClick={fetchNotifications} disabled={loading} className="p-2 bg-gray-200 rounded-full hover:bg-gray-300 disabled:opacity-50"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
-        </div>
-        <div className="space-y-3">
-          {loading ? <p>Loading...</p> : notifications.map(notif => (
-            <div key={notif.id} className="bg-white p-4 rounded-lg shadow flex items-start space-x-3">
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center"><Bell className="w-5 h-5 text-gray-600" /></div>
-              <div>
-                <p className="font-medium text-gray-800">{notif.title}</p>
-                <p className="text-sm text-gray-600">{notif.message}</p>
-                <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
-              </div>
+      {loading && <p>Loading...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+
+      <div className="space-y-2">
+        {prices.map(price => (
+          <div key={price.id} className="bg-white p-3 rounded-lg shadow-sm flex items-center justify-between">
+            <div>
+              <p className="font-medium">{price.item_name} <span className="text-sm text-gray-500">@ {price.location_name}</span></p>
+              <p className="text-sm">Fair: <span className="font-semibold text-green-600">{price.fair_price_range}</span> | Quoted: <span className="font-semibold text-red-600">{price.quoted_price_range}</span></p>
             </div>
-          ))}
-        </div>
+            <div className="flex space-x-2">
+              <button onClick={() => { setEditingPrice(price); setIsFormOpen(true); }} className="p-2 text-gray-500 hover:text-blue-600"><Edit className="w-4 h-4" /></button>
+              <button onClick={() => handleDelete(price.id)} className="p-2 text-gray-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+        ))}
       </div>
+
+      <AnimatePresence>
+        {isFormOpen && <PriceForm price={editingPrice} onSave={handleSave} onClose={() => setIsFormOpen(false)} />}
+      </AnimatePresence>
     </div>
   );
 };
 
-export default NotificationManager;
+export default PriceGuideManager;

@@ -1,72 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '../../../lib/supabase';
-import { BargainingPrice } from '../../../types';
-import { Loader2 } from 'lucide-react';
+import { LucideProps } from 'lucide-react';
 
-const PriceGuide: React.FC = () => {
-  const [prices, setPrices] = useState<BargainingPrice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface ToolCardProps {
+  title: string;
+  description: string;
+  icon: React.FC<LucideProps>;
+  path: string;
+  color: string;
+  comingSoon: boolean;
+}
 
-  useEffect(() => {
-    const fetchPrices = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('bargaining_price_guide')
-        .select('*')
-        .order('location_name');
-      
-      if (error) {
-        setError("Could not fetch price guide. Please try again.");
-        console.error(error);
-      } else {
-        setPrices(data);
-      }
-      setLoading(false);
-    };
-    fetchPrices();
-  }, []);
+const colorVariants: { [key: string]: { bg: string; text: string; border: string } } = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'hover:border-blue-300' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'hover:border-amber-300' },
+  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'hover:border-green-300' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'hover:border-indigo-300' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'hover:border-rose-300' },
+};
 
-  if (loading) {
-    return <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-rose-500" /></div>;
-  }
+const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon: Icon, path, color, comingSoon }) => {
+  const { bg, text, border } = colorVariants[color] || colorVariants.blue;
 
-  if (error) {
-    return <div className="text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>;
-  }
+  const cardContent = (
+    <motion.div
+      className={`relative h-full bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between overflow-hidden transition-all ${border}`}
+      whileHover={{ y: -5 }}
+    >
+      <div>
+        <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
+          <Icon className={`w-6 h-6 ${text}`} />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-600 mt-1">{description}</p>
+      </div>
+      {comingSoon && (
+        <div className="absolute top-4 right-4 bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">
+          SOON
+        </div>
+      )}
+    </motion.div>
+  );
 
-  const groupedPrices = prices.reduce((acc, price) => {
-    (acc[price.location_name] = acc[price.location_name] || []).push(price);
-    return acc;
-  }, {} as Record<string, BargainingPrice[]>);
-
-  return (
-    <div className="space-y-6">
-      {Object.entries(groupedPrices).map(([location, items], locIndex) => (
-        <motion.div key={location} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: locIndex * 0.1 }}>
-          <h3 className="font-semibold text-lg text-gray-800 mb-2">{location}</h3>
-          <div className="space-y-3">
-            {items.map((item, itemIndex) => (
-              <div key={item.id} className="bg-white rounded-lg p-4 border shadow-sm">
-                <p className="font-semibold text-gray-900">{item.item_name}</p>
-                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                  <div>
-                    <p className="text-gray-500">Fair Price</p>
-                    <p className="font-bold text-green-600 text-lg">{item.fair_price_range || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Often Quoted</p>
-                    <p className="font-bold text-red-500 text-lg">{item.quoted_price_range || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      ))}
-    </div>
+  return comingSoon ? (
+    <div className="cursor-not-allowed opacity-60">{cardContent}</div>
+  ) : (
+    <Link to={path}>{cardContent}</Link>
   );
 };
 
-export default PriceGuide;
+export default ToolCard;
