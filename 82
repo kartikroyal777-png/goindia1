@@ -1,110 +1,206 @@
-/*
-          # Create Phrases Table
-          This migration creates a new table `public.phrases` to store translation data for the app and seeds it with initial content.
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Volume2, Copy, RotateCcw, BookOpen, Eye, Loader2, ArrowLeft } from 'lucide-react';
+import { runGroqQuery } from '../lib/groq';
+import { supabase } from '../lib/supabase';
+import { Phrase } from '../types';
+import { Link } from 'react-router-dom';
 
-          ## Query Description: 
-          This operation is structural and safe. It creates a new table and populates it. It does not affect any existing data. Row Level Security is enabled to allow public read access, while only the specified admin user can write, update, or delete entries.
+const TranslatePage: React.FC = () => {
+  const [sourceText, setSourceText] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+  const [sourceLang, setSourceLang] = useState('en');
+  const [targetLang, setTargetLang] = useState('hi');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showAdultContent, setShowAdultContent] = useState(false);
+  
+  const [phraseCategories, setPhraseCategories] = useState<Record<string, Phrase[]>>({});
+  const [loadingPhrases, setLoadingPhrases] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-          ## Metadata:
-          - Schema-Category: "Structural"
-          - Impact-Level: "Low"
-          - Requires-Backup: false
-          - Reversible: true (by dropping the table)
-          
-          ## Structure Details:
-          - Table: `public.phrases`
-          - Columns: `id`, `category`, `en`, `hi`, `pronunciation`, `is_adult`, `created_at`
-          
-          ## Security Implications:
-          - RLS Status: Enabled
-          - Policy Changes: Yes (Adds policies for read and admin write access)
-          - Auth Requirements: Admin role for write operations.
-          
-          ## Performance Impact:
-          - Indexes: Primary key index on `id`.
-          - Triggers: None
-          - Estimated Impact: Negligible.
-          */
+  useEffect(() => {
+    const fetchPhrases = async () => {
+      setLoadingPhrases(true);
+      setError(null);
+      const { data, error } = await supabase.from('phrases').select('*').order('category').order('en');
+      if (error) {
+        setError(`Could not load phrases: ${error.message}`);
+        console.error(error);
+      } else if (data) {
+        const grouped = data.reduce((acc, phrase) => {
+          const category = phrase.is_adult ? 'Slang & Adult (18+)' : phrase.category;
+          (acc[category] = acc[category] || []).push(phrase);
+          return acc;
+        }, {} as Record<string, Phrase[]>);
+        setPhraseCategories(grouped);
+      }
+      setLoadingPhrases(false);
+    };
+    fetchPhrases();
+  }, []);
 
-CREATE TABLE public.phrases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    category TEXT NOT NULL,
-    en TEXT NOT NULL,
-    hi TEXT NOT NULL,
-    pronunciation TEXT,
-    is_adult BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+    { code: 'fr', name: 'French', flag: '🇫🇷' },
+    { code: 'de', name: 'German', flag: '🇩🇪' },
+    { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+    { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+    { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+    { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+    { code: 'ar', name: 'Arabic', flag: '🇦🇪' },
+    { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
+    { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
+    { code: 'bn', name: 'Bengali', flag: '🇮🇳' },
+    { code: 'mr', name: 'Marathi', flag: '🇮🇳' },
+  ];
 
-COMMENT ON TABLE public.phrases IS 'Stores phrases for the translation feature.';
+  const handleTranslate = async () => {
+    if (!sourceText.trim() || isTranslating) return;
+    setIsTranslating(true);
+    setTranslatedText('');
 
-ALTER TABLE public.phrases ENABLE ROW LEVEL SECURITY;
+    const sourceLangName = languages.find(l => l.code === sourceLang)?.name || 'English';
+    const targetLangName = languages.find(l => l.code === targetLang)?.name || 'Hindi';
 
-CREATE POLICY "Public phrases are viewable by everyone." ON public.phrases FOR SELECT USING (true);
+    const prompt = `Translate the following text from ${sourceLangName} to ${targetLangName}. Provide only the translated text, with no additional explanations or quotation marks. Text: "${sourceText}"`;
+    
+    try {
+      const translation = await runGroqQuery(prompt);
+      setTranslatedText(translation);
+    } catch (e: any) {
+      setTranslatedText(e.message || "Translation failed.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
-CREATE POLICY "Admins can manage phrases." ON public.phrases FOR ALL 
-USING (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com') 
-WITH CHECK (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com');
+  const swapLanguages = () => {
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+    setSourceText(translatedText);
+    setTranslatedText(sourceText);
+  };
 
--- Seed Data
-INSERT INTO public.phrases (category, en, hi, pronunciation, is_adult) VALUES
-('Survival & Polite', 'Hello', 'नमस्ते', 'namaste', false),
-('Survival & Polite', 'Thank you', 'धन्यवाद', 'dhanyavaad', false),
-('Survival & Polite', 'Please', 'कृपया', 'kripya', false),
-('Survival & Polite', 'Sorry / Excuse me', 'माफ़ कीजिए', 'maaf kijie', false),
-('Survival & Polite', 'Yes', 'हाँ / जी', 'haan / ji', false),
-('Survival & Polite', 'No', 'नहीं', 'nahī̃', false),
-('Survival & Polite', 'OK', 'ठीक है', 'ṭhīk hai', false),
-('Survival & Polite', 'How much?', 'कितना हुआ?', 'kitnā huā?', false),
-('Survival & Polite', 'Water', 'पानी', 'pānī', false),
-('Survival & Polite', 'Food', 'खाना', 'khānā', false),
-('Survival & Polite', 'Where is the bathroom?', 'बाथरूम कहाँ है?', 'bathroom kahān hai?', false),
-('Survival & Polite', 'Let''s go', 'चलो', 'chalo', false),
-('Survival & Polite', 'Help', 'सहायता', 'sahāytā', false),
-('Survival & Polite', 'Police', 'पुलिस', 'pulis', false),
-('Survival & Polite', 'Hospital', 'हस्पताल', 'haspatal', false),
-('Directions & Transport', 'Left', 'बाएँ', 'bāē̃', false),
-('Directions & Transport', 'Right', 'दाएँ', 'dāē̃', false),
-('Directions & Transport', 'Straight', 'सीधे', 'sīdhe', false),
-('Directions & Transport', 'Stop', 'रुको', 'ruko', false),
-('Directions & Transport', 'Station', 'स्टेशन', 'sṭeśan', false),
-('Directions & Transport', 'Train', 'रेलगाड़ी', 'relgāṛī', false),
-('Directions & Transport', 'Taxi', 'टैक्सी', 'ṭaiksī', false),
-('Directions & Transport', 'Auto-rickshaw', 'ऑटो', 'oṭo', false),
-('Directions & Transport', 'Fare', 'किराया', 'kirāyā', false),
-('Directions & Transport', 'Ticket', 'टिकट', 'ṭikaṭ', false),
-('Shopping & Bargaining', 'What''s the price?', 'क्या कीमत है?', 'kya qīmat hai?', false),
-('Shopping & Bargaining', 'It''s expensive', 'महँगा है', 'mahãgā hai', false),
-('Shopping & Bargaining', 'Cheap', 'सस्ता', 'sastā', false),
-('Shopping & Bargaining', 'Reduce the price', 'दाम कम करो', 'dām kam karo', false),
-('Shopping & Bargaining', 'Show me', 'दिखाइए', 'dikhāiye', false),
-('Shopping & Bargaining', 'Money', 'पैसा', 'paisā', false),
-('Food & Drink', 'Tea', 'चाय', 'chāy', false),
-('Food & Drink', 'Coffee', 'कॉफ़ी', 'kāfī', false),
-('Food & Drink', 'Sugar', 'चीनी', 'chīnī', false),
-('Food & Drink', 'Salt', 'नमक', 'namak', false),
-('Food & Drink', 'Spice', 'मिर्च', 'mirc', false),
-('Food & Drink', 'Flat-bread', 'रोटी', 'roṭī', false),
-('Food & Drink', 'Rice', 'चावल', 'chāwal', false),
-('Food & Drink', 'Lentils', 'दाल', 'dāl', false),
-('Food & Drink', 'Vegetables', 'सब्ज़ी', 'sabzī', false),
-('Food & Drink', 'Cold', 'ठंडा', 'ṭhaṇḍā', false),
-('Food & Drink', 'Hot', 'गरम', 'garam', false),
-('Food & Drink', 'Bill', 'बिल', 'bil', false),
-('Slang / Cool Words', 'Dude / Pal', 'यार', 'yār', false),
-('Slang / Cool Words', 'Awesome', 'झकास', 'jhakās', false),
-('Slang / Cool Words', 'Cool / Chilled', 'मस्त', 'mast', false),
-('Slang / Cool Words', 'Carefree', 'बिंदास', 'bindās', false),
-('Slang / Cool Words', 'Hack / Workaround', 'जुगाड़', 'jugāṛ', false),
-('Slang & Adult (18+)', 'Idiot / Fool', 'चूतिया', 'chūṭiyā', true),
-('Slang & Adult (18+)', 'Sister-f*er (common curse)', 'भेंचो', 'bhencho', true),
-('Slang & Adult (18+)', 'Mother-f*er (strong curse)', 'मादरचोद', 'mādarchod', true),
-('Slang & Adult (18+)', 'Bastard / Rascal', 'हरामी', 'harāmī', true),
-('Slang & Adult (18+)', 'Assh*le', 'गांडू', 'gāṇḍu', true),
-('Slang & Adult (18+)', 'Wh*re', 'रंडी', 'ranḍī', true),
-('Slang & Adult (18+)', 'Son of a dog', 'कुत्ते का पिल्ला', 'kutte ka pillā', true),
-('Slang & Adult (18+)', 'Idiot (lit. owl)', 'उल्लू', 'ullū', true),
-('Slang & Adult (18+)', 'Fool', 'बेवक़ूफ़', 'bevakūf', true),
-('Slang & Adult (18+)', 'Pimp', 'भड़वा', 'bhaṛvā', true),
-('Slang & Adult (18+)', 'Sh*t', 'टट्टी', 'ṭaṭṭī', true),
-('Slang & Adult (18+)', 'Piss', 'मूत', 'mūt', true);
+  const speakText = (text: string, lang: string) => {
+    if ('speechSynthesis' in window && text) {
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang === 'hi-IN') || voices.find(v => v.lang.startsWith('hi'));
+      if (lang === 'hi' && voice) {
+        utterance.voice = voice;
+      } else {
+        utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+      }
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    if (text) navigator.clipboard.writeText(text);
+  };
+
+  const adultCategoryTitle = 'Slang & Adult (18+)';
+  const displayCategories = Object.entries(phraseCategories).filter(([title]) => {
+    return title !== adultCategoryTitle || showAdultContent;
+  });
+
+  return (
+    <div className="pb-20 bg-gray-50 min-h-screen">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </Link>
+        <h1 className="text-xl text-gray-900">Language Helper</h1>
+      </div>
+
+      <div className="p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="flex-1 p-2 rounded-lg border-gray-200 focus:outline-none focus:border-blue-500 bg-transparent">
+              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>)}
+            </select>
+            <motion.button onClick={swapLanguages} className="mx-4 p-2 text-gray-500 hover:text-blue-500" whileHover={{ scale: 1.1, rotate: 180 }} whileTap={{ scale: 0.9 }}>
+              <RotateCcw className="w-5 h-5" />
+            </motion.button>
+            <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="flex-1 p-2 rounded-lg border-gray-200 focus:outline-none focus:border-blue-500 bg-transparent">
+              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>)}
+            </select>
+          </div>
+          <div className="p-4 border-b border-gray-100">
+            <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} placeholder="Type text..." className="w-full h-24 resize-none focus:outline-none text-gray-900 placeholder-gray-500" />
+            <div className="flex items-center justify-end mt-2">
+              <motion.button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm disabled:opacity-50" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                {isTranslating ? 'Translating...' : 'Translate'}
+              </motion.button>
+            </div>
+          </div>
+          {(translatedText || isTranslating) && (
+            <div className="p-4 bg-gray-50 min-h-[124px]">
+              {isTranslating ? (
+                <div className="flex items-center justify-center h-24"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>
+              ) : (
+                <>
+                  <p className="text-gray-900 text-lg">{translatedText}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <button onClick={() => speakText(translatedText, targetLang)} className="p-1 text-gray-400 hover:text-blue-500" disabled={!translatedText}><Volume2 className="w-4 h-4" /></button>
+                    <button onClick={() => copyToClipboard(translatedText)} className="p-1 text-gray-400 hover:text-blue-500" disabled={!translatedText}><Copy className="w-4 h-4" /></button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4">
+        {loadingPhrases ? (
+          <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
+        ) : Object.keys(phraseCategories).length === 0 ? (
+          <div className="text-center text-gray-500 py-8">No phrases found in the dictionary.</div>
+        ) : (
+          displayCategories.map(([category, phrases]) => (
+            <div key={category} className="mb-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <BookOpen className="w-5 h-5 text-blue-500" />
+                <h2 className="text-lg font-medium text-gray-900">{category}</h2>
+              </div>
+              <div className="space-y-3">
+                {phrases.map((phrase, index) => (
+                  <motion.div key={phrase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-gray-900">{phrase.en}</p>
+                        <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
+                        <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button onClick={() => speakText(phrase.hi, 'hi')} className="p-2 text-gray-400 hover:text-blue-500"><Volume2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+        {!showAdultContent && phraseCategories[adultCategoryTitle] && (
+           <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+             <h3 className="font-medium text-red-800">Adult Content Filter</h3>
+             <p className="text-sm text-red-700 my-2">For educational purposes, a section with common slang and explicit words is available. Viewer discretion is advised.</p>
+             <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md flex items-center justify-center mx-auto space-x-2">
+              <Eye className="w-4 h-4" />
+              <span>Show Adult Content</span>
+            </button>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TranslatePage;

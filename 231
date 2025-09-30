@@ -1,0 +1,71 @@
+import Groq from 'groq-sdk';
+
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+
+const handleApiError = (error: any): string => {
+  console.error("Error calling Groq API:", error);
+  
+  if (!GROQ_API_KEY) {
+    return `The VITE_GROQ_API_KEY is missing. Please ensure it's set in your .env file.`;
+  }
+
+  return `Sorry, an unexpected error occurred with the AI assistant. Please try again later. (Details: ${error.message || 'Unknown error'})`;
+};
+
+const cleanJsonString = (rawText: string): string => {
+  let cleanedText = rawText.trim();
+  
+  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch && jsonMatch[1]) {
+    cleanedText = jsonMatch[1];
+  }
+
+  const firstBracket = cleanedText.indexOf('{');
+  const firstSquareBracket = cleanedText.indexOf('[');
+  let start = -1;
+
+  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
+  if (firstBracket === -1) start = firstSquareBracket;
+  else if (firstSquareBracket === -1) start = firstBracket;
+  else start = Math.min(firstBracket, firstSquareBracket);
+
+  const lastBracket = cleanedText.lastIndexOf('}');
+  const lastSquareBracket = cleanedText.lastIndexOf(']');
+  let end = Math.max(lastBracket, lastSquareBracket);
+
+  if (start === -1 || end === -1) return cleanedText;
+
+  return cleanedText.substring(start, end + 1);
+};
+
+let groq: Groq | null = null;
+if (GROQ_API_KEY) {
+  groq = new Groq({
+    apiKey: GROQ_API_KEY,
+    dangerouslyAllowBrowser: true,
+  });
+}
+
+export const runGroqQuery = async (prompt: string): Promise<string> => {
+  if (!groq) {
+    throw new Error(handleApiError({ message: 'Groq API key not configured' }));
+  }
+
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.1-8b-instant',
+    });
+
+    const content = chatCompletion.choices[0]?.message?.content || '';
+    
+    // Clean the response if a JSON object is expected
+    if (prompt.toLowerCase().includes('json')) {
+        return cleanJsonString(content);
+    }
+    
+    return content;
+  } catch (error: any) {
+    throw new Error(handleApiError(error));
+  }
+};

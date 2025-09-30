@@ -1,0 +1,25 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { X, Bot } from 'lucide-react';
+
+const FoodScorerPage: React.FC = () => {
+  return (
+    <div className="w-full h-full flex flex-col bg-gray-900 text-white">
+      <div className="absolute top-4 left-4 z-20">
+        <Link to="/" className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white"><X /></Link>
+      </div>
+      <div className="flex-grow flex flex-col items-center justify-center text-center p-6">
+        <Bot className="w-20 h-20 text-orange-400 mb-6" />
+        <h2 className="text-3xl font-semibold mb-3">Food Scanner Temporarily Unavailable</h2>
+        <p className="text-gray-400 max-w-md">
+          This feature requires image analysis capabilities, which are not supported by our current AI provider (Groq). We are working on a solution to bring this feature back.
+        </p>
+        <Link to="/tools" className="mt-8 px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors">
+          Explore Other Tools
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+export default FoodScorerPage;
