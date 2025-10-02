@@ -161,7 +161,10 @@ const TranslatePage: React.FC = () => {
         ) : error ? (
           <div className="text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>
         ) : Object.keys(phraseCategories).length === 0 ? (
-          <div className="text-center text-gray-500 py-8">No phrases found in the dictionary.</div>
+          <div className="text-center text-gray-500 py-8">
+            <p>No phrases found.</p>
+            <p className="text-xs text-gray-400 mt-2">(If phrases are not loading, please check the RLS policy on your 'phrases' table in Supabase to ensure read access.)</p>
+          </div>
         ) : (
           displayCategories.map(([category, phrases]) => (
             <div key={category} className="mb-6">

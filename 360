@@ -162,7 +162,12 @@ const ContentManager: React.FC = () => {
                   </div>
                 </li>
               ))}
-              {items.length === 0 && <p className="text-center text-gray-500 mt-8">No {view} found.</p>}
+              {items.length === 0 && (
+                <div className="text-center text-gray-500 mt-8">
+                  <p>No {view} found.</p>
+                  <p className="text-xs text-gray-400 mt-2">Note: If data is missing, ensure Row Level Security (RLS) policies on your Supabase tables allow read access for your user role.</p>
+                </div>
+              )}
             </ul>
           )}
         </div>

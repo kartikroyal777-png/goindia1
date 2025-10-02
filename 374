@@ -137,6 +137,7 @@ const HomePage: React.FC = () => {
             </div>
             <h3 className="text-lg text-gray-900 mb-2">No destinations found</h3>
             <p className="text-gray-500">Try adjusting your search or changing the category.</p>
+            <p className="text-xs text-gray-400 mt-4">(If you expect to see data, please check if Row Level Security (RLS) is enabled and configured correctly on your 'cities' table in Supabase.)</p>
           </motion.div>
         ) : (
           <>

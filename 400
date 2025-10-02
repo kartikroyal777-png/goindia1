@@ -43,9 +43,9 @@ if (GEMINI_API_KEY) {
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 }
 
-// Using the experimental model as requested by the user.
+// Using a stable, recommended model to prevent "not found" errors.
 const model = genAI?.getGenerativeModel({
-  model: "gemini-2.0-flash-exp",
+  model: "gemini-1.5-flash-latest",
 });
 
 const safetySettings = [
