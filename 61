@@ -1,306 +1,301 @@
-import { faker } from '@faker-js/faker';
-import { City, Category, Location, Tehsil, SafetyAlert } from '../types';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Location, LocationImage } from '../../types';
+import { Trash2, PlusCircle } from 'lucide-react';
 
-export const categories: Category[] = [
-  { id: '1', name: 'Forts', icon: 'castle', emoji: '🏰' },
-  { id: '2', name: 'Lakes', icon: 'waves', emoji: '🌊' },
-  { id: '3', name: 'Beaches', icon: 'palmtree', emoji: '🏝️' },
-  { id: '4', name: 'Temples', icon: 'building', emoji: '🛕' },
-  { id: '5', name: 'Wildlife', icon: 'trees', emoji: '🐅' },
-  { id: '6', name: 'Trekking', icon: 'mountain', emoji: '⛰️' },
-  { id: '7', name: 'Food', icon: 'utensils', emoji: '🍛' },
-  { id: '8', name: 'Markets', icon: 'shopping-bag', emoji: '🛍️' },
-];
+interface LocationFormProps {
+  location: Location | null;
+  tehsilId: string;
+  onSave: () => void;
+}
 
-export const cities: City[] = [
-  {
-    city_id: 'agra_01',
-    name: 'Agra',
-    state: 'Uttar Pradesh',
-    description: 'Home to the magnificent Taj Mahal and rich Mughal heritage',
-    short_tagline: 'The City of Love',
-    thumbnail_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&h=300&fit=crop',
-    popularity_score: 95,
-    safety_score: 8,
-    best_time_to_visit: 'October to March',
-    weather_info: 'Cool and pleasant winters, hot summers'
-  },
-  {
-    city_id: 'jaipur_01',
-    name: 'Jaipur',
-    state: 'Rajasthan',
-    description: 'The vibrant pink city known for palaces, forts, and colorful bazaars',
-    short_tagline: 'The Pink City',
-    thumbnail_url: 'https://images.unsplash.com/photo-1599661046289-e31897846364?w=400&h=300&fit=crop',
-    popularity_score: 92,
-    safety_score: 8,
-    best_time_to_visit: 'October to March',
-    weather_info: 'Desert climate with cool winters'
-  },
-  {
-    city_id: 'varanasi_01',
-    name: 'Varanasi',
-    state: 'Uttar Pradesh',
-    description: 'Ancient spiritual capital on the banks of sacred Ganges river',
-    short_tagline: 'Spiritual Heart of India',
-    thumbnail_url: 'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=400&h=300&fit=crop',
-    popularity_score: 88,
-    safety_score: 7,
-    best_time_to_visit: 'October to March',
-    weather_info: 'Hot summers, pleasant winters'
-  },
-  {
-    city_id: 'goa_01',
-    name: 'Goa',
-    state: 'Goa',
-    description: 'Tropical paradise with pristine beaches and Portuguese heritage',
-    short_tagline: 'Beach Capital of India',
-    thumbnail_url: 'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=400&h=300&fit=crop',
-    popularity_score: 90,
-    safety_score: 9,
-    best_time_to_visit: 'November to February',
-    weather_info: 'Tropical climate with monsoons'
-  },
-  {
-    city_id: 'kerala_01',
-    name: 'Kerala',
-    state: 'Kerala',
-    description: 'God\'s own country with backwaters, hill stations, and spices',
-    short_tagline: 'God\'s Own Country',
-    thumbnail_url: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=400&h=300&fit=crop',
-    popularity_score: 87,
-    safety_score: 9,
-    best_time_to_visit: 'September to March',
-    weather_info: 'Tropical climate with heavy monsoons'
-  },
-  {
-    city_id: 'delhi_01',
-    name: 'Delhi',
-    state: 'Delhi',
-    description: 'Capital city blending ancient history with modern urban life',
-    short_tagline: 'Heart of India',
-    thumbnail_url: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=400&h=300&fit=crop',
-    popularity_score: 93,
-    safety_score: 7,
-    best_time_to_visit: 'October to March',
-    weather_info: 'Extreme seasons with pollution concerns'
-  }
-];
+const getDefaultDetails = (): Location['details'] => ({
+  about: { historical_background: '', cultural_significance: '', why_famous: '' },
+  opening_hours: { daily_timings: {}, weekly_closures: [], seasonal_changes: '' },
+  best_time_to_visit: { best_season: '', best_time_of_day: '', festival_timing: '' },
+  transport: { nearest_airport: '', nearest_railway_station: '', last_mile_options: '', taxi_cost_estimate: '' },
+  safety_risks: { safety_score: 5, scams_warnings: [], womens_safety_rating: '', emergency_contacts: [] },
+  cultural_etiquette: { dress_code: '', dos_donts: [], temple_etiquette: '', photography_rules: '' },
+  costs_money: { ticket_prices: { local: '', foreigner: '' }, avg_budget_per_day: '', haggling_info: '', digital_payment_availability: '' },
+  amenities: { toilets: '', wifi: '', seating: '', water_refills: '', cloakrooms: '' },
+  hygiene_index: { rating: 3, notes: '' },
+  guides: { availability: '', booking_info: '' },
+  map_navigation: { google_maps_link: '' },
+  events_festivals: { event_name: '', event_date: '', type: '' },
+  things_to_do: { main_activities: [], nearby_attractions: [] },
+  photo_spots: [],
+  recommended_restaurants: [],
+  recommended_hotels: [],
+  local_foods: [],
+  influencer_videos: [],
+});
 
-export const tehsils: Tehsil[] = [
-  {
-    tehsil_id: 'agra_central',
-    city_id: 'agra_01',
-    name: 'Central Agra',
-    description: 'Historic core with Taj Mahal and Agra Fort',
-    thumbnail_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=300&h=200&fit=crop',
-    category: 'Heritage',
-    safety_rating: 8,
-    location_count: 3,
-  },
-  {
-    tehsil_id: 'agra_north',
-    city_id: 'agra_01',
-    name: 'North Agra',
-    description: 'Mehtab Bagh and peaceful riverside areas',
-    thumbnail_url: 'https://images.unsplash.com/photo-1548013146-72479768bada?w=300&h=200&fit=crop',
-    category: 'Nature',
-    safety_rating: 7,
-    location_count: 2,
-  },
-  {
-    tehsil_id: 'jaipur_amer',
-    city_id: 'jaipur_01',
-    name: 'Amer',
-    description: 'Majestic forts and royal history',
-    thumbnail_url: 'https://images.unsplash.com/photo-1534423892324-269ca0b93183?w=300&h=200&fit=crop',
-    category: 'Heritage',
-    safety_rating: 9,
-    location_count: 4,
-  },
-  {
-    tehsil_id: 'jaipur_city',
-    city_id: 'jaipur_01',
-    name: 'City Palace Area',
-    description: 'The vibrant heart of the Pink City',
-    thumbnail_url: 'https://images.unsplash.com/photo-1603262339346-d8c29a8a015c?w=300&h=200&fit=crop',
-    category: 'Culture & Markets',
-    safety_rating: 8,
-    location_count: 5,
-  }
-];
+const DynamicObjectArrayField: React.FC<{
+  label: string;
+  items: any[];
+  fields: { name: string; placeholder: string }[];
+  onUpdate: (newItems: any[]) => void;
+}> = ({ label, items, fields, onUpdate }) => {
+  const handleItemChange = (index: number, fieldName: string, value: string) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [fieldName]: value };
+    onUpdate(newItems);
+  };
 
-export const locations: Location[] = [
-  {
-    location_id: 'taj_mahal',
-    tehsil_id: 'agra_central',
-    name: 'Taj Mahal',
-    category: 'Heritage Monument',
-    short_intro: 'An immense mausoleum of white marble, built in Agra between 1631 and 1648 by order of the Mughal emperor Shah Jahan in memory of his favourite wife.',
-    image_url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&h=600&fit=crop',
-    coordinates: { lat: 27.1751, lng: 78.0421 },
-    basic_info: {
-      opening_hours: 'Sunrise to Sunset (Closed Fridays)',
-      best_time_to_visit: 'Sunrise or sunset for best lighting and fewer crowds.',
-      entry_fee: { local: '₹50', foreigner: '₹1100 + ₹200 (mausoleum)' },
-    },
-    access_transport: {
-      nearest_airport: 'Agra Airport (AGR) - 13km',
-      public_transport_guide: 'Take an auto-rickshaw or e-rickshaw from any part of the city. No cars allowed within 500m.',
-      taxi_fare_estimate: '₹200-300 from city center (one way)',
-      last_mile_access: 'Electric bus or golf cart from the ticket counter.',
-      travel_time_from_center: '20-30 minutes',
-    },
-    safety_risks: {
-      safety_score: 9,
-      common_scams: ['Unofficial "guides" at the entrance', 'Overpriced souvenirs', 'Fake photographers'],
-      pickpocket_risk: 'Medium',
-      emergency_contacts: [{ name: 'Tourist Police', number: '1363' }, { name: 'Local Police', number: '112' }],
-    },
-    local_insights: {
-      cultural_etiquette: ['Dress modestly', 'No food or smoking inside', 'Photography of the main mausoleum interior is prohibited.'],
-      local_phrases: [
-        { phrase: 'Ticket kahan milega?', translation: 'Where can I get a ticket?', pronunciation: 'ticket ka-HAAN mil-AY-ga' },
-        { phrase: 'Photo le sakte hain?', translation: 'Can I take a photo?', pronunciation: 'photo lay SAK-tay hain' },
-      ],
-      food_safety_note: 'Stick to bottled water. Eat at reputable restaurants outside the complex.',
-      women_specific_tips: ['Generally very safe due to high security.', 'Be cautious of overly friendly strangers.'],
-    },
-    costs_money: {
-      average_budget: '₹1500 per person (including ticket)',
-      nearby_atms: 'Available near the ticket counters.',
-      digital_payments_accepted: true,
-      haggling_needed: 'Yes, for rickshaws and souvenirs.',
-    },
-    amenities: {
-      toilets: 'Available',
-      wifi_signal: 'Weak',
-      seating: true,
-      water_refill_points: true,
-    },
-    food_stay: {
-      nearby_restaurants: [{ name: 'Pinch of Spice', rating: 4.5 }, { name: 'Esphahan', rating: 4.8 }],
-      local_specialty: 'Petha (a sweet)',
-    },
-  },
-  {
-    location_id: 'amer_fort',
-    tehsil_id: 'jaipur_amer',
-    name: 'Amer Fort',
-    category: 'Heritage Fort',
-    short_intro: 'A majestic fort with a blend of Rajput and Mughal architecture, offering stunning views and intricate designs.',
-    image_url: 'https://images.unsplash.com/photo-1534423892324-269ca0b93183?w=800&h=600&fit=crop',
-    coordinates: { lat: 26.9855, lng: 75.8513 },
-    basic_info: {
-      opening_hours: '8:00 AM - 5:30 PM',
-      best_time_to_visit: 'Early morning to avoid heat and crowds.',
-      entry_fee: { local: '₹100', foreigner: '₹500' },
-    },
-    access_transport: {
-      nearest_airport: 'Jaipur International Airport (JAI) - 22km',
-      public_transport_guide: 'Local bus no. 5 from Ajmeri Gate. Auto-rickshaws are common.',
-      taxi_fare_estimate: '₹400-500 from city center (one way)',
-      last_mile_access: 'Walk up the hill or take a jeep (recommended over elephant rides).',
-      travel_time_from_center: '30-45 minutes',
-    },
-    safety_risks: {
-      safety_score: 8,
-      common_scams: ['Overpriced elephant rides', 'Hawkers selling gems of "questionable" quality.'],
-      pickpocket_risk: 'Medium',
-      emergency_contacts: [{ name: 'Tourist Police', number: '1363' }],
-    },
-    local_insights: {
-      cultural_etiquette: ['Wear comfortable walking shoes.', 'Consider hiring an official guide inside.'],
-      local_phrases: [{ phrase: 'Raasta kidhar hai?', translation: 'Which way is it?', pronunciation: 'RAAS-ta KID-har hai' }],
-      food_safety_note: 'Eat at the restaurant inside the fort or back in the city.',
-      women_specific_tips: ['Safe during the day. Avoid walking in isolated areas of the fort alone.'],
-    },
-    costs_money: {
-      average_budget: '₹800 per person (including ticket)',
-      nearby_atms: 'Not available at the fort, use ATMs in Amer town.',
-      digital_payments_accepted: true,
-      haggling_needed: 'Yes, for taxis and souvenirs.',
-    },
-    amenities: {
-      toilets: 'Available',
-      wifi_signal: 'Weak',
-      seating: true,
-      water_refill_points: false,
-    },
-    food_stay: {
-      nearby_restaurants: [{ name: '1135 AD', rating: 4.6 }],
-      local_specialty: 'Dal Baati Churma',
-    },
-  },
-];
+  const addItem = () => {
+    const newItem = fields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
+    onUpdate([...items, newItem]);
+  };
 
-export const safetyAlerts: SafetyAlert[] = [
-  {
-    id: 'alert_001',
-    location: 'Agra',
-    type: 'scam',
-    severity: 'medium',
-    title: 'Fake Guide Scam Near Taj Mahal',
-    description: 'Be aware of unofficial guides offering "special" tours at inflated prices. Always use official guides with valid ID badges.',
-    reported_at: '2025-01-15T10:30:00Z',
-    verified: true
-  },
-  {
-    id: 'alert_002',
-    location: 'Delhi',
-    type: 'safety',
-    severity: 'high',
-    title: 'Air Quality Alert',
-    description: 'AQI levels are unhealthy today. Consider indoor activities and wear N95 masks if going outside.',
-    reported_at: '2025-01-15T08:00:00Z',
-    verified: true
-  }
-];
+  const removeItem = (index: number) => {
+    onUpdate(items.filter((_, i) => i !== index));
+  };
 
-// Generate additional mock data
-export const generateMockCities = (count: number): City[] => {
-  const additionalCities: City[] = [];
-  const states = ['Rajasthan', 'Maharashtra', 'Tamil Nadu', 'Karnataka', 'Gujarat', 'West Bengal'];
-  
-  for (let i = 0; i < count; i++) {
-    additionalCities.push({
-      city_id: `city_${i + 7}`,
-      name: faker.location.city(),
-      state: faker.helpers.arrayElement(states),
-      description: faker.lorem.sentence(12),
-      short_tagline: faker.lorem.words(3),
-      thumbnail_url: `https://picsum.photos/400/300?random=${i + 10}`,
-      popularity_score: faker.number.int({ min: 60, max: 95 }),
-      safety_score: faker.number.int({ min: 6, max: 10 }),
-      best_time_to_visit: faker.helpers.arrayElement(['October to March', 'November to February', 'September to March']),
-      weather_info: faker.lorem.sentence(8)
+  return (
+    <div className="space-y-2">
+      <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+      {(items || []).map((item, index) => (
+        <div key={index} className="flex items-start space-x-2 border p-2 rounded-md bg-gray-50">
+          <div className="flex-grow space-y-1">
+            {fields.map(field => (
+              <input
+                key={field.name}
+                value={item[field.name] || ''}
+                onChange={e => handleItemChange(index, field.name, e.target.value)}
+                placeholder={field.placeholder}
+                className="w-full p-1.5 border rounded text-sm"
+              />
+            ))}
+          </div>
+          <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full mt-1"><Trash2 className="w-4 h-4" /></button>
+        </div>
+      ))}
+      <button type="button" onClick={addItem} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
+        <PlusCircle className="w-4 h-4" />
+        <span>Add {label.replace(/_/g, ' ').slice(0, -1)}</span>
+      </button>
+    </div>
+  );
+};
+
+const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave }) => {
+  const [formData, setFormData] = useState<Partial<Omit<Location, 'id' | 'tehsil_id' | 'images'>>>({
+    name: '',
+    category: '',
+    short_intro: '',
+    image_url: '',
+    latitude: null,
+    longitude: null,
+    details: getDefaultDetails(),
+  });
+  const [images, setImages] = useState<Partial<LocationImage>[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location) {
+        const defaultDetails = getDefaultDetails();
+        const locationDetails = location.details || {};
+        
+        const mergedDetails = Object.keys(defaultDetails).reduce((acc, key) => {
+            const defaultSection = defaultDetails[key as keyof typeof defaultDetails];
+            const locationSection = locationDetails[key as keyof typeof locationDetails];
+            acc[key as keyof typeof acc] = locationSection ?? defaultSection;
+            return acc;
+        }, {} as Location['details']);
+
+        setFormData({
+            name: location.name,
+            category: location.category,
+            short_intro: location.short_intro,
+            image_url: location.image_url,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            details: mergedDetails
+        });
+        setImages(location.images || []);
+    } else {
+        setFormData({
+            name: '',
+            category: '',
+            short_intro: '',
+            image_url: '',
+            latitude: null,
+            longitude: null,
+            details: getDefaultDetails(),
+        });
+        setImages([]);
+    }
+  }, [location]);
+
+  const handleDetailChange = (path: string, value: any) => {
+    setFormData(prev => {
+        const keys = path.split('.');
+        const newState = JSON.parse(JSON.stringify(prev));
+        let current = newState.details;
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (current[keys[i]] === undefined || current[keys[i]] === null) current[keys[i]] = {};
+            current = current[keys[i]];
+        }
+        current[keys[keys.length - 1]] = value;
+        return newState;
     });
-  }
+  };
+
+  const handleSimpleChange = (field: keyof Omit<Location, 'id' | 'tehsil_id' | 'images' | 'details'>, value: any) => {
+    setFormData(prev => ({...prev, [field]: value}));
+  };
+
+  const handleImageChange = (index: number, value: string) => {
+    const newImages = [...images];
+    newImages[index].image_url = value;
+    setImages(newImages);
+  };
+
+  const addImage = () => setImages([...images, { image_url: '' }]);
+  const removeImage = (index: number) => setImages(images.filter((_, i) => i !== index));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    const dataToSave = { ...formData, tehsil_id: tehsilId };
+
+    const { data: savedLocation, error: locationError } = location?.id
+      ? await supabase.from('locations').update(dataToSave).eq('id', location.id).select().single()
+      : await supabase.from('locations').insert(dataToSave).select().single();
+
+    if (locationError) {
+      setError(locationError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (savedLocation) {
+        await supabase.from('location_images').delete().eq('location_id', savedLocation.id);
+        const imagesToInsert = images.filter(img => img.image_url).map(img => ({ location_id: savedLocation.id, image_url: img.image_url, alt_text: formData.name }));
+        if (imagesToInsert.length > 0) {
+            const { error: insertError } = await supabase.from('location_images').insert(imagesToInsert);
+            if (insertError) {
+                setError(`Failed to insert new images: ${insertError.message}`);
+                setLoading(false);
+                return;
+            }
+        }
+    }
+    onSave();
+    setLoading(false);
+  };
+
+  const renderField = (label: string, path: string, type: 'text' | 'number' | 'textarea' = 'text') => {
+    const keys = path.split('.');
+    let value: any = formData.details;
+    try { keys.forEach(key => { value = value?.[key]; }); } catch (e) { value = ''; }
+    return (
+      <div className="space-y-1">
+        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        {type === 'textarea' ?
+          <textarea value={value || ''} onChange={e => handleDetailChange(path, e.target.value)} className="w-full p-2 border rounded" rows={3} /> :
+          <input type={type} value={value || ''} onChange={e => handleDetailChange(path, type === 'number' ? parseFloat(e.target.value) : e.target.value)} className="w-full p-2 border rounded" />
+        }
+      </div>
+    );
+  };
   
-  return additionalCities;
+  const renderArrayField = (label: string, path: string) => {
+    const keys = path.split('.');
+    let value: string[] = [];
+    try {
+      let current: any = formData.details;
+      keys.forEach(key => { current = current?.[key]; });
+      value = Array.isArray(current) ? current : [];
+    } catch (e) { value = []; }
+
+    const handleArrayChange = (index: number, newValue: string) => handleDetailChange(path, [...value.slice(0, index), newValue, ...value.slice(index + 1)]);
+    const addToArray = () => handleDetailChange(path, [...value, '']);
+    const removeFromArray = (index: number) => handleDetailChange(path, value.filter((_, i) => i !== index));
+
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        {value.map((item, index) => (
+          <div key={index} className="flex items-center space-x-2">
+            <input value={item} onChange={(e) => handleArrayChange(index, e.target.value)} className="w-full p-2 border rounded" />
+            <button type="button" onClick={() => removeFromArray(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
+          </div>
+        ))}
+        <button type="button" onClick={addToArray} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add</span></button>
+      </div>
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
+      <h3 className="text-lg font-semibold">{location ? 'Edit Location' : 'Add New Location'}</h3>
+      <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-semibold" />
+        <input value={formData.category} onChange={e => handleSimpleChange('category', e.target.value)} placeholder="Category (e.g., UNESCO World Heritage)" className="w-full p-2 border rounded" />
+        <textarea value={formData.short_intro} onChange={e => handleSimpleChange('short_intro', e.target.value)} placeholder="Short Intro" className="w-full p-2 border rounded" rows={2} />
+        <input value={formData.image_url} onChange={e => handleSimpleChange('image_url', e.target.value)} placeholder="Main Image URL (Thumbnail)" className="w-full p-2 border rounded" />
+        <div className="grid grid-cols-2 gap-4">
+          <input type="number" step="any" value={formData.latitude || ''} onChange={e => handleSimpleChange('latitude', parseFloat(e.target.value))} placeholder="Latitude" className="w-full p-2 border rounded" />
+          <input type="number" step="any" value={formData.longitude || ''} onChange={e => handleSimpleChange('longitude', parseFloat(e.target.value))} placeholder="Longitude" className="w-full p-2 border rounded" />
+        </div>
+
+        <details className="border p-4 rounded-lg space-y-2" open>
+            <summary className="font-medium cursor-pointer">Image Gallery</summary>
+            {images.map((img, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                    <input value={img.image_url || ''} onChange={e => handleImageChange(index, e.target.value)} placeholder="Image URL" className="w-full p-2 border rounded" />
+                    <button type="button" onClick={() => removeImage(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
+                </div>
+            ))}
+            <button type="button" onClick={addImage} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add Image</span></button>
+        </details>
+
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Photo Spots</summary>
+          <DynamicObjectArrayField label="Photo Spots" items={formData.details?.photo_spots || []} fields={[{name: 'title', placeholder: 'Title'}, {name: 'description', placeholder: 'Description'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('photo_spots', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Restaurants</summary>
+          <DynamicObjectArrayField label="Restaurants" items={formData.details?.recommended_restaurants || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_restaurants', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Hotels</summary>
+          <DynamicObjectArrayField label="Hotels" items={formData.details?.recommended_hotels || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_hotels', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Local Foods</summary>
+          <DynamicObjectArrayField label="Local Foods" items={formData.details?.local_foods || []} fields={[{name: 'name', placeholder: 'Dish Name'}, {name: 'shop', placeholder: 'Shop Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('local_foods', items)} />
+        </details>
+        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Influencer Videos</summary>
+          <DynamicObjectArrayField label="Videos" items={formData.details?.influencer_videos || []} fields={[{name: 'title', placeholder: 'Video Title'}, {name: 'video_id', placeholder: 'YouTube Video ID'}, {name: 'influencer_name', placeholder: 'Influencer Name'}]} onUpdate={items => handleDetailChange('influencer_videos', items)} />
+        </details>
+
+        {Object.keys(getDefaultDetails()).filter(k => !['photo_spots', 'recommended_restaurants', 'recommended_hotels', 'local_foods', 'influencer_videos'].includes(k)).map(sectionKey => (
+          <details key={sectionKey} className="border p-4 rounded-lg space-y-2">
+            <summary className="font-medium cursor-pointer capitalize">{sectionKey.replace(/_/g, ' ')}</summary>
+            {Object.keys(formData.details?.[sectionKey as keyof typeof formData.details] || {}).map(fieldKey => {
+              const value = formData.details?.[sectionKey as keyof typeof formData.details]?.[fieldKey as keyof object];
+              if (Array.isArray(value)) {
+                return <div key={fieldKey}>{renderArrayField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>
+              }
+              if (typeof value === 'object' && value !== null) {
+                 return Object.keys(value).map(subKey => (
+                    <div key={subKey}>{renderField(`${fieldKey} ${subKey}`, `${sectionKey}.${fieldKey}.${subKey}`)}</div>
+                 ));
+              }
+              return <div key={fieldKey}>{renderField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>;
+            })}
+          </details>
+        ))}
+      </div>
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+      <div className="flex justify-end space-x-3 pt-4 border-t">
+        <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 text-sm font-medium">
+          {loading ? 'Saving...' : 'Save Location'}
+        </button>
+      </div>
+    </form>
+  );
 };
 
-// --- Data Fetching Functions ---
-
-export const getCityById = (cityId: string): City | undefined => {
-  return cities.find(c => c.city_id === cityId);
-};
-
-export const getTehsilsByCityId = (cityId: string): Tehsil[] => {
-  return tehsils.filter(t => t.city_id === cityId);
-};
-
-export const getTehsilById = (tehsilId: string): Tehsil | undefined => {
-  return tehsils.find(t => t.tehsil_id === tehsilId);
-};
-
-export const getLocationsByTehsilId = (tehsilId: string): Location[] => {
-  // In a real app, you'd filter. Here we return all for demo.
-  if (tehsilId === 'agra_central') return [locations[0]];
-  if (tehsilId === 'jaipur_amer') return [locations[1]];
-  return locations.filter(l => l.tehsil_id === tehsilId);
-};
-
-export const getLocationById = (locationId: string): Location | undefined => {
-  return locations.find(l => l.location_id === locationId);
-};
+export default LocationForm;

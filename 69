@@ -1,52 +1,72 @@
-import React from 'react';
-import { ArrowLeft, Bell, Palette, Globe } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../../lib/supabase';
+import { BargainingPrice } from '../../../types';
+import { Loader2 } from 'lucide-react';
 
-const AppSettingsPage = () => {
-  const navigate = useNavigate();
+const PriceGuide: React.FC = () => {
+  const [prices, setPrices] = useState<BargainingPrice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPrices = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('bargaining_price_guide')
+        .select('*')
+        .order('location_name');
+      
+      if (error) {
+        setError("Could not fetch price guide. Please try again.");
+        console.error(error);
+      } else {
+        setPrices(data);
+      }
+      setLoading(false);
+    };
+    fetchPrices();
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-rose-500" /></div>;
+  }
+
+  if (error) {
+    return <div className="text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>;
+  }
+
+  const groupedPrices = prices.reduce((acc, price) => {
+    (acc[price.location_name] = acc[price.location_name] || []).push(price);
+    return acc;
+  }, {} as Record<string, BargainingPrice[]>);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </motion.button>
-        <h1 className="text-xl font-bold text-gray-900">App Settings</h1>
-      </div>
-      <div className="p-4 space-y-4">
-        <div className="bg-white rounded-xl shadow-sm border p-4">
-          <h2 className="font-semibold text-lg mb-4">General</h2>
-          <div className="flex justify-between items-center py-2">
-            <div className="flex items-center space-x-3">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span>Push Notifications</span>
-            </div>
-            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-            </div>
+    <div className="space-y-6">
+      {Object.entries(groupedPrices).map(([location, items], locIndex) => (
+        <motion.div key={location} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: locIndex * 0.1 }}>
+          <h3 className="font-semibold text-lg text-gray-800 mb-2">{location}</h3>
+          <div className="space-y-3">
+            {items.map((item, itemIndex) => (
+              <div key={item.id} className="bg-white rounded-lg p-4 border shadow-sm">
+                <p className="font-semibold text-gray-900">{item.item_name}</p>
+                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                  <div>
+                    <p className="text-gray-500">Fair Price</p>
+                    <p className="font-bold text-green-600 text-lg">{item.fair_price_range || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Often Quoted</p>
+                    <p className="font-bold text-red-500 text-lg">{item.quoted_price_range || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-           <div className="flex justify-between items-center py-2">
-            <div className="flex items-center space-x-3">
-              <Palette className="w-5 h-5 text-gray-500" />
-              <span>Dark Mode</span>
-            </div>
-            <span className="text-sm text-gray-400">Coming Soon</span>
-          </div>
-           <div className="flex justify-between items-center py-2">
-            <div className="flex items-center space-x-3">
-              <Globe className="w-5 h-5 text-gray-500" />
-              <span>Language</span>
-            </div>
-            <select className="border-none bg-gray-100 rounded-md p-1 text-sm">
-                <option>English</option>
-            </select>
-          </div>
-        </div>
-      </div>
+        </motion.div>
+      ))}
     </div>
   );
 };
 
-export default AppSettingsPage;
+export default PriceGuide;

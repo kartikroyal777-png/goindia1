@@ -1,77 +1,123 @@
-/*
-          # [Operation Name]
-          Overhaul 'locations' table with detailed JSONB columns
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Landmark } from 'lucide-react';
+import LocationCard from '../components/Tehsil/LocationCard';
+import { Tehsil, Location, City } from '../types';
+import { supabase } from '../lib/supabase';
 
-          ## Query Description: "This operation will completely restructure the 'locations' table by replacing several old columns with new, more detailed JSONB columns. This is a destructive change for the dropped columns, but it enables much richer content management. Existing location data in the old columns will be lost. It is highly recommended to back up your 'locations' table before applying this migration if you have important data."
-          
-          ## Metadata:
-          - Schema-Category: "Structural"
-          - Impact-Level: "High"
-          - Requires-Backup: true
-          - Reversible: false
-          
-          ## Structure Details:
-          - Table: public.locations
-          - Dropped Columns: `basic_info`, `access_transport`, `safety_risks`, `local_insights`, `costs_money`, `amenities`, `food_stay`
-          - Added Columns: `about`, `opening_hours`, `best_time_to_visit`, `transport`, `safety`, `etiquette`, `costs`, `amenities_v2`, `food_stay_v2`, `events`, `accessibility`, `essentials`, `experience`, `insider_tips`, `reviews`, `virtual_tour_url`
-          
-          ## Security Implications:
-          - RLS Status: Enabled
-          - Policy Changes: Yes (Updating existing policies to include new columns)
-          - Auth Requirements: Admin role
-          
-          ## Performance Impact:
-          - Indexes: None
-          - Triggers: None
-          - Estimated Impact: Low. This is a structural change and should not significantly impact query performance for typical app usage.
-          */
+const TehsilPage: React.FC = () => {
+  const { tehsilId } = useParams<{ tehsilId: string }>();
+  const navigate = useNavigate();
+  const [tehsil, setTehsil] = useState<Tehsil | null>(null);
+  const [city, setCity] = useState<City | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
--- Drop old columns
-ALTER TABLE public.locations
-  DROP COLUMN IF EXISTS basic_info,
-  DROP COLUMN IF EXISTS access_transport,
-  DROP COLUMN IF EXISTS safety_risks,
-  DROP COLUMN IF EXISTS local_insights,
-  DROP COLUMN IF EXISTS costs_money,
-  DROP COLUMN IF EXISTS amenities,
-  DROP COLUMN IF EXISTS food_stay;
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!tehsilId) return;
+      setLoading(true);
+      setError(null);
 
--- Add new detailed columns with defaults to prevent null issues
-ALTER TABLE public.locations
-  ADD COLUMN IF NOT EXISTS about jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS opening_hours jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS best_time_to_visit jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS transport jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS safety jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS etiquette jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS costs jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS amenities_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS food_stay_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS events jsonb DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS accessibility jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS essentials jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS experience jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS insider_tips jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS reviews jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS virtual_tour_url text;
+      // Fetch tehsil details
+      const { data: tehsilData, error: tehsilError } = await supabase
+        .from('tehsils')
+        .select('*, cities(*)')
+        .eq('id', tehsilId)
+        .single();
+      
+      if (tehsilError || !tehsilData) {
+        setError('Could not find the requested area.');
+        console.error(tehsilError);
+        setLoading(false);
+        return;
+      }
+      
+      const { cities, ...tehsilInfo } = tehsilData;
+      setTehsil(tehsilInfo as Tehsil);
+      setCity(cities as City);
 
--- Rename new amenity and food columns to avoid conflicts if script is run multiple times
-ALTER TABLE public.locations RENAME COLUMN IF EXISTS amenities_v2 TO amenities;
-ALTER TABLE public.locations RENAME COLUMN IF EXISTS food_stay_v2 TO food_stay;
+      // Fetch locations for the tehsil
+      const { data: locationsData, error: locationsError } = await supabase
+        .from('locations')
+        .select('*, details, images:location_images(*)')
+        .eq('tehsil_id', tehsilId);
+      
+      if (locationsError) {
+        setError('Could not fetch locations for this area.');
+        console.error(locationsError);
+      } else {
+        setLocations(locationsData as Location[]);
+      }
+      
+      setLoading(false);
+    };
 
--- Recreate the policy to ensure it covers the new columns for admin
-DROP POLICY IF EXISTS "Admin has full access" ON public.locations;
-CREATE POLICY "Admin has full access"
-ON public.locations
-FOR ALL
-TO authenticated
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
+    fetchData();
+  }, [tehsilId]);
 
--- Ensure public can read all location data
-DROP POLICY IF EXISTS "Locations are publicly visible" ON public.locations;
-CREATE POLICY "Locations are publicly visible"
-ON public.locations
-FOR SELECT
-TO public
-USING (true);
+  if (loading) {
+    return <div className="p-4 text-center">Loading...</div>;
+  }
+
+  if (error || !tehsil || !city) {
+    return <div className="p-4 text-center text-red-500">{error || 'Area not found.'}</div>;
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-screen pb-10">
+      {/* Header */}
+      <div className="relative h-56">
+        <img src={tehsil.thumbnail_url} alt={tehsil.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        
+        <motion.button
+          onClick={() => navigate(`/city/${city.id}`)}
+          className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-full"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+
+        <div className="absolute bottom-4 left-4 text-white">
+          <p className="text-md">{city.name}</p>
+          <h1 className="text-3xl">{tehsil.name}</h1>
+        </div>
+      </div>
+
+      {/* Tehsil Info */}
+      <div className="p-4">
+        <p className="text-gray-600 mb-4">{tehsil.description}</p>
+      </div>
+
+      {/* Locations List */}
+      <div className="p-4">
+        <div className="flex items-center space-x-2 mb-4">
+          <Landmark className="w-5 h-5 text-orange-500" />
+          <h2 className="text-xl text-gray-900">
+            Popular Locations
+          </h2>
+        </div>
+        <div className="space-y-4">
+          {locations.length > 0 ? locations.map((location, index) => (
+            <motion.div
+              key={location.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <LocationCard location={location} onClick={() => navigate(`/location/${location.id}`)} />
+            </motion.div>
+          )) : (
+             <p className="text-gray-500">No popular locations listed for this area yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TehsilPage;

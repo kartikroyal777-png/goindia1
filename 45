@@ -1,301 +1,145 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { Location, LocationImage } from '../../types';
-import { Trash2, PlusCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Send, Bot, User, X } from 'lucide-react';
+import { runGroqQuery } from '../../lib/groq';
 
-interface LocationFormProps {
-  location: Location | null;
-  tehsilId: string;
-  onSave: () => void;
+interface Message {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
 }
 
-const getDefaultDetails = (): Location['details'] => ({
-  about: { historical_background: '', cultural_significance: '', why_famous: '' },
-  opening_hours: { daily_timings: {}, weekly_closures: [], seasonal_changes: '' },
-  best_time_to_visit: { best_season: '', best_time_of_day: '', festival_timing: '' },
-  transport: { nearest_airport: '', nearest_railway_station: '', last_mile_options: '', taxi_cost_estimate: '' },
-  safety_risks: { safety_score: 5, scams_warnings: [], womens_safety_rating: '', emergency_contacts: [] },
-  cultural_etiquette: { dress_code: '', dos_donts: [], temple_etiquette: '', photography_rules: '' },
-  costs_money: { ticket_prices: { local: '', foreigner: '' }, avg_budget_per_day: '', haggling_info: '', digital_payment_availability: '' },
-  amenities: { toilets: '', wifi: '', seating: '', water_refills: '', cloakrooms: '' },
-  hygiene_index: { rating: 3, notes: '' },
-  guides: { availability: '', booking_info: '' },
-  map_navigation: { google_maps_link: '' },
-  events_festivals: { event_name: '', event_date: '', type: '' },
-  things_to_do: { main_activities: [], nearby_attractions: [] },
-  photo_spots: [],
-  recommended_restaurants: [],
-  recommended_hotels: [],
-  local_foods: [],
-  influencer_videos: [],
-});
+interface AssistantModalProps {
+  onClose: () => void;
+}
 
-const DynamicObjectArrayField: React.FC<{
-  label: string;
-  items: any[];
-  fields: { name: string; placeholder: string }[];
-  onUpdate: (newItems: any[]) => void;
-}> = ({ label, items, fields, onUpdate }) => {
-  const handleItemChange = (index: number, fieldName: string, value: string) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [fieldName]: value };
-    onUpdate(newItems);
-  };
-
-  const addItem = () => {
-    const newItem = fields.reduce((acc, field) => ({ ...acc, [field.name]: '' }), {});
-    onUpdate([...items, newItem]);
-  };
-
-  const removeItem = (index: number) => {
-    onUpdate(items.filter((_, i) => i !== index));
-  };
-
-  return (
-    <div className="space-y-2">
-      <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
-      {(items || []).map((item, index) => (
-        <div key={index} className="flex items-start space-x-2 border p-2 rounded-md bg-gray-50">
-          <div className="flex-grow space-y-1">
-            {fields.map(field => (
-              <input
-                key={field.name}
-                value={item[field.name] || ''}
-                onChange={e => handleItemChange(index, field.name, e.target.value)}
-                placeholder={field.placeholder}
-                className="w-full p-1.5 border rounded text-sm"
-              />
-            ))}
-          </div>
-          <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full mt-1"><Trash2 className="w-4 h-4" /></button>
-        </div>
-      ))}
-      <button type="button" onClick={addItem} className="flex items-center space-x-2 text-sm text-blue-600 font-medium">
-        <PlusCircle className="w-4 h-4" />
-        <span>Add {label.replace(/_/g, ' ').slice(0, -1)}</span>
-      </button>
-    </div>
-  );
-};
-
-const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave }) => {
-  const [formData, setFormData] = useState<Partial<Omit<Location, 'id' | 'tehsil_id' | 'images'>>>({
-    name: '',
-    category: '',
-    short_intro: '',
-    image_url: '',
-    latitude: null,
-    longitude: null,
-    details: getDefaultDetails(),
-  });
-  const [images, setImages] = useState<Partial<LocationImage>[]>([]);
-  const [loading, setLoading] = useState(false);
+const AssistantModal: React.FC<AssistantModalProps> = ({ onClose }) => {
+  const [messages, setMessages] = useState<Message[]>([
+    { id: '1', type: 'assistant', content: "Hi! I'm your AI travel assistant. Ask me anything about your India trip!" }
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (location) {
-        const defaultDetails = getDefaultDetails();
-        const locationDetails = location.details || {};
-        
-        const mergedDetails = Object.keys(defaultDetails).reduce((acc, key) => {
-            const defaultSection = defaultDetails[key as keyof typeof defaultDetails];
-            const locationSection = locationDetails[key as keyof typeof locationDetails];
-            acc[key as keyof typeof acc] = locationSection ?? defaultSection;
-            return acc;
-        }, {} as Location['details']);
-
-        setFormData({
-            name: location.name,
-            category: location.category,
-            short_intro: location.short_intro,
-            image_url: location.image_url,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            details: mergedDetails
-        });
-        setImages(location.images || []);
-    } else {
-        setFormData({
-            name: '',
-            category: '',
-            short_intro: '',
-            image_url: '',
-            latitude: null,
-            longitude: null,
-            details: getDefaultDetails(),
-        });
-        setImages([]);
-    }
-  }, [location]);
-
-  const handleDetailChange = (path: string, value: any) => {
-    setFormData(prev => {
-        const keys = path.split('.');
-        const newState = JSON.parse(JSON.stringify(prev));
-        let current = newState.details;
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (current[keys[i]] === undefined || current[keys[i]] === null) current[keys[i]] = {};
-            current = current[keys[i]];
-        }
-        current[keys[keys.length - 1]] = value;
-        return newState;
-    });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSimpleChange = (field: keyof Omit<Location, 'id' | 'tehsil_id' | 'images' | 'details'>, value: any) => {
-    setFormData(prev => ({...prev, [field]: value}));
-  };
+  useEffect(scrollToBottom, [messages, isTyping]);
 
-  const handleImageChange = (index: number, value: string) => {
-    const newImages = [...images];
-    newImages[index].image_url = value;
-    setImages(newImages);
-  };
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isTyping) return;
 
-  const addImage = () => setImages([...images, { image_url: '' }]);
-  const removeImage = (index: number) => setImages(images.filter((_, i) => i !== index));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+    const userMessage: Message = { id: Date.now().toString(), type: 'user', content: text };
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    setIsTyping(true);
     setError(null);
-    
-    const dataToSave = { ...formData, tehsil_id: tehsilId };
 
-    const { data: savedLocation, error: locationError } = location?.id
-      ? await supabase.from('locations').update(dataToSave).eq('id', location.id).select().single()
-      : await supabase.from('locations').insert(dataToSave).select().single();
-
-    if (locationError) {
-      setError(locationError.message);
-      setLoading(false);
-      return;
-    }
-
-    if (savedLocation) {
-        await supabase.from('location_images').delete().eq('location_id', savedLocation.id);
-        const imagesToInsert = images.filter(img => img.image_url).map(img => ({ location_id: savedLocation.id, image_url: img.image_url, alt_text: formData.name }));
-        if (imagesToInsert.length > 0) {
-            const { error: insertError } = await supabase.from('location_images').insert(imagesToInsert);
-            if (insertError) {
-                setError(`Failed to insert new images: ${insertError.message}`);
-                setLoading(false);
-                return;
-            }
-        }
-    }
-    onSave();
-    setLoading(false);
-  };
-
-  const renderField = (label: string, path: string, type: 'text' | 'number' | 'textarea' = 'text') => {
-    const keys = path.split('.');
-    let value: any = formData.details;
-    try { keys.forEach(key => { value = value?.[key]; }); } catch (e) { value = ''; }
-    return (
-      <div className="space-y-1">
-        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
-        {type === 'textarea' ?
-          <textarea value={value || ''} onChange={e => handleDetailChange(path, e.target.value)} className="w-full p-2 border rounded" rows={3} /> :
-          <input type={type} value={value || ''} onChange={e => handleDetailChange(path, type === 'number' ? parseFloat(e.target.value) : e.target.value)} className="w-full p-2 border rounded" />
-        }
-      </div>
-    );
-  };
-  
-  const renderArrayField = (label: string, path: string) => {
-    const keys = path.split('.');
-    let value: string[] = [];
     try {
-      let current: any = formData.details;
-      keys.forEach(key => { current = current?.[key]; });
-      value = Array.isArray(current) ? current : [];
-    } catch (e) { value = []; }
+      const prompt = `You are a friendly and expert travel assistant for "Go India", an app for foreigners visiting India. A user asks: "${text}". Provide a helpful, concise, and practical answer. Use emojis to make it engaging.`;
+      const aiResponse = await runGroqQuery(prompt);
 
-    const handleArrayChange = (index: number, newValue: string) => handleDetailChange(path, [...value.slice(0, index), newValue, ...value.slice(index + 1)]);
-    const addToArray = () => handleDetailChange(path, [...value, '']);
-    const removeFromArray = (index: number) => handleDetailChange(path, value.filter((_, i) => i !== index));
-
-    return (
-      <div className="space-y-2">
-        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
-        {value.map((item, index) => (
-          <div key={index} className="flex items-center space-x-2">
-            <input value={item} onChange={(e) => handleArrayChange(index, e.target.value)} className="w-full p-2 border rounded" />
-            <button type="button" onClick={() => removeFromArray(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
-          </div>
-        ))}
-        <button type="button" onClick={addToArray} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add</span></button>
-      </div>
-    );
+      const assistantMessage: Message = { id: (Date.now() + 1).toString(), type: 'assistant', content: aiResponse };
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (e: any) {
+      const errorMessage = e.message || "Sorry, I couldn't get a response. Please try again.";
+      setError(errorMessage);
+      const assistantMessage: Message = { id: (Date.now() + 1).toString(), type: 'assistant', content: errorMessage };
+      setMessages(prev => [...prev, assistantMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
-      <h3 className="text-lg font-semibold">{location ? 'Edit Location' : 'Add New Location'}</h3>
-      <div className="flex-grow overflow-y-auto pr-2 space-y-4">
-        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-semibold" />
-        <input value={formData.category} onChange={e => handleSimpleChange('category', e.target.value)} placeholder="Category (e.g., UNESCO World Heritage)" className="w-full p-2 border rounded" />
-        <textarea value={formData.short_intro} onChange={e => handleSimpleChange('short_intro', e.target.value)} placeholder="Short Intro" className="w-full p-2 border rounded" rows={2} />
-        <input value={formData.image_url} onChange={e => handleSimpleChange('image_url', e.target.value)} placeholder="Main Image URL (Thumbnail)" className="w-full p-2 border rounded" />
-        <div className="grid grid-cols-2 gap-4">
-          <input type="number" step="any" value={formData.latitude || ''} onChange={e => handleSimpleChange('latitude', parseFloat(e.target.value))} placeholder="Latitude" className="w-full p-2 border rounded" />
-          <input type="number" step="any" value={formData.longitude || ''} onChange={e => handleSimpleChange('longitude', parseFloat(e.target.value))} placeholder="Longitude" className="w-full p-2 border rounded" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
+        transition={{ type: "spring", stiffness: 400, damping: 40 }}
+        className="relative w-full h-[90vh] sm:h-auto sm:max-h-[700px] sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-medium text-gray-900">AI Travel Assistant</h1>
+              <p className="text-sm text-gray-500">Powered by Groq</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
         </div>
 
-        <details className="border p-4 rounded-lg space-y-2" open>
-            <summary className="font-medium cursor-pointer">Image Gallery</summary>
-            {images.map((img, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                    <input value={img.image_url || ''} onChange={e => handleImageChange(index, e.target.value)} placeholder="Image URL" className="w-full p-2 border rounded" />
-                    <button type="button" onClick={() => removeImage(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex items-start space-x-2 max-w-[85%] ${message.type === 'user' ? 'ml-auto flex-row-reverse space-x-reverse' : ''}`}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.type === 'user' ? 'bg-orange-500' : 'bg-gray-200'}`}>
+                {message.type === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-gray-600" />}
+              </div>
+              <div className={`px-4 py-3 rounded-2xl ${message.type === 'user' ? 'bg-orange-500 text-white rounded-br-none' : 'bg-gray-100 text-gray-900 rounded-bl-none'}`}>
+                <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+              </div>
+            </motion.div>
+          ))}
+          {isTyping && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start space-x-2">
+              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0"><Bot className="w-4 h-4 text-gray-600" /></div>
+              <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-none">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
-            ))}
-            <button type="button" onClick={addImage} className="flex items-center space-x-2 text-sm text-blue-600 font-medium"><PlusCircle className="w-4 h-4" /><span>Add Image</span></button>
-        </details>
+              </div>
+            </motion.div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Photo Spots</summary>
-          <DynamicObjectArrayField label="Photo Spots" items={formData.details?.photo_spots || []} fields={[{name: 'title', placeholder: 'Title'}, {name: 'description', placeholder: 'Description'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('photo_spots', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Restaurants</summary>
-          <DynamicObjectArrayField label="Restaurants" items={formData.details?.recommended_restaurants || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_restaurants', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Recommended Hotels</summary>
-          <DynamicObjectArrayField label="Hotels" items={formData.details?.recommended_hotels || []} fields={[{name: 'name', placeholder: 'Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('recommended_hotels', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Local Foods</summary>
-          <DynamicObjectArrayField label="Local Foods" items={formData.details?.local_foods || []} fields={[{name: 'name', placeholder: 'Dish Name'}, {name: 'shop', placeholder: 'Shop Name'}, {name: 'image_url', placeholder: 'Image URL'}, {name: 'map_link', placeholder: 'Map Link'}]} onUpdate={items => handleDetailChange('local_foods', items)} />
-        </details>
-        <details className="border p-4 rounded-lg space-y-2"><summary className="font-medium cursor-pointer">Influencer Videos</summary>
-          <DynamicObjectArrayField label="Videos" items={formData.details?.influencer_videos || []} fields={[{name: 'title', placeholder: 'Video Title'}, {name: 'video_id', placeholder: 'YouTube Video ID'}, {name: 'influencer_name', placeholder: 'Influencer Name'}]} onUpdate={items => handleDetailChange('influencer_videos', items)} />
-        </details>
-
-        {Object.keys(getDefaultDetails()).filter(k => !['photo_spots', 'recommended_restaurants', 'recommended_hotels', 'local_foods', 'influencer_videos'].includes(k)).map(sectionKey => (
-          <details key={sectionKey} className="border p-4 rounded-lg space-y-2">
-            <summary className="font-medium cursor-pointer capitalize">{sectionKey.replace(/_/g, ' ')}</summary>
-            {Object.keys(formData.details?.[sectionKey as keyof typeof formData.details] || {}).map(fieldKey => {
-              const value = formData.details?.[sectionKey as keyof typeof formData.details]?.[fieldKey as keyof object];
-              if (Array.isArray(value)) {
-                return <div key={fieldKey}>{renderArrayField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>
-              }
-              if (typeof value === 'object' && value !== null) {
-                 return Object.keys(value).map(subKey => (
-                    <div key={subKey}>{renderField(`${fieldKey} ${subKey}`, `${sectionKey}.${fieldKey}.${subKey}`)}</div>
-                 ));
-              }
-              return <div key={fieldKey}>{renderField(fieldKey, `${sectionKey}.${fieldKey}`)}</div>;
-            })}
-          </details>
-        ))}
-      </div>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div className="flex justify-end space-x-3 pt-4 border-t">
-        <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 text-sm font-medium">
-          {loading ? 'Saving...' : 'Save Location'}
-        </button>
-      </div>
-    </form>
+        {/* Input */}
+        <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-white">
+          <div className="flex items-center space-x-3">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputText)}
+              placeholder="Ask anything..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+            />
+            <motion.button
+              onClick={() => handleSendMessage(inputText)}
+              disabled={!inputText.trim() || isTyping}
+              className="w-10 h-10 bg-orange-500 text-white rounded-full flex items-center justify-center disabled:opacity-50"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Send className="w-5 h-5" />
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
-export default LocationForm;
+export default AssistantModal;

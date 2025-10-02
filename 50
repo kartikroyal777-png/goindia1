@@ -1,43 +1,25 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Volume2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { X, Bot } from 'lucide-react';
 
-const phrases = [
-  { en: "Too expensive, give me local price.", hi: "Bahut mehenga hai, sahi daam lagaiye.", pronunciation: "Bahut mehenga hai, sahi daam lagaiye" },
-  { en: "I will check another shop.", hi: "Main doosri dukaan dekh lunga.", pronunciation: "Main doosri dukaan dekh lunga" },
-  { en: "Please reduce a little, brother.", hi: "Thoda kam karo bhaiya.", pronunciation: "Thoda kam karo bhaiya" },
-  { en: "This is tourist price.", hi: "Ye toh tourist price hai.", pronunciation: "Ye toh tourist price hai" },
-];
-
-const CommonPhrases: React.FC = () => {
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'hi-IN';
-      speechSynthesis.speak(utterance);
-    } else {
-      alert('Text-to-speech is not supported in your browser.');
-    }
-  };
-
+const FoodScorerPage: React.FC = () => {
   return (
-    <div className="space-y-4">
-      {phrases.map((phrase, index) => (
-        <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="bg-white rounded-lg p-4 border shadow-sm">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-medium text-gray-900">{phrase.en}</p>
-              <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
-              <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
-            </div>
-            <button onClick={() => speak(phrase.hi)} className="p-2 text-gray-400 hover:text-blue-500">
-              <Volume2 className="w-5 h-5" />
-            </button>
-          </div>
-        </motion.div>
-      ))}
+    <div className="w-full h-full flex flex-col bg-gray-900 text-white">
+      <div className="absolute top-4 left-4 z-20">
+        <Link to="/" className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white"><X /></Link>
+      </div>
+      <div className="flex-grow flex flex-col items-center justify-center text-center p-6">
+        <Bot className="w-20 h-20 text-orange-400 mb-6" />
+        <h2 className="text-3xl font-semibold mb-3">Food Scanner Temporarily Unavailable</h2>
+        <p className="text-gray-400 max-w-md">
+          This feature requires image analysis capabilities, which are not supported by our current AI provider (Groq). We are working on a solution to bring this feature back.
+        </p>
+        <Link to="/tools" className="mt-8 px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors">
+          Explore Other Tools
+        </Link>
+      </div>
     </div>
   );
 };
 
-export default CommonPhrases;
+export default FoodScorerPage;

@@ -1,0 +1,19 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    watch: {
+      usePolling: true,
+    },
+    hmr: {
+      // This configuration is often necessary for containerized environments
+      // to ensure the Hot Module Replacement (HMR) client can connect correctly.
+      clientPort: 443,
+    }
+  },
+  optimizeDeps: {
+    exclude: ['lucide-react'],
+  },
+});

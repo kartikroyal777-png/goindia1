@@ -1,100 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Bell, Shield, Tag, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { LucideProps } from 'lucide-react';
 
-interface Notification {
-  id: number;
-  type: 'safety' | 'promo' | 'info';
+interface ToolCardProps {
   title: string;
-  message: string;
-  created_at: string;
+  description: string;
+  icon: React.FC<LucideProps>;
+  path: string;
+  color: string;
+  comingSoon: boolean;
 }
 
-const getIcon = (type: string) => {
-  switch (type) {
-    case 'alert': return <Shield className="w-5 h-5 text-red-500" />;
-    case 'promo': return <Tag className="w-5 h-5 text-green-500" />;
-    default: return <Bell className="w-5 h-5 text-blue-500" />;
-  }
+const colorVariants: { [key: string]: { bg: string; text: string; border: string } } = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'hover:border-blue-300' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'hover:border-amber-300' },
+  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'hover:border-green-300' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'hover:border-indigo-300' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'hover:border-rose-300' },
 };
 
-const NotificationsPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon: Icon, path, color, comingSoon }) => {
+  const { bg, text, border } = colorVariants[color] || colorVariants.blue;
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (fetchError) {
-      setError('Could not fetch notifications.');
-      console.error(fetchError);
-    } else {
-      setNotifications(data || []);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <motion.button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full hover:bg-gray-100"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </motion.button>
-          <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
+  const cardContent = (
+    <motion.div
+      className={`relative h-full bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between overflow-hidden transition-all ${border}`}
+      whileHover={{ y: -5 }}
+    >
+      <div>
+        <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
+          <Icon className={`w-6 h-6 ${text}`} />
         </div>
-        <button onClick={fetchNotifications} disabled={loading} className="p-2 rounded-full hover:bg-gray-100">
-          <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-        </button>
+        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-600 mt-1">{description}</p>
       </div>
-      <div className="p-4 space-y-3">
-        {loading ? (
-          <p className="text-center text-gray-500">Loading notifications...</p>
-        ) : error ? (
-          <p className="text-center text-red-500">{error}</p>
-        ) : notifications.length === 0 ? (
-          <p className="text-center text-gray-500 pt-10">You have no new notifications.</p>
-        ) : (
-          notifications.map((notif, index) => (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="p-4 rounded-xl flex items-start space-x-4 bg-white border border-gray-200"
-            >
-              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
-                {getIcon(notif.type)}
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-800">{notif.title}</p>
-                <p className="text-sm text-gray-600">{notif.message}</p>
-                <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
-              </div>
-            </motion.div>
-          ))
-        )}
-      </div>
-    </div>
+      {comingSoon && (
+        <div className="absolute top-4 right-4 bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">
+          SOON
+        </div>
+      )}
+    </motion.div>
+  );
+
+  return comingSoon ? (
+    <div className="cursor-not-allowed opacity-60">{cardContent}</div>
+  ) : (
+    <Link to={path}>{cardContent}</Link>
   );
 };
 
-export default NotificationsPage;
+export default ToolCard;

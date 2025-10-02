@@ -1,62 +1,60 @@
 /*
-  ## 2025-10-28: Add Profiles and Usage Tracking (Idempotent)
+# [Operation Name]
+Location Schema Overhaul
 
-  This migration creates the `profiles` table to store user-specific data, including their subscription plan and usage of premium features. It also sets up a trigger to automatically create a profile for each new user who signs up.
+## Query Description: [This operation completely overhauls the `locations` table to support a much richer, structured data format. It drops several old columns and replaces them with new `jsonb` columns to store detailed information about each location as per the new requirements. This is a destructive change for the dropped columns, but necessary for the new features.]
 
-  This version is idempotent and safe to re-run. It uses `IF NOT EXISTS` to prevent errors if objects already exist.
+## Metadata:
+- Schema-Category: "Structural"
+- Impact-Level: "High"
+- Requires-Backup: true
+- Reversible: false
+
+## Structure Details:
+- **Table Affected:** `public.locations`
+- **Columns Dropped:** `basic_info`, `access_transport`, `safety_risks`, `local_insights`, `costs_money`, `amenities`, `food_stay`.
+- **Columns Added:** `about_location`, `opening_hours`, `best_time_to_visit_v2`, `getting_here`, `safety_risks_v2`, `local_insights_v2`, `costs_money_v2`, `amenities_v2`, `food_stay_v2`, `events_festivals`, `weather_air_quality`, `accessibility`, `nearby_essentials`, `crowd_experience`, `traveler_tips`, `google_reviews`, `virtual_tour`. All new columns are of type `jsonb`.
+
+## Security Implications:
+- RLS Status: Unchanged. Existing policies will apply.
+- Policy Changes: No.
+- Auth Requirements: Admin privileges required to run this migration.
+
+## Performance Impact:
+- Indexes: No indexes are added or removed.
+- Triggers: No triggers are affected.
+- Estimated Impact: This is a schema change and will be fast on tables with few rows. It will require a full table rewrite, which could be slow on very large tables.
 */
 
--- Create the profiles table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  updated_at timestamp with time zone,
-  full_name text,
-  avatar_url text,
-  plan_type text NOT NULL DEFAULT 'free'::text,
-  food_scans_used integer NOT NULL DEFAULT 0,
-  trip_planner_runs integer NOT NULL DEFAULT 0
-);
+-- Step 1: Drop all old, deprecated columns from the locations table.
+-- Using IF EXISTS to make the script safe and re-runnable.
+ALTER TABLE public.locations
+  DROP COLUMN IF EXISTS basic_info,
+  DROP COLUMN IF EXISTS access_transport,
+  DROP COLUMN IF EXISTS safety_risks,
+  DROP COLUMN IF EXISTS local_insights,
+  DROP COLUMN IF EXISTS costs_money,
+  DROP COLUMN IF EXISTS amenities,
+  DROP COLUMN IF EXISTS food_stay;
 
--- Add comments to the table and columns
-COMMENT ON TABLE public.profiles IS 'Stores public-facing user data and subscription details.';
-COMMENT ON COLUMN public.profiles.id IS 'References the internal auth.users table.';
-COMMENT ON COLUMN public.profiles.plan_type IS 'User subscription plan (free or paid).';
-COMMENT ON COLUMN public.profiles.food_scans_used IS 'Counter for food scanner feature usage.';
-COMMENT ON COLUMN public.profiles.trip_planner_runs IS 'Counter for trip planner feature usage.';
-
--- Set up Row Level Security for the profiles table
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- Create RLS policies for profiles
--- 1. Allow users to see their own profile
-DROP POLICY IF EXISTS "Users can view their own profile." ON public.profiles;
-CREATE POLICY "Users can view their own profile." ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
-
--- 2. Allow users to update their own profile
-DROP POLICY IF EXISTS "Users can update their own profile." ON public.profiles;
-CREATE POLICY "Users can update their own profile." ON public.profiles
-  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
-
--- Create a function to handle new user creation
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name, avatar_url)
-  VALUES (
-    new.id,
-    new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'avatar_url'
-  );
-  RETURN new;
-END;
-$$;
-
--- Create a trigger to call the function when a new user is created in auth.users
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- Step 2: Add all the new, comprehensive JSONB columns.
+-- We use a `_v2` suffix where a similar name might have existed to avoid conflicts.
+-- The default value is an empty JSON object.
+ALTER TABLE public.locations
+  ADD COLUMN IF NOT EXISTS about_location jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS opening_hours jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS best_time_to_visit_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS getting_here jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS safety_risks_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS local_insights_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS costs_money_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS amenities_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS food_stay_v2 jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS events_festivals jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS weather_air_quality jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS accessibility jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS nearby_essentials jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS crowd_experience jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS traveler_tips jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS google_reviews jsonb DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS virtual_tour jsonb DEFAULT '{}'::jsonb;

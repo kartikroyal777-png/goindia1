@@ -1,0 +1,16 @@
+export const safeFormatDate = (dateString: string | null | undefined, options: Intl.DateTimeFormatOptions = {}): string => {
+  if (!dateString) {
+    return 'N/A';
+  }
+  try {
+    // Add a 'T' to ensure correct parsing if it's just a date string
+    const date = new Date(dateString.includes('T') ? dateString : `${dateString}T00:00:00`);
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+    return date.toLocaleString('en-US', options);
+  } catch (error) {
+    console.error('Error formatting date:', dateString, error);
+    return 'Invalid Date';
+  }
+};
