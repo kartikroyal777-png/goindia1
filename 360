@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { City, Tehsil, Location } from '../../types';
-import { PlusCircle, Edit, Trash2, RefreshCw, ChevronRight, Home, Loader2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, RefreshCw, ChevronRight, Home, Loader2, AlertTriangle, Database } from 'lucide-react';
 import CityForm from './CityForm';
 import TehsilForm from './TehsilForm';
 import LocationForm from './LocationForm';
@@ -124,6 +124,16 @@ const ContentManager: React.FC = () => {
   
   const getItemName = (item: any) => item.name;
 
+  const RLSInfo = () => (
+    <div className="text-center text-gray-500 mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+      <Database className="w-10 h-10 mx-auto mb-2 text-amber-500" />
+      <p className="font-semibold text-amber-700">No {view} found.</p>
+      <p className="text-xs text-amber-600 mt-2">
+        This is likely a database permission issue. Please check that <strong>Row Level Security (RLS)</strong> is enabled on your <strong>'{view}'</strong> table in Supabase and that a policy exists to allow authenticated users to read the data.
+      </p>
+    </div>
+  );
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-10rem)]">
       <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm overflow-y-auto flex flex-col">
@@ -153,7 +163,7 @@ const ContentManager: React.FC = () => {
             </div>
           ) : (
             <ul className="space-y-2">
-              {items.map(item => (
+              {items.length > 0 ? items.map(item => (
                 <li key={item.id} className={`p-2 rounded-lg cursor-pointer flex justify-between items-center transition-colors ${formState.data?.id === item.id ? 'bg-orange-100' : 'hover:bg-gray-50'}`}>
                   <span onClick={() => handleEdit(item)} className="flex-grow font-semibold text-gray-800">{getItemName(item)}</span>
                   <div className="flex items-center space-x-1 flex-shrink-0">
@@ -161,13 +171,7 @@ const ContentManager: React.FC = () => {
                     {view !== 'locations' && <button onClick={() => handleDrillDown(item as City | Tehsil)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded-full"><ChevronRight className="w-5 h-5" /></button>}
                   </div>
                 </li>
-              ))}
-              {items.length === 0 && (
-                <div className="text-center text-gray-500 mt-8">
-                  <p>No {view} found.</p>
-                  <p className="text-xs text-gray-400 mt-2">Note: If data is missing, ensure Row Level Security (RLS) policies on your Supabase tables allow read access for your user role.</p>
-                </div>
-              )}
+              )) : <RLSInfo />}
             </ul>
           )}
         </div>
