@@ -1,60 +1,53 @@
-/*
-# [Operation Name]
-Location Schema Overhaul
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { LucideProps } from 'lucide-react';
 
-## Query Description: [This operation completely overhauls the `locations` table to support a much richer, structured data format. It drops several old columns and replaces them with new `jsonb` columns to store detailed information about each location as per the new requirements. This is a destructive change for the dropped columns, but necessary for the new features.]
+interface ToolCardProps {
+  title: string;
+  description: string;
+  icon: React.FC<LucideProps>;
+  path: string;
+  color: string;
+  comingSoon: boolean;
+}
 
-## Metadata:
-- Schema-Category: "Structural"
-- Impact-Level: "High"
-- Requires-Backup: true
-- Reversible: false
+const colorVariants: { [key: string]: { bg: string; text: string; border: string } } = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'hover:border-blue-300' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'hover:border-amber-300' },
+  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'hover:border-green-300' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'hover:border-indigo-300' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'hover:border-rose-300' },
+};
 
-## Structure Details:
-- **Table Affected:** `public.locations`
-- **Columns Dropped:** `basic_info`, `access_transport`, `safety_risks`, `local_insights`, `costs_money`, `amenities`, `food_stay`.
-- **Columns Added:** `about_location`, `opening_hours`, `best_time_to_visit_v2`, `getting_here`, `safety_risks_v2`, `local_insights_v2`, `costs_money_v2`, `amenities_v2`, `food_stay_v2`, `events_festivals`, `weather_air_quality`, `accessibility`, `nearby_essentials`, `crowd_experience`, `traveler_tips`, `google_reviews`, `virtual_tour`. All new columns are of type `jsonb`.
+const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon: Icon, path, color, comingSoon }) => {
+  const { bg, text, border } = colorVariants[color] || colorVariants.blue;
 
-## Security Implications:
-- RLS Status: Unchanged. Existing policies will apply.
-- Policy Changes: No.
-- Auth Requirements: Admin privileges required to run this migration.
+  const cardContent = (
+    <motion.div
+      className={`relative h-full bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between overflow-hidden transition-all ${border}`}
+      whileHover={{ y: -5 }}
+    >
+      <div>
+        <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
+          <Icon className={`w-6 h-6 ${text}`} />
+        </div>
+        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-600 mt-1">{description}</p>
+      </div>
+      {comingSoon && (
+        <div className="absolute top-4 right-4 bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">
+          SOON
+        </div>
+      )}
+    </motion.div>
+  );
 
-## Performance Impact:
-- Indexes: No indexes are added or removed.
-- Triggers: No triggers are affected.
-- Estimated Impact: This is a schema change and will be fast on tables with few rows. It will require a full table rewrite, which could be slow on very large tables.
-*/
+  return comingSoon ? (
+    <div className="cursor-not-allowed opacity-60">{cardContent}</div>
+  ) : (
+    <Link to={path}>{cardContent}</Link>
+  );
+};
 
--- Step 1: Drop all old, deprecated columns from the locations table.
--- Using IF EXISTS to make the script safe and re-runnable.
-ALTER TABLE public.locations
-  DROP COLUMN IF EXISTS basic_info,
-  DROP COLUMN IF EXISTS access_transport,
-  DROP COLUMN IF EXISTS safety_risks,
-  DROP COLUMN IF EXISTS local_insights,
-  DROP COLUMN IF EXISTS costs_money,
-  DROP COLUMN IF EXISTS amenities,
-  DROP COLUMN IF EXISTS food_stay;
-
--- Step 2: Add all the new, comprehensive JSONB columns.
--- We use a `_v2` suffix where a similar name might have existed to avoid conflicts.
--- The default value is an empty JSON object.
-ALTER TABLE public.locations
-  ADD COLUMN IF NOT EXISTS about_location jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS opening_hours jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS best_time_to_visit_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS getting_here jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS safety_risks_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS local_insights_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS costs_money_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS amenities_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS food_stay_v2 jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS events_festivals jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS weather_air_quality jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS accessibility jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS nearby_essentials jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS crowd_experience jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS traveler_tips jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS google_reviews jsonb DEFAULT '{}'::jsonb,
-  ADD COLUMN IF NOT EXISTS virtual_tour jsonb DEFAULT '{}'::jsonb;
+export default ToolCard;

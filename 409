@@ -1,173 +1,245 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Check, MapPin, Camera, Wrench, Map, Star, Crown } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+-- Migration to fix admin role issue and add features for saved places and trips.
 
-const PricingPage: React.FC = () => {
-  const { user, profile, upgradeToPaid, refreshProfile } = useAuth();
-  const navigate = useNavigate();
-  const [coupon, setCoupon] = useState('');
-  const [price, setPrice] = useState(5);
-  const [discount, setDiscount] = useState(0);
-  const [couponMessage, setCouponMessage] = useState('');
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const [upgradeMessage, setUpgradeMessage] = useState('');
+/*
+# [Operation 1: Add Role to Profiles]
+[Adds a 'role' column to the 'profiles' table to manage user permissions, fixing an RLS-related error.]
 
-  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
-  const isPaid = profile?.plan_type === 'paid';
+## Query Description: [This operation adds a new 'role' column to your user profiles table. It defaults to 'user' for all existing users. It is a non-destructive structural change.]
 
-  const applyCoupon = () => {
-    if (coupon === 'INDIA30') {
-      setPrice(3.5);
-      setDiscount(0.3);
-      setCouponMessage('✔️ 30% discount applied!');
-    } else if (coupon === 'INDIAA50') {
-      setPrice(2.5);
-      setDiscount(0.5);
-      setCouponMessage('✔️ 50% discount applied!');
-    } else if (coupon === 'INDIAA100') {
-      setPrice(0);
-      setDiscount(1);
-      setCouponMessage('✔️ 100% discount applied! Enjoy for free.');
-    } else {
-      setPrice(5);
-      setDiscount(0);
-      setCouponMessage('❌ Invalid coupon code.');
-    }
-  };
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
 
-  const handleUpgrade = async () => {
-    setIsUpgrading(true);
-    setUpgradeMessage('');
-    const { error } = await upgradeToPaid();
-    if (error) {
-      setUpgradeMessage('Upgrade failed. Please try again.');
-    } else {
-      setUpgradeMessage('Upgrade successful! Enjoy your premium features.');
-      await refreshProfile();
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-    }
-    setIsUpgrading(false);
-  };
+## Structure Details:
+- Table: public.profiles
+- Column Added: role (TEXT)
 
-  const FeatureItem: React.FC<{ icon: React.ElementType, text: string }> = ({ icon: Icon, text }) => (
-    <li className="flex items-center space-x-3">
-      <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-        <Icon className="w-3 h-3 text-green-600" />
-      </div>
-      <span className="text-gray-700">{text}</span>
-    </li>
+## Security Implications:
+- RLS Status: [Unaffected by this specific statement, but enables role-based policies]
+- Policy Changes: [No]
+- Auth Requirements: [Admin privileges to alter table]
+*/
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+
+/*
+# [Operation 2: Assign Admin Role]
+[Assigns the 'admin' role to the specified admin user to grant elevated permissions.]
+
+## Query Description: [This updates a single user's profile to set their role to 'admin'. This is critical for the admin panel functionality. Ensure the email is correct.]
+
+## Metadata:
+- Schema-Category: ["Data"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table: public.profiles
+- Column Updated: role
+
+## Security Implications:
+- RLS Status: [Enables admin access based on this role.]
+- Policy Changes: [No]
+- Auth Requirements: [Admin privileges to update table]
+*/
+UPDATE public.profiles
+SET role = 'admin'
+WHERE id = (SELECT id FROM auth.users WHERE email = 'kartikroyal777@gmail.com');
+
+/*
+# [Operation 3: Create saved_locations Table]
+[Creates a new table to store locations saved by users.]
+
+## Query Description: [This creates the 'saved_locations' table to link users to their favorite locations. This is a new, non-destructive addition to your schema.]
+
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table Created: public.saved_locations
+- Columns: user_id, location_id, created_at
+
+## Security Implications:
+- RLS Status: [Will be enabled]
+- Policy Changes: [Yes, new policies will be added]
+- Auth Requirements: [Admin privileges to create table]
+*/
+CREATE TABLE IF NOT EXISTS public.saved_locations (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    location_id UUID NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, location_id)
+);
+
+/*
+# [Operation 4: Enable RLS and Define Policies for saved_locations]
+[Secures the 'saved_locations' table so users can only access their own saved data.]
+
+## Query Description: [This enables Row Level Security on the new 'saved_locations' table and adds policies to ensure users can only create, view, and delete their own saved locations. This is a critical security measure.]
+
+## Metadata:
+- Schema-Category: ["Security"]
+- Impact-Level: ["Medium"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table: public.saved_locations
+
+## Security Implications:
+- RLS Status: [Enabled]
+- Policy Changes: [Yes]
+- Auth Requirements: [Authenticated user]
+*/
+ALTER TABLE public.saved_locations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated users to view their own saved locations" ON public.saved_locations;
+CREATE POLICY "Allow authenticated users to view their own saved locations"
+ON public.saved_locations FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Allow authenticated users to save locations" ON public.saved_locations;
+CREATE POLICY "Allow authenticated users to save locations"
+ON public.saved_locations FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Allow authenticated users to delete their own saved locations" ON public.saved_locations;
+CREATE POLICY "Allow authenticated users to delete their own saved locations"
+ON public.saved_locations FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+/*
+# [Operation 5: Create trips Table]
+[Creates a new table to store user-generated trip itineraries.]
+
+## Query Description: [This creates the 'trips' table for the Trip Planner feature. It will store user preferences and generated itineraries as JSON. This is a new, non-destructive addition.]
+
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table Created: public.trips
+- Columns: id, user_id, title, preferences, itinerary, created_at, updated_at
+
+## Security Implications:
+- RLS Status: [Will be enabled]
+- Policy Changes: [Yes, new policies will be added]
+- Auth Requirements: [Admin privileges to create table]
+*/
+CREATE TABLE IF NOT EXISTS public.trips (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT,
+    preferences JSONB,
+    itinerary JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+/*
+# [Operation 6: Enable RLS and Define Policies for trips]
+[Secures the 'trips' table so users can only manage their own trip plans.]
+
+## Query Description: [This enables Row Level Security on the new 'trips' table and adds policies to ensure users can only create, view, update, and delete their own trips. This is a critical security measure.]
+
+## Metadata:
+- Schema-Category: ["Security"]
+- Impact-Level: ["Medium"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Table: public.trips
+
+## Security Implications:
+- RLS Status: [Enabled]
+- Policy Changes: [Yes]
+- Auth Requirements: [Authenticated user]
+*/
+ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated users to manage their own trips" ON public.trips;
+CREATE POLICY "Allow authenticated users to manage their own trips"
+ON public.trips FOR ALL
+TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+/*
+# [Operation 7: Create function to check admin role]
+[Creates a helper function to check if the current user is an admin.]
+
+## Query Description: [This function simplifies RLS policies by providing a reusable way to check if a user has the 'admin' role. It improves maintainability.]
+
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
+
+## Structure Details:
+- Function Created: public.is_admin()
+
+## Security Implications:
+- RLS Status: [Used by RLS policies]
+- Policy Changes: [No]
+- Auth Requirements: [N/A]
+*/
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (
+    SELECT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
   );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-  return (
-    <div className="min-h-screen bg-orange-50 font-sans p-4 sm:p-6 md:p-10">
-      <button onClick={() => navigate(-1)} className="absolute top-4 left-4 p-2 rounded-full bg-white/50 hover:bg-white transition-colors z-20">
-        <ArrowLeft className="w-5 h-5 text-gray-800" />
-      </button>
+/*
+# [Operation 8: Secure locations table with admin-only write access]
+[Updates RLS policies on the 'locations' table to allow any authenticated user to read, but only admins to write.]
 
-      <div className="text-center mb-10">
-        <h1 className="text-3xl sm:text-4xl font-medium text-orange-600">Upgrade Your GoIndia Experience</h1>
-        <p className="text-gray-600 mt-2">Unlock premium features and explore India without limits.</p>
-      </div>
+## Query Description: [This is a critical security update. It ensures that all users can view location data, but only users with the 'admin' role can create, update, or delete locations. This prevents unauthorized modifications to your core content.]
 
-      {(isAdmin || isPaid) && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl mx-auto bg-gray-800 text-white p-4 rounded-2xl mb-8 flex items-center justify-center space-x-3 shadow-lg"
-        >
-          <Crown className="w-6 h-6 text-yellow-400" />
-          <p>{isAdmin ? 'Admin Access — All Features Unlocked' : 'Premium Plan Active'}</p>
-        </motion.div>
-      )}
+## Metadata:
+- Schema-Category: ["Security"]
+- Impact-Level: ["High"]
+- Requires-Backup: [true]
+- Reversible: [true]
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        {/* Free Plan */}
-        <motion.div
-          whileHover={{ y: -5 }}
-          className={`bg-white rounded-2xl p-6 shadow-lg border-2 ${!isPaid && !isAdmin ? 'border-orange-500' : 'border-gray-200'}`}
-        >
-          <h2 className="text-xl font-medium text-gray-800 mb-1">Free Plan</h2>
-          <p className="text-sm text-gray-500 mb-6">Best for first-time users.</p>
-          <ul className="space-y-3 mb-8">
-            <FeatureItem icon={MapPin} text="Explore 10 cities" />
-            <FeatureItem icon={Camera} text="10 food scans" />
-            <FeatureItem icon={Map} text="10 trip planner runs" />
-            <FeatureItem icon={Wrench} text="Unlimited tool usage" />
-          </ul>
-          <p className="text-4xl font-semibold text-center">$0</p>
-          <button className="mt-6 w-full py-3 bg-gray-200 text-gray-800 rounded-lg" disabled>
-            {isPaid || isAdmin ? 'Your Previous Plan' : 'Your Current Plan'}
-          </button>
-        </motion.div>
+## Structure Details:
+- Table: public.locations
 
-        {/* Paid Plan */}
-        <motion.div
-          whileHover={{ y: -5 }}
-          className={`bg-white rounded-2xl p-6 shadow-xl relative overflow-hidden border-2 ${(isPaid || isAdmin) ? 'border-orange-500' : 'border-gray-200'}`}
-        >
-          <div className="absolute -top-10 -right-10 w-28 h-28 bg-orange-500 rounded-full opacity-20"></div>
-          <span className="absolute top-2 left-2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs transform -rotate-6">
-            Most Popular
-          </span>
-          <h2 className="text-xl font-medium text-gray-800 mb-1 mt-8">One-Time Plan</h2>
-          <p className="text-sm text-gray-500 mb-6">The ultimate travel toolkit.</p>
-          <ul className="space-y-3 mb-8">
-            <FeatureItem icon={MapPin} text="Explore unlimited cities" />
-            <FeatureItem icon={Camera} text="300 food scans" />
-            <FeatureItem icon={Map} text="Unlimited trip planner runs" />
-            <FeatureItem icon={Wrench} text="Unlimited tool usage" />
-          </ul>
-          <div className="text-center">
-            {discount > 0 && !isAdmin && (
-              <p className="text-gray-500 line-through">
-                $5.00
-              </p>
-            )}
-            <p className="text-4xl font-semibold">${(isAdmin || isPaid) ? '0' : price.toFixed(2)}</p>
-            <p className="text-sm text-gray-500">One-time payment</p>
-          </div>
-          {!isAdmin && !isPaid && (
-            <div className="mt-6">
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  placeholder="Enter Coupon Code"
-                  className="flex-grow border p-2 rounded-lg focus:ring-2 focus:ring-orange-300 focus:outline-none"
-                  value={coupon}
-                  onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-                />
-                <button
-                  onClick={applyCoupon}
-                  className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-                >
-                  Apply
-                </button>
-              </div>
-              {couponMessage && (
-                <p className={`text-sm mt-2 text-center ${couponMessage.includes('❌') ? 'text-red-600' : 'text-green-600'}`}>
-                  {couponMessage}
-                </p>
-              )}
-            </div>
-          )}
-          <button 
-            onClick={handleUpgrade}
-            disabled={isPaid || isAdmin || isUpgrading}
-            className="mt-4 w-full py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors shadow-lg shadow-orange-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isUpgrading ? 'Processing...' : (isPaid || isAdmin) ? 'Plan Active' : 'Upgrade Now'}
-          </button>
-          {upgradeMessage && (
-             <p className="text-sm mt-2 text-center text-green-600">{upgradeMessage}</p>
-          )}
-        </motion.div>
-      </div>
-    </div>
-  );
-};
+## Security Implications:
+- RLS Status: [Enabled/Modified]
+- Policy Changes: [Yes]
+- Auth Requirements: [Admin for write, Authenticated for read]
+*/
+ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 
-export default PricingPage;
+DROP POLICY IF EXISTS "Allow all authenticated users to read locations" ON public.locations;
+CREATE POLICY "Allow all authenticated users to read locations"
+ON public.locations FOR SELECT
+TO authenticated
+USING (true);
+
+DROP POLICY IF EXISTS "Allow admins to manage locations" ON public.locations;
+CREATE POLICY "Allow admins to manage locations"
+ON public.locations FOR ALL
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());

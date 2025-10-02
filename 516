@@ -1,0 +1,105 @@
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+const handleApiError = (error: any): string => {
+  console.error("Error calling Gemini API:", error);
+  
+  if (!GEMINI_API_KEY) {
+    return `The VITE_GEMINI_API_KEY is missing. Please ensure it's set in your .env file.`;
+  }
+
+  return `Sorry, an unexpected error occurred with the AI assistant. Please try again later. (Details: ${error.message || 'Unknown error'})`;
+};
+
+const cleanJsonString = (rawText: string): string => {
+  let cleanedText = rawText.trim();
+  
+  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch && jsonMatch[1]) {
+    cleanedText = jsonMatch[1];
+  }
+
+  const firstBracket = cleanedText.indexOf('{');
+  const firstSquareBracket = cleanedText.indexOf('[');
+  let start = -1;
+
+  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
+  if (firstBracket === -1) start = firstSquareBracket;
+  else if (firstSquareBracket === -1) start = firstBracket;
+  else start = Math.min(firstBracket, firstSquareBracket);
+
+  const lastBracket = cleanedText.lastIndexOf('}');
+  const lastSquareBracket = cleanedText.lastIndexOf(']');
+  let end = Math.max(lastBracket, lastSquareBracket);
+
+  if (start === -1 || end === -1) return cleanedText;
+
+  return cleanedText.substring(start, end + 1);
+};
+
+let genAI: GoogleGenerativeAI | null = null;
+if (GEMINI_API_KEY) {
+  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+}
+
+const textModel = genAI?.getGenerativeModel({
+  model: "gemini-1.5-flash-latest",
+});
+
+const visionModel = genAI?.getGenerativeModel({
+  model: "gemini-2.0-flash-exp",
+});
+
+const safetySettings = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+];
+
+function fileToGenerativePart(base64Data: string, mimeType: string) {
+  return {
+    inlineData: {
+      data: base64Data,
+      mimeType
+    },
+  };
+}
+
+export const runGeminiQuery = async (prompt: string): Promise<string> => {
+  if (!textModel) {
+    throw new Error(handleApiError({ message: 'Gemini API key not configured' }));
+  }
+
+  try {
+    const result = await textModel.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        safetySettings,
+    });
+    const response = result.response;
+    const text = response.text();
+    return cleanJsonString(text);
+  } catch (error: any) {
+    throw new Error(handleApiError(error));
+  }
+};
+
+export const runGeminiVisionQuery = async (prompt: string, base64Image: string): Promise<string> => {
+  if (!visionModel) {
+    throw new Error(handleApiError({ message: 'Gemini API key not configured' }));
+  }
+
+  try {
+    const imagePart = fileToGenerativePart(base64Image, "image/jpeg");
+    const result = await visionModel.generateContent({
+        contents: [{ role: "user", parts: [imagePart, { text: prompt }] }],
+        safetySettings,
+    });
+    const response = result.response;
+    const text = response.text();
+    return cleanJsonString(text);
+  } catch (error: any) {
+    throw new Error(handleApiError(error));
+  }
+};

@@ -1,29 +1,24 @@
-import { supabase } from './supabase';
+{
+    "compilerOptions": {
+      "target": "ES2020",
+      "useDefineForClassFields": true,
+      "lib": ["ES2020", "DOM", "DOM.Iterable"],
+      "module": "ESNext",
+      "skipLibCheck": true,
 
-// This file is now deprecated for Gemini calls.
-// Keeping it for the Supabase function proxy if it's needed elsewhere.
-// New AI calls should use functions from `src/lib/gemini.ts`.
+      /* Bundler mode */
+      "moduleResolution": "bundler",
+      "allowImportingTsExtensions": true,
+      "isolatedModules": true,
+      "moduleDetection": "force",
+      "noEmit": true,
+      "jsx": "react-jsx",
 
-export const runAssistantQueryWithProxy = async (prompt: string): Promise<string> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('ai-proxy', {
-      body: {
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-    
-    if (data.error) {
-      throw new Error(data.error);
-    }
-
-    return data.choices[0].message.content.trim();
-  } catch (err) {
-    console.error('Error invoking Supabase function:', err);
-    return 'Sorry, there was an issue connecting to the AI assistant.';
+      /* Linting */
+      "strict": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "noFallthroughCasesInSwitch": true
+    },
+    "include": ["src"]
   }
-};

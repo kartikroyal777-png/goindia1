@@ -1,125 +1,82 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Heart, MapPin, LogOut, Edit, Crown, FileText, Shield, Info } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import EditProfileModal from './EditProfileModal';
+/*
+# [Create Bargaining Price Guide Table]
+This migration creates the `bargaining_price_guide` table to store fair and quoted prices for various items in different locations. It also sets up Row Level Security (RLS) to allow public read access and restricts write operations to administrators.
 
-const ProfilePage: React.FC = () => {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+## Query Description: [This operation creates a new table for the Bargaining Coach feature. It is a structural change and does not affect any existing data. It is safe to run on a production database.]
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-  
-  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
 
-  const menuItems = [
-    { icon: Heart, label: 'Saved Places', path: '/saved-places' },
-    { icon: MapPin, label: 'My Trips', path: '/my-trips' },
-    { icon: Settings, label: 'App Settings', path: '/settings/app' },
-  ];
+## Structure Details:
+- Table Created: `public.bargaining_price_guide`
+- Columns: `id`, `location_name`, `item_name`, `fair_price_range`, `quoted_price_range`, `created_at`
 
-  const legalItems = [
-    { icon: Info, label: 'About Us', path: '/about-us' },
-    { icon: Shield, label: 'Privacy Policy', path: '/privacy-policy' },
-    { icon: FileText, label: 'Terms of Service', path: '/terms-of-service' },
-  ];
+## Security Implications:
+- RLS Status: [Enabled]
+- Policy Changes: [Yes]
+- Auth Requirements: [Admin role for write, public for read]
 
-  return (
-    <>
-      <div className="pb-20 bg-gray-50">
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-4 pt-6 pb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative text-center text-white"
-          >
-            <div className="relative w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-12 h-12 text-white" />
-              <button onClick={() => setIsEditModalOpen(true)} className="absolute bottom-0 right-0 w-8 h-8 bg-white text-orange-500 rounded-full flex items-center justify-center shadow-md">
-                <Edit className="w-4 h-4" />
-              </button>
-            </div>
-            <h1 className="text-xl font-medium mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
-            <p className="text-orange-100 text-sm">{user?.email}</p>
-          </motion.div>
-        </div>
+## Performance Impact:
+- Indexes: [Primary Key on `id`]
+- Triggers: [None]
+- Estimated Impact: [Low. Creates a new table with minimal impact on overall database performance.]
+*/
 
-        <div className="px-4 -mt-8">
-          {isAdmin && (
-            <Link to="/admin">
-              <motion.div
-                className="w-full mb-6 bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl p-4 flex items-center justify-center space-x-3 text-white hover:shadow-2xl transition-shadow"
-                whileHover={{ scale: 1.02 }}
-              >
-                <Crown className="w-6 h-6 text-yellow-400" />
-                <span className="text-lg">Admin Panel</span>
-              </motion.div>
-            </Link>
-          )}
+-- Create the table for bargaining price guides
+CREATE TABLE public.bargaining_price_guide (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    location_name TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    fair_price_range TEXT,
+    quoted_price_range TEXT,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
 
-          <div className="bg-white rounded-xl shadow-md p-4 mb-4">
-            <div className="space-y-2">
-              {menuItems.map((item, index) => (
-                <Link to={item.path} key={item.label}>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="w-full p-3 flex items-center justify-between hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-800">{item.label}</span>
-                    </div>
-                    <span className="text-gray-400">›</span>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <div className="space-y-2">
-              {legalItems.map((item, index) => (
-                <Link to={item.path} key={item.label}>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: (index + menuItems.length) * 0.1 }}
-                    className="w-full p-3 flex items-center justify-between hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-800">{item.label}</span>
-                    </div>
-                    <span className="text-gray-400">›</span>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
-          </div>
+-- Add comments to the table and columns for clarity
+COMMENT ON TABLE public.bargaining_price_guide IS 'Stores fair and quoted price ranges for items to help users in bargaining.';
+COMMENT ON COLUMN public.bargaining_price_guide.location_name IS 'The city or market where the item is sold.';
+COMMENT ON COLUMN public.bargaining_price_guide.item_name IS 'The name of the item (e.g., T-shirt, Handicraft).';
+COMMENT ON COLUMN public.bargaining_price_guide.fair_price_range IS 'The fair price range for the item (e.g., ₹150-300).';
+COMMENT ON COLUMN public.bargaining_price_guide.quoted_price_range IS 'The commonly quoted price range by sellers (e.g., ₹600-800).';
 
-          <motion.button
-            onClick={handleSignOut}
-            className="w-full mt-6 bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-center space-x-2 text-red-600 hover:bg-red-50 transition-colors"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Sign Out</span>
-          </motion.button>
-        </div>
-      </div>
-      <AnimatePresence>
-        {isEditModalOpen && <EditProfileModal onClose={() => setIsEditModalOpen(false)} />}
-      </AnimatePresence>
-    </>
-  );
-};
+-- Enable Row Level Security
+ALTER TABLE public.bargaining_price_guide ENABLE ROW LEVEL SECURITY;
 
-export default ProfilePage;
+-- Create a helper function to identify the admin user based on the app's logic
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() = 'service_role' THEN
+    RETURN TRUE;
+  END IF;
+  IF auth.jwt() IS NOT NULL AND auth.jwt()->>'email' = 'kartikroyal777@gmail.com' THEN
+    RETURN TRUE;
+  ELSE
+    RETURN FALSE;
+  END IF;
+END;
+$$;
+
+-- Grant execute permission on the function to authenticated users
+GRANT EXECUTE ON FUNCTION is_admin() TO authenticated;
+
+-- Create policies for the table
+-- 1. Allow public read access to everyone
+CREATE POLICY "Allow public read access"
+ON public.bargaining_price_guide
+FOR SELECT
+USING (true);
+
+-- 2. Allow admins to perform all actions (insert, update, delete)
+CREATE POLICY "Allow admins full access"
+ON public.bargaining_price_guide
+FOR ALL
+USING (is_admin())
+WITH CHECK (is_admin());

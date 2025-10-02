@@ -1,87 +1,66 @@
--- This migration fixes the is_admin function and consolidates the schema.
-
--- 1. Drop the faulty function if it exists to avoid conflicts.
-DROP FUNCTION IF EXISTS public.is_admin(user_id uuid);
-
--- 2. Create the correct is_admin() function.
--- This function checks if the currently authenticated user's email is the admin email.
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-AS $$
-  SELECT auth.email() = 'kartikroyal777@gmail.com';
-$$;
-
--- Grant usage on the new function to roles that will use it in RLS
-GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
-
-
--- 3. Ensure all necessary columns exist on the 'locations' table.
-DO $$
-BEGIN
-  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='locations' AND column_name='details') THEN
-    ALTER TABLE public.locations ADD COLUMN details jsonb;
-  END IF;
-  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='locations' AND column_name='latitude') THEN
-    ALTER TABLE public.locations ADD COLUMN latitude double precision;
-  END IF;
-  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='locations' AND column_name='longitude') THEN
-    ALTER TABLE public.locations ADD COLUMN longitude double precision;
-  END IF;
-END $$;
-
-
--- 4. Create 'location_images' table if it doesn't exist.
-CREATE TABLE IF NOT EXISTS public.location_images (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    location_id uuid NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
-    image_url text NOT NULL,
-    alt_text text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
--- 5. Create 'bargaining_price_guide' table if it doesn't exist.
-CREATE TABLE IF NOT EXISTS public.bargaining_price_guide (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    location_name text NOT NULL,
-    item_name text NOT NULL,
-    fair_price_range text,
-    quoted_price_range text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
--- 6. Reset and apply all RLS policies using the correct is_admin() function.
--- Drop old policies first to prevent conflicts.
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.locations;
-DROP POLICY IF EXISTS "Enable all access for admin" ON public.locations;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.location_images;
-DROP POLICY IF EXISTS "Enable all access for admin" ON public.location_images;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.bargaining_price_guide;
-DROP POLICY IF EXISTS "Enable all access for admin" ON public.bargaining_price_guide;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.notifications;
-DROP POLICY IF EXISTS "Enable all access for admin" ON public.notifications;
-
--- Enable RLS on all relevant tables
-ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.location_images ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.bargaining_price_guide ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
--- Create policies for 'locations'
-CREATE POLICY "Enable read access for all users" ON public.locations FOR SELECT USING (true);
-CREATE POLICY "Enable all access for admin" ON public.locations FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
-
--- Create policies for 'location_images'
-CREATE POLICY "Enable read access for all users" ON public.location_images FOR SELECT USING (true);
-CREATE POLICY "Enable all access for admin" ON public.location_images FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
-
--- Create policies for 'bargaining_price_guide'
-CREATE POLICY "Enable read access for all users" ON public.bargaining_price_guide FOR SELECT USING (true);
-CREATE POLICY "Enable all access for admin" ON public.bargaining_price_guide FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
-
--- Create policies for 'notifications'
-CREATE POLICY "Enable read access for all users" ON public.notifications FOR SELECT USING (true);
-CREATE POLICY "Enable all access for admin" ON public.notifications FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './src/**/*.{js,jsx,ts,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: '#FF5722',
+        orange: {
+          50: '#fff3e0',
+          100: '#ffe0b2',
+          200: '#ffcc80',
+          300: '#ffb74d',
+          400: '#ffa726',
+          500: '#FF5722',
+          600: '#f57c00',
+          700: '#ef6c00',
+          800: '#e65100',
+          900: '#d84315',
+        },
+        blue: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          500: '#3b82f6',
+          600: '#2563eb',
+        },
+        charcoal: '#36454F',
+        'light-gray': '#F5F5F5',
+        success: '#28a745',
+        amber: '#ffc107',
+        danger: '#dc3545',
+      },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'bounce-gentle': 'bounceGentle 2s infinite',
+        'scan': 'scan 2s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        bounceGentle: {
+          '0%, 20%, 50%, 80%, 100%': { transform: 'translateY(0)' },
+          '40%': { transform: 'translateY(-10px)' },
+          '60%': { transform: 'translateY(-5px)' },
+        },
+        scan: {
+          'from': { top: '0%' },
+          'to': { top: 'calc(100% - 4px)' },
+        },
+      }
+    },
+  },
+  plugins: [],
+};

@@ -1,47 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Go India - Travel Guide for Foreigners</title>
-    
-    <meta name="description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
-    <meta name="author" content="Go India Team" />
+import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, Scan, Wrench, MapPin, CreditCard } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-    <meta property="og:title" content="Go India - Travel Guide for Foreigners" />
-    <meta property="og:description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://goindia1-3rxj-dualite.netlify.app" />
-    <meta property="og:image" content="https://d33wubrfki0l68.cloudfront.net/68d7fa331814c8076aa21334/screenshot_2025-09-27-14-53-26-0000.webp" />
-    <meta property="og:image:width" content="960" />
-    <meta property="og:image:height" content="600" />	
-    <meta property="og:image:alt" content="Go India travel app for foreigners visiting India" />
+const BottomNavBar: React.FC = () => {
+  const location = useLocation();
+  const tabs = [
+    { path: '/', label: 'Home', icon: Home },
+    { path: '/food-scorer', label: 'Food Score', icon: Scan },
+    { path: '/tools', label: 'Tools', icon: Wrench },
+    { path: '/planner', label: 'Trip Planner', icon: MapPin },
+    { path: '/pricing', label: 'Pricing', icon: CreditCard },
+  ];
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Go India - Travel Guide for Foreigners" />
-    <meta name="twitter:description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
-    <meta name="twitter:site" content="@goindia" />
-    <meta name="twitter:image" content="https://d33wubrfki0l68.cloudfront.net/68d7fa331814c8076aa21334/screenshot_2025-09-27-14-53-26-0000.webp" />
+  const noNavRoutes = ['/auth', '/admin'];
+  
+  const isFullScreen = [
+    '/food-scorer',
+    '/pricing',
+  ].includes(location.pathname);
 
-    <link rel="canonical" href="https://goindia1-3rxj-dualite.netlify.app" />
+  const isToolPage = location.pathname.startsWith('/tools/');
 
-     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Go India",
-      "url": "https://goindia1-3rxj-dualite.netlify.app",
-      "description": "Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights.",
-      "publisher": {
-        "@type": "Organization",
-        "name": "Go India Team"
-      }
-    }
-    </script>
+  if (noNavRoutes.some(path => location.pathname.startsWith(path)) || isFullScreen || isToolPage) {
+    return null;
+  }
 
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+  return (
+    <motion.nav 
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-1 z-50"
+    >
+      <div className="flex justify-around items-center max-w-sm mx-auto">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = location.pathname === tab.path;
+          
+          return (
+            <NavLink
+              to={tab.path}
+              key={tab.path}
+              className="relative flex flex-col items-center py-1 px-3 rounded-lg transition-all w-16"
+            >
+              <div className={`p-1 rounded-full ${isActive ? 'text-orange-500' : 'text-gray-500'}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className={`text-xs mt-1 ${
+                isActive ? 'text-orange-500 font-medium' : 'text-gray-500'
+              }`}>
+                {tab.label}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 w-8 h-0.5 bg-orange-500 rounded-full"
+                />
+              )}
+            </NavLink>
+          );
+        })}
+      </div>
+    </motion.nav>
+  );
+};
+
+export default BottomNavBar;

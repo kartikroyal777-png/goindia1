@@ -1,110 +1,137 @@
-/*
-          # Create Phrases Table
-          This migration creates a new table `public.phrases` to store translation data for the app and seeds it with initial content.
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, MapPin, Shield, Thermometer } from 'lucide-react';
+import TehsilCard from './TehsilCard';
+import { City, Tehsil } from '../../types';
+import { supabase } from '../../lib/supabase';
 
-          ## Query Description: 
-          This operation is structural and safe. It creates a new table and populates it. It does not affect any existing data. Row Level Security is enabled to allow public read access, while only the specified admin user can write, update, or delete entries.
+const CityPage: React.FC = () => {
+  const { cityId } = useParams<{ cityId: string }>();
+  const navigate = useNavigate();
+  const [city, setCity] = useState<City | null>(null);
+  const [tehsils, setTehsils] = useState<Tehsil[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-          ## Metadata:
-          - Schema-Category: "Structural"
-          - Impact-Level: "Low"
-          - Requires-Backup: false
-          - Reversible: true (by dropping the table)
-          
-          ## Structure Details:
-          - Table: `public.phrases`
-          - Columns: `id`, `category`, `en`, `hi`, `pronunciation`, `is_adult`, `created_at`
-          
-          ## Security Implications:
-          - RLS Status: Enabled
-          - Policy Changes: Yes (Adds policies for read and admin write access)
-          - Auth Requirements: Admin role for write operations.
-          
-          ## Performance Impact:
-          - Indexes: Primary key index on `id`.
-          - Triggers: None
-          - Estimated Impact: Negligible.
-          */
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!cityId) return;
+      setLoading(true);
+      setError(null);
 
-CREATE TABLE public.phrases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    category TEXT NOT NULL,
-    en TEXT NOT NULL,
-    hi TEXT NOT NULL,
-    pronunciation TEXT,
-    is_adult BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+      // Fetch city details
+      const { data: cityData, error: cityError } = await supabase
+        .from('cities')
+        .select('*')
+        .eq('id', cityId)
+        .single();
+      
+      if (cityError || !cityData) {
+        setError(`Could not find the requested city: ${cityError?.message || 'Not found'}`);
+        console.error(cityError);
+        setLoading(false);
+        return;
+      }
+      setCity(cityData);
 
-COMMENT ON TABLE public.phrases IS 'Stores phrases for the translation feature.';
+      // Fetch tehsils for the city
+      const { data: tehsilsData, error: tehsilsError } = await supabase
+        .from('tehsils')
+        .select('*')
+        .eq('city_id', cityId);
+      
+      if (tehsilsError) {
+        setError(`Could not fetch areas for this city: ${tehsilsError.message}`);
+        console.error(tehsilsError);
+      } else {
+        setTehsils(tehsilsData);
+      }
+      
+      setLoading(false);
+    };
 
-ALTER TABLE public.phrases ENABLE ROW LEVEL SECURITY;
+    fetchData();
+  }, [cityId]);
 
-CREATE POLICY "Public phrases are viewable by everyone." ON public.phrases FOR SELECT USING (true);
+  if (loading) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-64 bg-gray-300"></div>
+        <div className="p-4">
+          <div className="h-8 bg-gray-300 rounded w-3/4 mb-4"></div>
+          <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
+          <div className="h-4 bg-gray-300 rounded w-5/6"></div>
+        </div>
+      </div>
+    );
+  }
 
-CREATE POLICY "Admins can manage phrases." ON public.phrases FOR ALL 
-USING (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com') 
-WITH CHECK (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com');
+  if (error || !city) {
+    return <div className="p-4 text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error) || 'City not found.'}</div>;
+  }
 
--- Seed Data
-INSERT INTO public.phrases (category, en, hi, pronunciation, is_adult) VALUES
-('Survival & Polite', 'Hello', 'नमस्ते', 'namaste', false),
-('Survival & Polite', 'Thank you', 'धन्यवाद', 'dhanyavaad', false),
-('Survival & Polite', 'Please', 'कृपया', 'kripya', false),
-('Survival & Polite', 'Sorry / Excuse me', 'माफ़ कीजिए', 'maaf kijie', false),
-('Survival & Polite', 'Yes', 'हाँ / जी', 'haan / ji', false),
-('Survival & Polite', 'No', 'नहीं', 'nahī̃', false),
-('Survival & Polite', 'OK', 'ठीक है', 'ṭhīk hai', false),
-('Survival & Polite', 'How much?', 'कितना हुआ?', 'kitnā huā?', false),
-('Survival & Polite', 'Water', 'पानी', 'pānī', false),
-('Survival & Polite', 'Food', 'खाना', 'khānā', false),
-('Survival & Polite', 'Where is the bathroom?', 'बाथरूम कहाँ है?', 'bathroom kahān hai?', false),
-('Survival & Polite', 'Let''s go', 'चलो', 'chalo', false),
-('Survival & Polite', 'Help', 'सहायता', 'sahāytā', false),
-('Survival & Polite', 'Police', 'पुलिस', 'pulis', false),
-('Survival & Polite', 'Hospital', 'हस्पताल', 'haspatal', false),
-('Directions & Transport', 'Left', 'बाएँ', 'bāē̃', false),
-('Directions & Transport', 'Right', 'दाएँ', 'dāē̃', false),
-('Directions & Transport', 'Straight', 'सीधे', 'sīdhe', false),
-('Directions & Transport', 'Stop', 'रुको', 'ruko', false),
-('Directions & Transport', 'Station', 'स्टेशन', 'sṭeśan', false),
-('Directions & Transport', 'Train', 'रेलगाड़ी', 'relgāṛī', false),
-('Directions & Transport', 'Taxi', 'टैक्सी', 'ṭaiksī', false),
-('Directions & Transport', 'Auto-rickshaw', 'ऑटो', 'oṭo', false),
-('Directions & Transport', 'Fare', 'किराया', 'kirāyā', false),
-('Directions & Transport', 'Ticket', 'टिकट', 'ṭikaṭ', false),
-('Shopping & Bargaining', 'What''s the price?', 'क्या कीमत है?', 'kya qīmat hai?', false),
-('Shopping & Bargaining', 'It''s expensive', 'महँगा है', 'mahãgā hai', false),
-('Shopping & Bargaining', 'Cheap', 'सस्ता', 'sastā', false),
-('Shopping & Bargaining', 'Reduce the price', 'दाम कम करो', 'dām kam karo', false),
-('Shopping & Bargaining', 'Show me', 'दिखाइए', 'dikhāiye', false),
-('Shopping & Bargaining', 'Money', 'पैसा', 'paisā', false),
-('Food & Drink', 'Tea', 'चाय', 'chāy', false),
-('Food & Drink', 'Coffee', 'कॉफ़ी', 'kāfī', false),
-('Food & Drink', 'Sugar', 'चीनी', 'chīnī', false),
-('Food & Drink', 'Salt', 'नमक', 'namak', false),
-('Food & Drink', 'Spice', 'मिर्च', 'mirc', false),
-('Food & Drink', 'Flat-bread', 'रोटी', 'roṭī', false),
-('Food & Drink', 'Rice', 'चावल', 'chāwal', false),
-('Food & Drink', 'Lentils', 'दाल', 'dāl', false),
-('Food & Drink', 'Vegetables', 'सब्ज़ी', 'sabzī', false),
-('Food & Drink', 'Cold', 'ठंडा', 'ṭhaṇḍā', false),
-('Food & Drink', 'Hot', 'गरम', 'garam', false),
-('Food & Drink', 'Bill', 'बिल', 'bil', false),
-('Slang / Cool Words', 'Dude / Pal', 'यार', 'yār', false),
-('Slang / Cool Words', 'Awesome', 'झकास', 'jhakās', false),
-('Slang / Cool Words', 'Cool / Chilled', 'मस्त', 'mast', false),
-('Slang / Cool Words', 'Carefree', 'बिंदास', 'bindās', false),
-('Slang / Cool Words', 'Hack / Workaround', 'जुगाड़', 'jugāṛ', false),
-('Slang & Adult (18+)', 'Idiot / Fool', 'चूतिया', 'chūṭiyā', true),
-('Slang & Adult (18+)', 'Sister-f*er (common curse)', 'भेंचो', 'bhencho', true),
-('Slang & Adult (18+)', 'Mother-f*er (strong curse)', 'मादरचोद', 'mādarchod', true),
-('Slang & Adult (18+)', 'Bastard / Rascal', 'हरामी', 'harāmī', true),
-('Slang & Adult (18+)', 'Assh*le', 'गांडू', 'gāṇḍu', true),
-('Slang & Adult (18+)', 'Wh*re', 'रंडी', 'ranḍī', true),
-('Slang & Adult (18+)', 'Son of a dog', 'कुत्ते का पिल्ला', 'kutte ka pillā', true),
-('Slang & Adult (18+)', 'Idiot (lit. owl)', 'उल्लू', 'ullū', true),
-('Slang & Adult (18+)', 'Fool', 'बेवक़ूफ़', 'bevakūf', true),
-('Slang & Adult (18+)', 'Pimp', 'भड़वा', 'bhaṛvā', true),
-('Slang & Adult (18+)', 'Sh*t', 'टट्टी', 'ṭaṭṭī', true),
-('Slang & Adult (18+)', 'Piss', 'मूत', 'mūt', true);
+  return (
+    <div className="bg-gray-50 min-h-screen pb-10">
+      {/* Header */}
+      <div className="relative h-64">
+        <img src={city.thumbnail_url} alt={city.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        
+        <motion.button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-full"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+
+        <div className="absolute bottom-4 left-4 text-white">
+          <h1 className="text-3xl font-semibold">{city.name}</h1>
+          <p className="text-lg">{city.short_tagline}</p>
+        </div>
+      </div>
+
+      {/* City Info */}
+      <div className="p-4">
+        <p className="text-gray-600 mb-4">{city.description}</p>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <MapPin className="w-5 h-5 text-orange-500 mx-auto mb-1" />
+            <p className="text-sm">{city.state}</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <Shield className="w-5 h-5 text-green-500 mx-auto mb-1" />
+            <p className="text-sm">{city.safety_score}/10 Safety</p>
+          </div>
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <Thermometer className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+            <p className="text-sm">{city.best_time_to_visit}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tehsils List */}
+      <div className="p-4">
+        <h2 className="text-xl font-medium text-gray-900 mb-4">Explore Areas in {city.name}</h2>
+        <div className="grid grid-cols-1 gap-4">
+          {tehsils.length > 0 ? tehsils.map((tehsil, index) => (
+            <motion.div
+              key={tehsil.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <TehsilCard tehsil={tehsil} onClick={() => navigate(`/tehsil/${tehsil.id}`)} />
+            </motion.div>
+          )) : (
+            <p className="text-gray-500">No specific areas listed for this city yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CityPage;

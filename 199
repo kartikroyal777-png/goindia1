@@ -1,53 +1,71 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { LucideProps } from 'lucide-react';
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-interface ToolCardProps {
-  title: string;
-  description: string;
-  icon: React.FC<LucideProps>;
-  path: string;
-  color: string;
-  comingSoon: boolean;
-}
+const handleApiError = (error: any): string => {
+  console.error("Error calling Groq API:", error);
+  
+  if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_API_KEY') {
+    return `The VITE_GROQ_API_KEY is missing or invalid. Please ensure it's set in your .env file.`;
+  }
 
-const colorVariants: { [key: string]: { bg: string; text: string; border: string } } = {
-  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'hover:border-blue-300' },
-  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'hover:border-amber-300' },
-  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'hover:border-green-300' },
-  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'hover:border-indigo-300' },
-  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'hover:border-rose-300' },
+  return `Sorry, an unexpected error occurred with the AI assistant. Please try again later. (Details: ${error.message || 'Unknown error'})`;
 };
 
-const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon: Icon, path, color, comingSoon }) => {
-  const { bg, text, border } = colorVariants[color] || colorVariants.blue;
+const cleanJsonString = (rawText: string): string => {
+  let cleanedText = rawText.trim();
+  
+  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch && jsonMatch[1]) {
+    cleanedText = jsonMatch[1];
+  }
 
-  const cardContent = (
-    <motion.div
-      className={`relative h-full bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between overflow-hidden transition-all ${border}`}
-      whileHover={{ y: -5 }}
-    >
-      <div>
-        <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
-          <Icon className={`w-6 h-6 ${text}`} />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-        <p className="text-sm text-gray-600 mt-1">{description}</p>
-      </div>
-      {comingSoon && (
-        <div className="absolute top-4 right-4 bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">
-          SOON
-        </div>
-      )}
-    </motion.div>
-  );
+  const firstBracket = cleanedText.indexOf('{');
+  const firstSquareBracket = cleanedText.indexOf('[');
+  let start = -1;
 
-  return comingSoon ? (
-    <div className="cursor-not-allowed opacity-60">{cardContent}</div>
-  ) : (
-    <Link to={path}>{cardContent}</Link>
-  );
+  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
+  if (firstBracket === -1) start = firstSquareBracket;
+  else if (firstSquareBracket === -1) start = firstBracket;
+  else start = Math.min(firstBracket, firstSquareBracket);
+
+  const lastBracket = cleanedText.lastIndexOf('}');
+  const lastSquareBracket = cleanedText.lastIndexOf(']');
+  let end = Math.max(lastBracket, lastSquareBracket);
+
+  if (start === -1 || end === -1) return cleanedText;
+
+  return cleanedText.substring(start, end + 1);
 };
 
-export default ToolCard;
+
+export const runGroqQuery = async (prompt: string): Promise<string> => {
+  if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_API_KEY') {
+    throw new Error(handleApiError({ message: 'Groq API key not configured or is invalid.' }));
+  }
+
+  try {
+    const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            model: 'llama-3.1-8b-instant'
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || 'Failed to fetch from Groq API');
+    }
+
+    const data = await response.json();
+    const text = data.choices[0]?.message?.content || '';
+    return cleanJsonString(text);
+
+  } catch (error: any) {
+    throw new Error(handleApiError(error));
+  }
+};

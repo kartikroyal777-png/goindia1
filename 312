@@ -1,43 +1,83 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Bell, User, Crown, LogIn, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Volume2 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
-const phrases = [
-  { en: "Too expensive, give me local price.", hi: "Bahut mehenga hai, sahi daam lagaiye.", pronunciation: "Bahut mehenga hai, sahi daam lagaiye" },
-  { en: "I will check another shop.", hi: "Main doosri dukaan dekh lunga.", pronunciation: "Main doosri dukaan dekh lunga" },
-  { en: "Please reduce a little, brother.", hi: "Thoda kam karo bhaiya.", pronunciation: "Thoda kam karo bhaiya" },
-  { en: "This is tourist price.", hi: "Ye toh tourist price hai.", pronunciation: "Ye toh tourist price hai" },
-];
-
-const CommonPhrases: React.FC = () => {
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'hi-IN';
-      speechSynthesis.speak(utterance);
-    } else {
-      alert('Text-to-speech is not supported in your browser.');
-    }
-  };
+const TopNavBar: React.FC = () => {
+  const { session } = useAuth();
 
   return (
-    <div className="space-y-4">
-      {phrases.map((phrase, index) => (
-        <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="bg-white rounded-lg p-4 border shadow-sm">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="font-medium text-gray-900">{phrase.en}</p>
-              <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
-              <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+    <motion.header 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-sm shadow-sm border-b border-gray-100 px-4 py-3 z-30"
+    >
+      <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <Link to="/" className="flex items-center space-x-2">
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <Crown className="w-5 h-5 text-white" />
             </div>
-            <button onClick={() => speak(phrase.hi)} className="p-2 text-gray-400 hover:text-blue-500">
-              <Volume2 className="w-5 h-5" />
-            </button>
-          </div>
-        </motion.div>
-      ))}
-    </div>
+          </motion.div>
+          <h1 className="text-xl font-medium text-gray-900">
+            Go <span className="text-orange-500">India</span>
+          </h1>
+        </Link>
+
+        <div className="flex items-center space-x-3">
+          {session ? (
+            <>
+              <Link to="/pricing">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center space-x-2 bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg text-sm border border-orange-200"
+                >
+                  <Star className="w-4 h-4 fill-current" />
+                  <span>Upgrade</span>
+                </motion.button>
+              </Link>
+              <Link to="/notifications">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white"></span>
+                </motion.button>
+              </Link>
+
+              <Link to="/profile">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors"
+                >
+                  <User className="w-4 h-4 text-gray-600" />
+                </motion.button>
+              </Link>
+            </>
+          ) : (
+            <Link to="/auth">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Login</span>
+              </motion.button>
+            </Link>
+          )}
+        </div>
+      </div>
+    </motion.header>
   );
 };
 
-export default CommonPhrases;
+export default TopNavBar;

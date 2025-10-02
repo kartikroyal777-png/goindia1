@@ -1,107 +1,46 @@
-/*
-          # [Feature Expansion: Admin, Trips, Notifications]
-          This migration adds the necessary tables to support a full admin panel, user-specific saved trips, saved places, and a notification system.
+import React from 'react';
+import { ArrowLeft, Sparkles, Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-          ## Query Description: [This operation is structural and adds new tables without affecting existing data. It is safe to run on the existing database. It enables core new features for user accounts and administration.]
-          
-          ## Metadata:
-          - Schema-Category: ["Structural"]
-          - Impact-Level: ["Low"]
-          - Requires-Backup: [false]
-          - Reversible: [true]
-          
-          ## Structure Details:
-          - Adds table: `notifications`
-          - Adds table: `trips`
-          - Adds table: `saved_places`
-          - Adds table: `admin_action_logs`
-          - Adds RLS policies to `trips` and `saved_places` for user-level security.
-          
-          ## Security Implications:
-          - RLS Status: [Enabled]
-          - Policy Changes: [Yes]
-          - Auth Requirements: [User authentication is required to interact with `trips` and `saved_places`.]
-          
-          ## Performance Impact:
-          - Indexes: [Added on foreign keys and user_id]
-          - Triggers: [None]
-          - Estimated Impact: [Low performance impact, consists of adding new tables and indexes.]
-          */
+const AboutUsPage = () => {
+  const navigate = useNavigate();
 
--- Table for storing notifications sent to users
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title TEXT NOT NULL,
-    message TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('general', 'safety_alert', 'promo', 'update')),
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-COMMENT ON TABLE public.notifications IS 'Stores notifications for users, managed by admins.';
+  return (
+    <div className="min-h-screen bg-gray-50 pb-10">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+        <h1 className="text-xl font-semibold text-gray-900">About Us</h1>
+      </div>
+      <div className="p-4 space-y-6">
+        <motion.div initial={{opacity: 0, y:20}} animate={{opacity: 1, y:0}} className="bg-white rounded-xl shadow-sm border p-6">
+          <Sparkles className="w-8 h-8 text-orange-500 mb-3" />
+          <h2 className="font-semibold text-xl mb-2">Our Brand Story</h2>
+          <p className="text-gray-600 leading-relaxed">
+            Traveling across India can feel overwhelming for foreigners — language barriers, safety concerns, transport confusion, scams, and cultural differences often discourage many from truly experiencing the country.
+          </p>
+          <p className="text-gray-600 leading-relaxed mt-4">
+            GoIndia was born from this very problem. Kartik Kumawat and Priyanshu Singh, avid travelers and developers, experienced firsthand how challenging it can be for outsiders to navigate India.
+          </p>
+          <p className="text-gray-600 leading-relaxed mt-4">
+            They imagined a platform that would bridge the gap between foreign travelers and local India, making journeys smooth, safe, and unforgettable. From AI-powered trip planning to insider cultural tips, GoIndia is the modern travel companion designed to make India easy.
+          </p>
+        </motion.div>
+        <motion.div initial={{opacity: 0, y:20}} animate={{opacity: 1, y:0}} transition={{delay: 0.2}} className="bg-white rounded-xl shadow-sm border p-6">
+          <Target className="w-8 h-8 text-green-500 mb-3" />
+          <h2 className="font-semibold text-xl mb-2">Our Mission</h2>
+          <p className="text-gray-600 italic text-lg">
+            ✨ “To make India beginner-friendly for every traveler.”
+          </p>
+          <p className="text-gray-600 leading-relaxed mt-4">
+            We provide authentic travel information, local insights, safety tips, AI-powered trip planning, live weather & AQI updates, and verified recommendations for hotels, food, and guides — all in one place.
+          </p>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
 
--- Table for storing user-generated trip plans
-CREATE TABLE IF NOT EXISTS public.trips (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    destination TEXT NOT NULL,
-    days INT NOT NULL,
-    travel_style TEXT,
-    companions TEXT,
-    itinerary JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-COMMENT ON TABLE public.trips IS 'Stores user-created trip itineraries.';
-
--- Table for storing user's saved places
-CREATE TABLE IF NOT EXISTS public.saved_places (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    location_id UUID REFERENCES public.locations(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-COMMENT ON TABLE public.saved_places IS 'Stores locations saved by users.';
-
--- Table for logging admin actions
-CREATE TABLE IF NOT EXISTS public.admin_action_logs (
-    id BIGSERIAL PRIMARY KEY,
-    admin_email TEXT NOT NULL,
-    action TEXT NOT NULL,
-    entity_type TEXT,
-    entity_id TEXT,
-    details JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-COMMENT ON TABLE public.admin_action_logs IS 'Logs all actions performed in the admin panel for auditing.';
-
--- Enable RLS for user-specific tables
-ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.saved_places ENABLE ROW LEVEL SECURITY;
-
--- Policies for trips table
-CREATE POLICY "Users can view their own trips"
-ON public.trips FOR SELECT
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own trips"
-ON public.trips FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own trips"
-ON public.trips FOR UPDATE
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own trips"
-ON public.trips FOR DELETE
-USING (auth.uid() = user_id);
-
--- Policies for saved_places table
-CREATE POLICY "Users can view their own saved places"
-ON public.saved_places FOR SELECT
-USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own saved places"
-ON public.saved_places FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own saved places"
-ON public.saved_places FOR DELETE
-USING (auth.uid() = user_id);
+export default AboutUsPage;

@@ -1,89 +1,206 @@
-/*
-          # [Feature: Admin & Location Enhancements]
-          This migration adds tables for category management and enhances locations to support multiple images.
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Volume2, Copy, RotateCcw, BookOpen, Eye, Loader2, ArrowLeft } from 'lucide-react';
+import { runGroqQuery } from '../lib/groq';
+import { supabase } from '../lib/supabase';
+import { Phrase } from '../../types';
+import { Link } from 'react-router-dom';
 
-          ## Query Description: [This script creates a 'categories' table, a 'city_categories' join table to link cities to categories, and adds an 'image_urls' array to the 'locations' table. It populates the new tables with existing data from the application's hardcoded values. This is a structural change and is not easily reversible without losing the new relationships.]
-          
-          ## Metadata:
-          - Schema-Category: ["Structural"]
-          - Impact-Level: ["Medium"]
-          - Requires-Backup: [true]
-          - Reversible: [false]
-          
-          ## Structure Details:
-          - Creates table: `public.categories`
-          - Creates table: `public.city_categories`
-          - Alters table: `public.locations` (adds `image_urls` column)
-          
-          ## Security Implications:
-          - RLS Status: [Enabled]
-          - Policy Changes: [Yes]
-          - Auth Requirements: [Admin policies are applied for write access.]
-          
-          ## Performance Impact:
-          - Indexes: [Primary keys and foreign keys are indexed.]
-          - Triggers: [None]
-          - Estimated Impact: [Low performance impact on existing queries.]
-          */
+const TranslatePage: React.FC = () => {
+  const [sourceText, setSourceText] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+  const [sourceLang, setSourceLang] = useState('en');
+  const [targetLang, setTargetLang] = useState('hi');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showAdultContent, setShowAdultContent] = useState(false);
+  
+  const [phraseCategories, setPhraseCategories] = useState<Record<string, Phrase[]>>({});
+  const [loadingPhrases, setLoadingPhrases] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
--- 1. Create categories table
-CREATE TABLE public.categories (
-    id uuid NOT NULL DEFAULT gen_random_uuid(),
-    name text NOT NULL,
-    icon text NOT NULL,
-    emoji text NOT NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
-    CONSTRAINT categories_pkey PRIMARY KEY (id),
-    CONSTRAINT categories_name_key UNIQUE (name)
-);
-ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable read access for all users" ON public.categories FOR SELECT USING (true);
-CREATE POLICY "Enable insert for admins" ON public.categories FOR INSERT WITH CHECK ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable update for admins" ON public.categories FOR UPDATE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable delete for admins" ON public.categories FOR DELETE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
+  useEffect(() => {
+    const fetchPhrases = async () => {
+      setLoadingPhrases(true);
+      setError(null);
+      const { data, error } = await supabase.from('phrases').select('*').order('category').order('en');
+      if (error) {
+        setError(`Could not load phrases: ${error.message}`);
+        console.error(error);
+      } else if (data) {
+        const grouped = data.reduce((acc, phrase) => {
+          const category = phrase.is_adult ? 'Slang & Adult (18+)' : phrase.category;
+          (acc[category] = acc[category] || []).push(phrase);
+          return acc;
+        }, {} as Record<string, Phrase[]>);
+        setPhraseCategories(grouped);
+      }
+      setLoadingPhrases(false);
+    };
+    fetchPhrases();
+  }, []);
 
--- 2. Populate categories table from existing mock data
-INSERT INTO public.categories (id, name, icon, emoji) VALUES
-('a1b2c3d4-e5f6-7890-1234-567890abcdef', 'Forts', 'castle', '🏰'),
-('b2c3d4e5-f6a7-8901-2345-67890abcdef1', 'Lakes', 'waves', '🌊'),
-('c3d4e5f6-a7b8-9012-3456-7890abcdef2', 'Beaches', 'palmtree', '🏝️'),
-('d4e5f6a7-b8c9-0123-4567-890abcdef3', 'Temples', 'building', '🛕'),
-('e5f6a7b8-c9d0-1234-5678-90abcdef4', 'Wildlife', 'trees', '🐅'),
-('f6a7b8c9-d0e1-2345-6789-0abcdef5', 'Trekking', 'mountain', '⛰️'),
-('a7b8c9d0-e1f2-3456-7890-1abcdef6', 'Food', 'utensils', '🍛'),
-('b8c9d0e1-f2a3-4567-8901-bcdef1234567', 'Markets', 'shopping-bag', '🛍️');
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+    { code: 'fr', name: 'French', flag: '🇫🇷' },
+    { code: 'de', name: 'German', flag: '🇩🇪' },
+    { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+    { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+    { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+    { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+    { code: 'ar', name: 'Arabic', flag: '🇦🇪' },
+    { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
+    { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
+    { code: 'bn', name: 'Bengali', flag: '🇮🇳' },
+    { code: 'mr', name: 'Marathi', flag: '🇮🇳' },
+  ];
 
--- 3. Create city_categories join table
-CREATE TABLE public.city_categories (
-    city_id uuid NOT NULL,
-    category_id uuid NOT NULL,
-    CONSTRAINT city_categories_pkey PRIMARY KEY (city_id, category_id),
-    CONSTRAINT city_categories_city_id_fkey FOREIGN KEY (city_id) REFERENCES public.cities(id) ON DELETE CASCADE,
-    CONSTRAINT city_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE
-);
-ALTER TABLE public.city_categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable read access for all users" ON public.city_categories FOR SELECT USING (true);
-CREATE POLICY "Enable insert for admins" ON public.city_categories FOR INSERT WITH CHECK ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable update for admins" ON public.city_categories FOR UPDATE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
-CREATE POLICY "Enable delete for admins" ON public.city_categories FOR DELETE USING ( (select auth.email()) = 'kartikroyal777@gmail.com' );
+  const handleTranslate = async () => {
+    if (!sourceText.trim() || isTranslating) return;
+    setIsTranslating(true);
+    setTranslatedText('');
 
--- 4. Populate city_categories from old hardcoded map
--- This populates the relationships based on the previous logic in the app.
-INSERT INTO public.city_categories (city_id, category_id)
-SELECT c.id, cat.id
-FROM public.cities c, public.categories cat
-WHERE (c.name = 'Agra' AND cat.name IN ('Forts', 'Temples'))
-   OR (c.name = 'Jaipur' AND cat.name IN ('Forts', 'Temples', 'Markets'))
-   OR (c.name = 'Varanasi' AND cat.name IN ('Temples', 'Food'))
-   OR (c.name = 'Goa' AND cat.name IN ('Beaches', 'Food'))
-   OR (c.name = 'Kerala' AND cat.name IN ('Lakes', 'Beaches', 'Wildlife'))
-   OR (c.name = 'Delhi' AND cat.name IN ('Forts', 'Temples', 'Markets', 'Food'))
-ON CONFLICT (city_id, category_id) DO NOTHING;
+    const sourceLangName = languages.find(l => l.code === sourceLang)?.name || 'English';
+    const targetLangName = languages.find(l => l.code === targetLang)?.name || 'Hindi';
 
--- 5. Add image_urls array to locations table to support multiple images
-ALTER TABLE public.locations ADD COLUMN image_urls text[] DEFAULT ARRAY[]::text[] NOT NULL;
+    const prompt = `Translate the following text from ${sourceLangName} to ${targetLangName}. Provide only the translated text, with no additional explanations or quotation marks. Text: "${sourceText}"`;
+    
+    try {
+      const translation = await runGroqQuery(prompt);
+      setTranslatedText(translation);
+    } catch (e: any) {
+      setTranslatedText(e.message || "Translation failed.");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
--- Update existing locations to have their main image in the new array
-UPDATE public.locations
-SET image_urls = array_append(image_urls, image_url)
-WHERE image_url IS NOT NULL;
+  const swapLanguages = () => {
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+    setSourceText(translatedText);
+    setTranslatedText(sourceText);
+  };
+
+  const speakText = (text: string, lang: string) => {
+    if ('speechSynthesis' in window && text) {
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang === 'hi-IN') || voices.find(v => v.lang.startsWith('hi'));
+      if (lang === 'hi' && voice) {
+        utterance.voice = voice;
+      } else {
+        utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+      }
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    if (text) navigator.clipboard.writeText(text);
+  };
+
+  const adultCategoryTitle = 'Slang & Adult (18+)';
+  const displayCategories = Object.entries(phraseCategories).filter(([title]) => {
+    return title !== adultCategoryTitle || showAdultContent;
+  });
+
+  return (
+    <div className="pb-20 bg-gray-50 min-h-screen">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </Link>
+        <h1 className="text-xl text-gray-900">Language Helper</h1>
+      </div>
+
+      <div className="p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="flex-1 p-2 rounded-lg border-gray-200 focus:outline-none focus:border-blue-500 bg-transparent">
+              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>)}
+            </select>
+            <motion.button onClick={swapLanguages} className="mx-4 p-2 text-gray-500 hover:text-blue-500" whileHover={{ scale: 1.1, rotate: 180 }} whileTap={{ scale: 0.9 }}>
+              <RotateCcw className="w-5 h-5" />
+            </motion.button>
+            <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="flex-1 p-2 rounded-lg border-gray-200 focus:outline-none focus:border-blue-500 bg-transparent">
+              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>)}
+            </select>
+          </div>
+          <div className="p-4 border-b border-gray-100">
+            <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} placeholder="Type text..." className="w-full h-24 resize-none focus:outline-none text-gray-900 placeholder-gray-500" />
+            <div className="flex items-center justify-end mt-2">
+              <motion.button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm disabled:opacity-50" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                {isTranslating ? 'Translating...' : 'Translate'}
+              </motion.button>
+            </div>
+          </div>
+          {(translatedText || isTranslating) && (
+            <div className="p-4 bg-gray-50 min-h-[124px]">
+              {isTranslating ? (
+                <div className="flex items-center justify-center h-24"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>
+              ) : (
+                <>
+                  <p className="text-gray-900 text-lg">{translatedText}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <button onClick={() => speakText(translatedText, targetLang)} className="p-1 text-gray-400 hover:text-blue-500" disabled={!translatedText}><Volume2 className="w-4 h-4" /></button>
+                    <button onClick={() => copyToClipboard(translatedText)} className="p-1 text-gray-400 hover:text-blue-500" disabled={!translatedText}><Copy className="w-4 h-4" /></button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4">
+        {loadingPhrases ? (
+          <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
+        ) : Object.keys(phraseCategories).length === 0 ? (
+          <div className="text-center text-gray-500 py-8">No phrases found in the dictionary.</div>
+        ) : (
+          displayCategories.map(([category, phrases]) => (
+            <div key={category} className="mb-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <BookOpen className="w-5 h-5 text-blue-500" />
+                <h2 className="text-lg font-medium text-gray-900">{category}</h2>
+              </div>
+              <div className="space-y-3">
+                {phrases.map((phrase, index) => (
+                  <motion.div key={phrase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-gray-900">{phrase.en}</p>
+                        <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
+                        <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button onClick={() => speakText(phrase.hi, 'hi')} className="p-2 text-gray-400 hover:text-blue-500"><Volume2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+        {!showAdultContent && phraseCategories[adultCategoryTitle] && (
+           <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+             <h3 className="font-medium text-red-800">Adult Content Filter</h3>
+             <p className="text-sm text-red-700 my-2">For educational purposes, a section with common slang and explicit words is available. Viewer discretion is advised.</p>
+             <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md flex items-center justify-center mx-auto space-x-2">
+              <Eye className="w-4 h-4" />
+              <span>Show Adult Content</span>
+            </button>
+           </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TranslatePage;

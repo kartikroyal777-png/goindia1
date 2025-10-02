@@ -1,100 +1,110 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
-import { City } from '../../types';
+/*
+          # Create Phrases Table
+          This migration creates a new table `public.phrases` to store translation data for the app and seeds it with initial content.
 
-interface SearchBarProps {
-  onSearch: (query: string) => void;
-  placeholder?: string;
-}
+          ## Query Description: 
+          This operation is structural and safe. It creates a new table and populates it. It does not affect any existing data. Row Level Security is enabled to allow public read access, while only the specified admin user can write, update, or delete entries.
 
-const SearchBar: React.FC<SearchBarProps> = ({ 
-  onSearch, 
-  placeholder = "Search city, place or keyword (e.g., forts, lakes)" 
-}) => {
-  const [query, setQuery] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  const [suggestions, setSuggestions] = useState<City[]>([]);
+          ## Metadata:
+          - Schema-Category: "Structural"
+          - Impact-Level: "Low"
+          - Requires-Backup: false
+          - Reversible: true (by dropping the table)
+          
+          ## Structure Details:
+          - Table: `public.phrases`
+          - Columns: `id`, `category`, `en`, `hi`, `pronunciation`, `is_adult`, `created_at`
+          
+          ## Security Implications:
+          - RLS Status: Enabled
+          - Policy Changes: Yes (Adds policies for read and admin write access)
+          - Auth Requirements: Admin role for write operations.
+          
+          ## Performance Impact:
+          - Indexes: Primary key index on `id`.
+          - Triggers: None
+          - Estimated Impact: Negligible.
+          */
 
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (query.length > 1) {
-        const { data } = await supabase
-          .from('cities')
-          .select('name, state')
-          .ilike('name', `%${query}%`)
-          .limit(5);
-        setSuggestions(data || []);
-      } else {
-        setSuggestions([]);
-      }
-    };
+CREATE TABLE public.phrases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category TEXT NOT NULL,
+    en TEXT NOT NULL,
+    hi TEXT NOT NULL,
+    pronunciation TEXT,
+    is_adult BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-    const debounce = setTimeout(fetchSuggestions, 300);
-    return () => clearTimeout(debounce);
-  }, [query]);
+COMMENT ON TABLE public.phrases IS 'Stores phrases for the translation feature.';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(query);
-    setIsFocused(false);
-  };
+ALTER TABLE public.phrases ENABLE ROW LEVEL SECURITY;
 
-  return (
-    <div className="relative">
-      <motion.form
-        onSubmit={handleSubmit}
-        className="relative"
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className={`relative flex items-center bg-white rounded-xl border transition-all duration-300 ${
-          isFocused ? 'border-orange-500 shadow-lg shadow-orange-100' : 'border-gray-200 shadow-sm'
-        }`}>
-          <Search className="absolute left-4 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            placeholder={placeholder}
-            className="w-full pl-12 pr-4 py-4 text-gray-900 placeholder-gray-500 bg-transparent rounded-xl focus:outline-none text-sm"
-          />
-        </div>
-      </motion.form>
+CREATE POLICY "Public phrases are viewable by everyone." ON public.phrases FOR SELECT USING (true);
 
-      <AnimatePresence>
-        {isFocused && suggestions.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 max-h-60 overflow-y-auto"
-          >
-            {suggestions.map((suggestion) => (
-              <motion.button
-                key={suggestion.name}
-                onClick={() => {
-                  const fullQuery = `${suggestion.name}, ${suggestion.state}`;
-                  setQuery(fullQuery);
-                  onSearch(fullQuery);
-                  setIsFocused(false);
-                }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-50 last:border-b-0"
-                whileHover={{ backgroundColor: '#f9fafb' }}
-              >
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-700">{suggestion.name}, <span className="text-gray-500">{suggestion.state}</span></span>
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
+CREATE POLICY "Admins can manage phrases." ON public.phrases FOR ALL 
+USING (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com') 
+WITH CHECK (auth.jwt() ->> 'email' = 'kartikroyal777@gmail.com');
 
-export default SearchBar;
+-- Seed Data
+INSERT INTO public.phrases (category, en, hi, pronunciation, is_adult) VALUES
+('Survival & Polite', 'Hello', 'नमस्ते', 'namaste', false),
+('Survival & Polite', 'Thank you', 'धन्यवाद', 'dhanyavaad', false),
+('Survival & Polite', 'Please', 'कृपया', 'kripya', false),
+('Survival & Polite', 'Sorry / Excuse me', 'माफ़ कीजिए', 'maaf kijie', false),
+('Survival & Polite', 'Yes', 'हाँ / जी', 'haan / ji', false),
+('Survival & Polite', 'No', 'नहीं', 'nahī̃', false),
+('Survival & Polite', 'OK', 'ठीक है', 'ṭhīk hai', false),
+('Survival & Polite', 'How much?', 'कितना हुआ?', 'kitnā huā?', false),
+('Survival & Polite', 'Water', 'पानी', 'pānī', false),
+('Survival & Polite', 'Food', 'खाना', 'khānā', false),
+('Survival & Polite', 'Where is the bathroom?', 'बाथरूम कहाँ है?', 'bathroom kahān hai?', false),
+('Survival & Polite', 'Let''s go', 'चलो', 'chalo', false),
+('Survival & Polite', 'Help', 'सहायता', 'sahāytā', false),
+('Survival & Polite', 'Police', 'पुलिस', 'pulis', false),
+('Survival & Polite', 'Hospital', 'हस्पताल', 'haspatal', false),
+('Directions & Transport', 'Left', 'बाएँ', 'bāē̃', false),
+('Directions & Transport', 'Right', 'दाएँ', 'dāē̃', false),
+('Directions & Transport', 'Straight', 'सीधे', 'sīdhe', false),
+('Directions & Transport', 'Stop', 'रुको', 'ruko', false),
+('Directions & Transport', 'Station', 'स्टेशन', 'sṭeśan', false),
+('Directions & Transport', 'Train', 'रेलगाड़ी', 'relgāṛī', false),
+('Directions & Transport', 'Taxi', 'टैक्सी', 'ṭaiksī', false),
+('Directions & Transport', 'Auto-rickshaw', 'ऑटो', 'oṭo', false),
+('Directions & Transport', 'Fare', 'किराया', 'kirāyā', false),
+('Directions & Transport', 'Ticket', 'टिकट', 'ṭikaṭ', false),
+('Shopping & Bargaining', 'What''s the price?', 'क्या कीमत है?', 'kya qīmat hai?', false),
+('Shopping & Bargaining', 'It''s expensive', 'महँगा है', 'mahãgā hai', false),
+('Shopping & Bargaining', 'Cheap', 'सस्ता', 'sastā', false),
+('Shopping & Bargaining', 'Reduce the price', 'दाम कम करो', 'dām kam karo', false),
+('Shopping & Bargaining', 'Show me', 'दिखाइए', 'dikhāiye', false),
+('Shopping & Bargaining', 'Money', 'पैसा', 'paisā', false),
+('Food & Drink', 'Tea', 'चाय', 'chāy', false),
+('Food & Drink', 'Coffee', 'कॉफ़ी', 'kāfī', false),
+('Food & Drink', 'Sugar', 'चीनी', 'chīnī', false),
+('Food & Drink', 'Salt', 'नमक', 'namak', false),
+('Food & Drink', 'Spice', 'मिर्च', 'mirc', false),
+('Food & Drink', 'Flat-bread', 'रोटी', 'roṭī', false),
+('Food & Drink', 'Rice', 'चावल', 'chāwal', false),
+('Food & Drink', 'Lentils', 'दाल', 'dāl', false),
+('Food & Drink', 'Vegetables', 'सब्ज़ी', 'sabzī', false),
+('Food & Drink', 'Cold', 'ठंडा', 'ṭhaṇḍā', false),
+('Food & Drink', 'Hot', 'गरम', 'garam', false),
+('Food & Drink', 'Bill', 'बिल', 'bil', false),
+('Slang / Cool Words', 'Dude / Pal', 'यार', 'yār', false),
+('Slang / Cool Words', 'Awesome', 'झकास', 'jhakās', false),
+('Slang / Cool Words', 'Cool / Chilled', 'मस्त', 'mast', false),
+('Slang / Cool Words', 'Carefree', 'बिंदास', 'bindās', false),
+('Slang / Cool Words', 'Hack / Workaround', 'जुगाड़', 'jugāṛ', false),
+('Slang & Adult (18+)', 'Idiot / Fool', 'चूतिया', 'chūṭiyā', true),
+('Slang & Adult (18+)', 'Sister-f*er (common curse)', 'भेंचो', 'bhencho', true),
+('Slang & Adult (18+)', 'Mother-f*er (strong curse)', 'मादरचोद', 'mādarchod', true),
+('Slang & Adult (18+)', 'Bastard / Rascal', 'हरामी', 'harāmī', true),
+('Slang & Adult (18+)', 'Assh*le', 'गांडू', 'gāṇḍu', true),
+('Slang & Adult (18+)', 'Wh*re', 'रंडी', 'ranḍī', true),
+('Slang & Adult (18+)', 'Son of a dog', 'कुत्ते का पिल्ला', 'kutte ka pillā', true),
+('Slang & Adult (18+)', 'Idiot (lit. owl)', 'उल्लू', 'ullū', true),
+('Slang & Adult (18+)', 'Fool', 'बेवक़ूफ़', 'bevakūf', true),
+('Slang & Adult (18+)', 'Pimp', 'भड़वा', 'bhaṛvā', true),
+('Slang & Adult (18+)', 'Sh*t', 'टट्टी', 'ṭaṭṭī', true),
+('Slang & Adult (18+)', 'Piss', 'मूत', 'mūt', true);

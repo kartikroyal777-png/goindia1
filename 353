@@ -1,82 +1,53 @@
-import type { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
+import React from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const TermsOfServicePage = () => {
+  const navigate = useNavigate();
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Content-Type": "application/json",
+  return (
+    <div className="min-h-screen bg-gray-50 pb-10">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+        <h1 className="text-xl font-bold text-gray-900">Terms of Service</h1>
+      </div>
+      <div className="p-4">
+        <div className="bg-white rounded-xl shadow-sm border p-6 prose">
+            <h2>1. Terms</h2>
+            <p>
+                By accessing this Application, you are agreeing to be bound by these
+                terms of service, all applicable laws and regulations, and agree that you
+                are responsible for compliance with any applicable local laws. If you do
+                not agree with any of these terms, you are prohibited from using or
+                accessing this site. The materials contained in this website are
+                protected by applicable copyright and trademark law.
+            </p>
+            <h2>2. Use License</h2>
+            <ol type="a">
+                <li>
+                    Permission is granted to temporarily download one copy of the materials
+                    (information or software) on Go India's application for personal,
+                    non-commercial transitory viewing only. This is the grant of a license,
+                    not a transfer of title, and under this license you may not:
+                    <ol type="i">
+                        <li>modify or copy the materials;</li>
+                        <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
+                        <li>attempt to decompile or reverse engineer any software contained on Go India's website;</li>
+                        <li>remove any copyright or other proprietary notations from the materials; or</li>
+                        <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
+                    </ol>
+                </li>
+            </ol>
+            <p>
+                [Placeholder for more detailed terms of service content...]
+            </p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
-      headers: corsHeaders,
-    };
-  }
-
-  if (!OPENROUTER_API_KEY) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'OpenRouter API key is not configured on the server.' }),
-      headers: corsHeaders,
-    };
-  }
-
-  try {
-    const requestBody = JSON.parse(event.body || '{}');
-    
-    const referrer = event.headers['referer'] || 'https://goindia.app';
-    const title = event.headers['x-title'] || 'GoIndia Travel App';
-
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": referrer,
-        "X-Title": title,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        errorData = { error: { message: errorText || 'Failed to fetch from OpenRouter API' } };
-      }
-      return {
-        statusCode: response.status,
-        body: JSON.stringify({ error: errorData.error?.message || errorData.error || 'An unknown error occurred upstream' }),
-        headers: corsHeaders,
-      };
-    }
-
-    const data = await response.json();
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify(data),
-    };
-
-  } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error.message || 'An internal server error occurred.' }),
-      headers: corsHeaders,
-    };
-  }
-};
-
-export { handler };
+export default TermsOfServicePage;

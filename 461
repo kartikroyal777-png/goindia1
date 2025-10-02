@@ -1,66 +1,47 @@
-import Groq from "groq-sdk";
-
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-
-const handleApiError = (error: any): string => {
-  console.error("Error calling Groq API:", error);
-  if (!GROQ_API_KEY) {
-    return `The VITE_GROQ_API_KEY is missing. Please ensure it's set in your .env file.`;
-  }
-  return `Sorry, an unexpected error occurred with the AI assistant. Please try again later. (Details: ${error.message || 'Unknown error'})`;
-};
-
-let groq: Groq | null = null;
-if (GROQ_API_KEY) {
-  groq = new Groq({
-    apiKey: GROQ_API_KEY,
-    dangerouslyAllowBrowser: true,
-  });
-}
-
-const cleanJsonString = (rawText: string): string => {
-  let cleanedText = rawText.trim();
-  
-  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
-  if (jsonMatch && jsonMatch[1]) {
-    cleanedText = jsonMatch[1];
-  }
-
-  const firstBracket = cleanedText.indexOf('{');
-  const firstSquareBracket = cleanedText.indexOf('[');
-  let start = -1;
-
-  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
-  if (firstBracket === -1) start = firstSquareBracket;
-  else if (firstSquareBracket === -1) start = firstBracket;
-  else start = Math.min(firstBracket, firstSquareBracket);
-
-  const lastBracket = cleanedText.lastIndexOf('}');
-  const lastSquareBracket = cleanedText.lastIndexOf(']');
-  let end = Math.max(lastBracket, lastSquareBracket);
-
-  if (start === -1 || end === -1) return cleanedText;
-
-  return cleanedText.substring(start, end + 1);
-};
-
-
-export const runGroqQuery = async (prompt: string): Promise<string> => {
-  if (!groq) {
-    throw new Error(handleApiError({ message: 'Groq API key not configured' }));
-  }
-
-  try {
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.1-8b-instant',
-    });
-
-    const response = chatCompletion.choices[0]?.message?.content || '';
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Go India - Travel Guide for Foreigners</title>
     
-    return cleanJsonString(response);
+    <meta name="description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
+    <meta name="author" content="Go India Team" />
 
-  } catch (error: any) {
-    throw new Error(handleApiError(error));
-  }
-};
+    <meta property="og:title" content="Go India - Travel Guide for Foreigners" />
+    <meta property="og:description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://goindia1-3rxj-dualite.netlify.app" />
+    <meta property="og:image" content="https://d33wubrfki0l68.cloudfront.net/68d7fa331814c8076aa21334/screenshot_2025-09-27-14-53-26-0000.webp" />
+    <meta property="og:image:width" content="960" />
+    <meta property="og:image:height" content="600" />	
+    <meta property="og:image:alt" content="Go India travel app for foreigners visiting India" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Go India - Travel Guide for Foreigners" />
+    <meta name="twitter:description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
+    <meta name="twitter:site" content="@goindia" />
+    <meta name="twitter:image" content="https://d33wubrfki0l68.cloudfront.net/68d7fa331814c8076aa21334/screenshot_2025-09-27-14-53-26-0000.webp" />
+
+    <link rel="canonical" href="https://goindia1-3rxj-dualite.netlify.app" />
+
+     <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Go India",
+      "url": "https://goindia1-3rxj-dualite.netlify.app",
+      "description": "Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights.",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Go India Team"
+      }
+    }
+    </script>
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

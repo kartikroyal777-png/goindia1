@@ -1,154 +1,212 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import TopNavBar from './components/Layout/TopNavBar';
-import BottomNavBar from './components/Layout/BottomNavBar';
-import HomePage from './components/Home/HomePage';
-import FoodScorerPage from './components/FoodScorer/FoodScorerPage';
-import TripPlannerPage from './components/TripPlanner/TripPlannerPage';
-import ProfilePage from './components/Profile/ProfilePage';
-import CityPage from './components/City/CityPage';
-import TehsilPage from './components/Tehsil/TehsilPage';
-import LocationDetailPage from './components/Location/LocationDetailPage';
-import AuthPage from './pages/AuthPage';
-import NotificationsPage from './pages/NotificationsPage';
-import AdminPage from './pages/AdminPage';
-import MyTripsPage from './pages/MyTripsPage';
-import SavedPlacesPage from './pages/SavedPlacesPage';
-import { useAuth } from './contexts/AuthContext';
-import ToolsPage from './pages/ToolsPage';
-import FareCalculatorPage from './pages/tools/FareCalculatorPage';
-import CurrencyExchangerPage from './pages/tools/CurrencyExchangerPage';
-import BudgetTrackerPage from './pages/tools/BudgetTrackerPage';
-import BargainingCoachPage from './pages/tools/BargainingCoachPage';
-import TranslatePage from './pages/TranslatePage';
-import AppSettingsPage from './pages/AppSettingsPage';
-import AboutUsPage from './pages/AboutUsPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import PricingPage from './pages/PricingPage';
-import UpgradeModal from './components/Layout/UpgradeModal';
-import FullScreenLoader from './components/Layout/FullScreenLoader';
-import { AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Volume2, Copy, RotateCcw, BookOpen, Eye, Loader2, ArrowLeft, Database } from 'lucide-react';
+import { runGroqQuery } from '../lib/groq';
+import { supabase } from '../lib/supabase';
+import { Phrase } from '../types';
+import { Link } from 'react-router-dom';
 
-const AppInitError: React.FC<{ message: string }> = ({ message }) => (
-  <div className="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center text-center p-4">
-    <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-    <h2 className="text-xl font-semibold text-gray-800">Application Error</h2>
-    <p className="text-gray-600 mt-2">Could not load the application. Please try refreshing the page.</p>
-    <p className="text-xs text-gray-500 mt-4 bg-gray-200 p-2 rounded-md font-mono max-w-lg">{message}</p>
-  </div>
-);
-
-const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
-  const { session, user, loading } = useAuth();
-  const navigate = useNavigate();
+const TranslatePage: React.FC = () => {
+  const [sourceText, setSourceText] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+  const [sourceLang, setSourceLang] = useState('en');
+  const [targetLang, setTargetLang] = useState('hi');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showAdultContent, setShowAdultContent] = useState(false);
+  
+  const [phraseCategories, setPhraseCategories] = useState<Record<string, Phrase[]>>({});
+  const [loadingPhrases, setLoadingPhrases] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (loading) return;
-    if (!session) {
-      navigate('/auth', { replace: true });
-    } else if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') {
-      navigate('/', { replace: true });
+    const fetchPhrases = async () => {
+      setLoadingPhrases(true);
+      setError(null);
+      const { data, error } = await supabase.from('phrases').select('*').order('category').order('en');
+      if (error) {
+        setError(`Could not load phrases: ${error.message}`);
+        console.error(error);
+      } else if (data) {
+        const grouped = data.reduce((acc, phrase) => {
+          const category = phrase.is_adult ? 'Slang & Adult (18+)' : phrase.category;
+          (acc[category] = acc[category] || []).push(phrase);
+          return acc;
+        }, {} as Record<string, Phrase[]>);
+        setPhraseCategories(grouped);
+      }
+      setLoadingPhrases(false);
+    };
+    fetchPhrases();
+  }, []);
+
+  const languages = [
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+    { code: 'fr', name: 'French', flag: '🇫🇷' },
+    { code: 'de', name: 'German', flag: '🇩🇪' },
+    { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+    { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+    { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+    { code: 'zh', name: 'Chinese', flag: '🇨🇳' },
+    { code: 'ar', name: 'Arabic', flag: '🇦🇪' },
+    { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
+    { code: 'ta', name: 'Tamil', flag: '🇮🇳' },
+    { code: 'bn', name: 'Bengali', flag: '🇮🇳' },
+    { code: 'mr', name: 'Marathi', flag: '🇮🇳' },
+  ];
+
+  const handleTranslate = async () => {
+    if (!sourceText.trim() || isTranslating) return;
+    setIsTranslating(true);
+    setTranslatedText('');
+
+    const sourceLangName = languages.find(l => l.code === sourceLang)?.name || 'English';
+    const targetLangName = languages.find(l => l.code === targetLang)?.name || 'Hindi';
+
+    const prompt = `Translate the following text from ${sourceLangName} to ${targetLangName}. Provide only the translated text, with no additional explanations or quotation marks. Text: "${sourceText}"`;
+    
+    try {
+      const translation = await runGroqQuery(prompt);
+      setTranslatedText(translation);
+    } catch (e: any) {
+      setTranslatedText(e.message || "Translation failed.");
+    } finally {
+      setIsTranslating(false);
     }
-  }, [session, user, adminOnly, navigate, loading]);
+  };
 
-  if (loading) return <FullScreenLoader />;
-  if (!session) return null;
-  if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') return null;
+  const swapLanguages = () => {
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+    setSourceText(translatedText);
+    setTranslatedText(sourceText);
+  };
 
-  return <Outlet />;
-};
+  const speakText = (text: string, lang: string) => {
+    if ('speechSynthesis' in window && text) {
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = speechSynthesis.getVoices();
+      const voice = voices.find(v => v.lang === 'hi-IN') || voices.find(v => v.lang.startsWith('hi'));
+      if (lang === 'hi' && voice) {
+        utterance.voice = voice;
+      } else {
+        utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
+      }
+      utterance.rate = 0.9;
+      speechSynthesis.speak(utterance);
+    }
+  };
 
-const AppLayout = () => {
-  const location = useLocation();
-  const noNavRoutes = ['/auth', '/admin'];
-  
-  const isFullScreen = [
-    '/food-scorer',
-    '/pricing',
-  ].includes(location.pathname);
+  const copyToClipboard = (text: string) => {
+    if (text) navigator.clipboard.writeText(text);
+  };
 
-  const isToolPage = location.pathname.startsWith('/tools/');
-
-  const showTopNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen && !isToolPage;
-  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path));
+  const adultCategoryTitle = 'Slang & Adult (18+)';
+  const displayCategories = Object.entries(phraseCategories).filter(([title]) => {
+    return title !== adultCategoryTitle || showAdultContent;
+  });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {showTopNav && <TopNavBar />}
-      
-      <main className={`flex-grow ${showTopNav ? 'pt-16' : ''} ${showBottomNav ? 'pb-20' : ''} flex flex-col`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-grow flex flex-col"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </main>
+    <div className="pb-20 bg-gray-50 min-h-screen">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </Link>
+        <h1 className="text-xl font-semibold text-gray-900">Language Helper</h1>
+      </div>
 
-      {showBottomNav && <BottomNavBar />}
-      <UpgradeModal />
+      <div className="p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} className="flex-1 p-2 rounded-lg border-gray-200 focus:outline-none focus:border-blue-500 bg-transparent">
+              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>)}
+            </select>
+            <motion.button onClick={swapLanguages} className="mx-4 p-2 text-gray-500 hover:text-blue-500" whileHover={{ scale: 1.1, rotate: 180 }} whileTap={{ scale: 0.9 }}>
+              <RotateCcw className="w-5 h-5" />
+            </motion.button>
+            <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="flex-1 p-2 rounded-lg border-gray-200 focus:outline-none focus:border-blue-500 bg-transparent">
+              {languages.map(lang => <option key={lang.code} value={lang.code}>{lang.flag} {lang.name}</option>)}
+            </select>
+          </div>
+          <div className="p-4 border-b border-gray-100">
+            <textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} placeholder="Type text..." className="w-full h-24 resize-none focus:outline-none text-gray-900 placeholder-gray-500" />
+            <div className="flex items-center justify-end mt-2">
+              <motion.button onClick={handleTranslate} disabled={!sourceText.trim() || isTranslating} className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm disabled:opacity-50" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                {isTranslating ? 'Translating...' : 'Translate'}
+              </motion.button>
+            </div>
+          </div>
+          {(translatedText || isTranslating) && (
+            <div className="p-4 bg-gray-50 min-h-[124px]">
+              {isTranslating ? (
+                <div className="flex items-center justify-center h-24"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div></div>
+              ) : (
+                <>
+                  <p className="text-gray-900 text-lg">{translatedText}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <button onClick={() => speakText(translatedText, targetLang)} className="p-1 text-gray-400 hover:text-blue-500" disabled={!translatedText}><Volume2 className="w-4 h-4" /></button>
+                    <button onClick={() => copyToClipboard(translatedText)} className="p-1 text-gray-400 hover:text-blue-500" disabled={!translatedText}><Copy className="w-4 h-4" /></button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4">
+        {loadingPhrases ? (
+          <div className="flex justify-center items-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
+        ) : error ? (
+          <div className="text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error)}</div>
+        ) : Object.keys(phraseCategories).length === 0 ? (
+          <div className="text-center text-gray-500 mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <Database className="w-10 h-10 mx-auto mb-2 text-amber-500" />
+            <p className="font-semibold text-amber-700">No phrases found.</p>
+            <p className="text-xs text-amber-600 mt-2">
+              This is likely a database permission issue. Please check that <strong>Row Level Security (RLS)</strong> is enabled on your <strong>'phrases'</strong> table in Supabase and that a policy exists to allow authenticated users to read the data.
+            </p>
+          </div>
+        ) : (
+          displayCategories.map(([category, phrases]) => (
+            <div key={category} className="mb-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <BookOpen className="w-5 h-5 text-blue-500" />
+                <h2 className="text-lg font-semibold text-gray-900">{category}</h2>
+              </div>
+              <div className="space-y-3">
+                {phrases.map((phrase, index) => (
+                  <motion.div key={phrase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{phrase.en}</p>
+                        <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
+                        <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button onClick={() => speakText(phrase.hi, 'hi')} className="p-2 text-gray-400 hover:text-blue-500"><Volume2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+        {!showAdultContent && phraseCategories[adultCategoryTitle] && (
+           <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+             <h3 className="font-semibold text-red-800">Adult Content Filter</h3>
+             <p className="text-sm text-red-700 my-2">For educational purposes, a section with common slang and explicit words is available. Viewer discretion is advised.</p>
+             <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md flex items-center justify-center mx-auto space-x-2">
+              <Eye className="w-4 h-4" />
+              <span>Show Adult Content</span>
+            </button>
+           </div>
+        )}
+      </div>
     </div>
   );
 };
 
-function App() {
-  const { loading, error } = useAuth();
-
-  if (loading) {
-    return <FullScreenLoader />;
-  }
-
-  if (error) {
-    return <AppInitError message={error} />;
-  }
-  
-  return (
-    <Routes>
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
-
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/tools" element={<ToolsPage />} />
-        
-        <Route element={<ProtectedRoute />}>
-          <Route path="/food-scorer" element={<FoodScorerPage />} />
-          <Route path="/planner" element={<TripPlannerPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/my-trips" element={<MyTripsPage />} />
-          <Route path="/saved-places" element={<SavedPlacesPage />} />
-          <Route path="/settings/app" element={<AppSettingsPage />} />
-          <Route path="/about-us" element={<AboutUsPage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-        </Route>
-
-        <Route element={<ProtectedRoute adminOnly={true} />}>
-          <Route path="/admin" element={<AdminPage />} />
-        </Route>
-
-        <Route path="/city/:cityId" element={<CityPage />} />
-        <Route path="/tehsil/:tehsilId" element={<TehsilPage />} />
-        <Route path="/location/:locationId" element={<LocationDetailPage />} />
-      </Route>
-      
-      {/* Tool routes outside main layout for fullscreen */}
-      <Route path="/tools/translate" element={<TranslatePage />} />
-      <Route path="/tools/fare-calculator" element={<FareCalculatorPage />} />
-      <Route path="/tools/currency-exchanger" element={<CurrencyExchangerPage />} />
-      <Route path="/tools/budget-tracker" element={<BudgetTrackerPage />} />
-      <Route path="/tools/bargaining-coach" element={<BargainingCoachPage />} />
-    </Routes>
-  );
-}
-
-export default App;
+export default TranslatePage;

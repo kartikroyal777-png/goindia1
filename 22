@@ -1,101 +1,52 @@
-/*
-# [Fix & Feature] Correct Categories and Add Image/Category Tables
-This migration corrects a previous seeding error and properly introduces new tables for advanced content management, including city categories and multiple location images.
+import React from 'react';
+import { ArrowLeft, Bell, Palette, Globe } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-## Query Description:
-This script creates three new tables: `categories`, `city_categories`, and `location_images`, and correctly seeds the `categories` table.
-- `categories`: Stores a central list of categories (e.g., Forts, Beaches).
-- `city_categories`: A join table linking cities to these categories (many-to-many).
-- `location_images`: Allows associating multiple image URLs with a single location.
-This script is idempotent; it uses `IF NOT EXISTS` and `ON CONFLICT` clauses to prevent errors if run multiple times.
+const AppSettingsPage = () => {
+  const navigate = useNavigate();
 
-## Metadata:
-- Schema-Category: "Structural"
-- Impact-Level: "Low"
-- Requires-Backup: false
-- Reversible: true (by dropping the created tables)
+  return (
+    <div className="min-h-screen bg-gray-50 pb-10">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+        <h1 className="text-xl font-bold text-gray-900">App Settings</h1>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="font-semibold text-lg mb-4">General</h2>
+          <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Bell className="w-5 h-5 text-gray-500" />
+              <span>Push Notifications</span>
+            </div>
+            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+            </div>
+          </div>
+           <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Palette className="w-5 h-5 text-gray-500" />
+              <span>Dark Mode</span>
+            </div>
+            <span className="text-sm text-gray-400">Coming Soon</span>
+          </div>
+           <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Globe className="w-5 h-5 text-gray-500" />
+              <span>Language</span>
+            </div>
+            <select className="border-none bg-gray-100 rounded-md p-1 text-sm">
+                <option>English</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-## Structure Details:
-- **New Tables:**
-  - `public.categories` (id, name, icon, emoji, created_at)
-  - `public.city_categories` (city_id, category_id)
-  - `public.location_images` (id, location_id, image_url, alt_text, created_at)
-
-## Security Implications:
-- RLS Status: Enabled on all new tables.
-- Policy Changes: Yes. New policies are created to allow public read access and grant full admin control to 'kartikroyal777@gmail.com'.
-- Auth Requirements: Admin role is required for write operations.
-
-## Performance Impact:
-- Indexes: Primary keys and foreign keys are indexed automatically.
-- Triggers: None.
-- Estimated Impact: Negligible on existing operations.
-*/
-
--- Step 1: Create the 'categories' table to store different content categories.
-CREATE TABLE IF NOT EXISTS public.categories (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name character varying NOT NULL UNIQUE,
-    icon character varying,
-    emoji character varying,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
--- Step 2: Enable Row Level Security and define policies for the 'categories' table.
-ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.categories;
-CREATE POLICY "Enable read access for all users" ON public.categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage categories" ON public.categories;
-CREATE POLICY "Admins can manage categories" ON public.categories FOR ALL
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
-
-
--- Step 3: Create the 'city_categories' join table.
-CREATE TABLE IF NOT EXISTS public.city_categories (
-    city_id uuid NOT NULL REFERENCES public.cities(id) ON DELETE CASCADE,
-    category_id uuid NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    PRIMARY KEY (city_id, category_id)
-);
-
--- Step 4: Enable Row Level Security and define policies for the 'city_categories' table.
-ALTER TABLE public.city_categories ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.city_categories;
-CREATE POLICY "Enable read access for all users" ON public.city_categories FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage city categories" ON public.city_categories;
-CREATE POLICY "Admins can manage city categories" ON public.city_categories FOR ALL
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
-
-
--- Step 5: Create the 'location_images' table.
-CREATE TABLE IF NOT EXISTS public.location_images (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    location_id uuid NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
-    image_url text NOT NULL,
-    alt_text text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
--- Step 6: Enable Row Level Security and define policies for the 'location_images' table.
-ALTER TABLE public.location_images ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.location_images;
-CREATE POLICY "Enable read access for all users" ON public.location_images FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage location images" ON public.location_images;
-CREATE POLICY "Admins can manage location images" ON public.location_images FOR ALL
-USING (auth.email() = 'kartikroyal777@gmail.com')
-WITH CHECK (auth.email() = 'kartikroyal777@gmail.com');
-
--- Step 7: Seed the 'categories' table with initial data.
--- This uses ON CONFLICT to prevent errors if the migration is run again.
-INSERT INTO public.categories (name, icon, emoji) VALUES
-('Forts', 'castle', '🏰'),
-('Lakes', 'waves', '🌊'),
-('Beaches', 'palmtree', '🏝️'),
-('Temples', 'building', '🛕'),
-('Wildlife', 'trees', '🐅'),
-('Trekking', 'mountain', '⛰️'),
-('Food', 'utensils', '🍛'),
-('Markets', 'shopping-bag', '🛍️')
-ON CONFLICT (name) DO NOTHING;
+export default AppSettingsPage;

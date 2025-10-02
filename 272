@@ -1,7 +1,45 @@
-{
-    "files": [],
-    "references": [
-      { "path": "./tsconfig.app.json" },
-      { "path": "./tsconfig.node.json" }
-    ]
-  }
+/*
+# [FUNCTION] Create RPC for Feature Usage Increment
+This migration creates a PostgreSQL function `increment_feature_usage` that safely increments the usage count for a specific feature in the `profiles` table. This moves the logic from the client to the database for better security and consistency, and should resolve the schema cache issue.
+
+## Query Description: This operation creates a new function `increment_feature_usage`. It is a non-destructive operation and will not affect existing data. It is designed to be called via RPC from the Supabase client. This also addresses the 'Function Search Path Mutable' security warning.
+
+## Metadata:
+- Schema-Category: "Structural"
+- Impact-Level: "Low"
+- Requires-Backup: false
+- Reversible: true (by dropping the function)
+
+## Structure Details:
+- Creates function: `public.increment_feature_usage(feature_name TEXT)`
+
+## Security Implications:
+- RLS Status: The function runs with the privileges of the calling user, respecting existing RLS policies on the `profiles` table.
+- Policy Changes: No
+- Auth Requirements: The user must be authenticated.
+
+## Performance Impact:
+- Indexes: None
+- Triggers: None
+- Estimated Impact: Negligible.
+*/
+
+CREATE OR REPLACE FUNCTION public.increment_feature_usage(feature_name TEXT)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF feature_name = 'trip_planner' THEN
+    UPDATE public.profiles
+    SET trip_planner_used = public.profiles.trip_planner_used + 1
+    WHERE id = auth.uid();
+  ELSIF feature_name = 'food_scanner' THEN
+    UPDATE public.profiles
+    SET food_scanner_used = public.profiles.food_scanner_used + 1
+    WHERE id = auth.uid();
+  END IF;
+END;
+$$;
+
+-- Secure the function by setting a fixed search path
+ALTER FUNCTION public.increment_feature_usage(TEXT) SET search_path = public;

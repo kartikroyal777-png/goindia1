@@ -1,35 +1,57 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { ArrowUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
-const tips = [
-  { city: 'Delhi', text: 'Paid ₹300 for a dupatta at Janpath, actual was ₹120.', upvotes: 20 },
-  { city: 'Jaipur', text: 'Tuk-tuk tried ₹400 for 2 km, fair was ₹100.', upvotes: 15 },
-  { city: 'Mumbai', text: 'Got a handicraft for ₹500 in Mumbai after starting at ₹200.', upvotes: 10 },
-];
+const UpgradeModal: React.FC = () => {
+  const { isUpgradeModalOpen, showUpgradeModal } = useAuth();
+  const navigate = useNavigate();
 
-const CrowdsourcedTips: React.FC = () => {
+  const handleUpgrade = () => {
+    showUpgradeModal(false);
+    navigate('/pricing');
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl p-4 border shadow-sm">
-        <h3 className="font-bold mb-2">Share Your Tip!</h3>
-        <textarea placeholder="e.g., In Jaipur, I got a small statue for ₹250 after being quoted ₹800." className="w-full p-2 border rounded-lg text-sm" rows={3}></textarea>
-        <button className="mt-2 w-full p-2 bg-orange-500 text-white font-semibold rounded-lg text-sm">Submit Tip</button>
-      </div>
-      {tips.map((tip, index) => (
-        <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="bg-white rounded-lg p-4 border shadow-sm flex items-start space-x-4">
-          <button className="flex flex-col items-center p-2 rounded-lg bg-gray-100 hover:bg-gray-200">
-            <ArrowUp className="w-4 h-4 text-gray-600" />
-            <span className="text-xs font-bold">{tip.upvotes}</span>
-          </button>
-          <div>
-            <span className="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">{tip.city}</span>
-            <p className="text-gray-800 mt-1">{tip.text}</p>
-          </div>
+    <AnimatePresence>
+      {isUpgradeModalOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => showUpgradeModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+            className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button onClick={() => showUpgradeModal(false)} className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+            
+            <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-200">
+              <Star className="w-8 h-8 text-white" />
+            </div>
+
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Upgrade to Premium</h2>
+            <p className="text-gray-600 mb-6">You've reached the limit of your free plan. Upgrade now to unlock unlimited access!</p>
+            
+            <motion.button
+              onClick={handleUpgrade}
+              className="w-full bg-orange-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-orange-600 transition-colors shadow-md"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              View Plans
+            </motion.button>
+          </motion.div>
         </motion.div>
-      ))}
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 
-export default CrowdsourcedTips;
+export default UpgradeModal;

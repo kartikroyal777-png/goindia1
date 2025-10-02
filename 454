@@ -1,81 +1,223 @@
-/*
-# [Feature] User Profiles and Plan Limits
-This migration introduces a `profiles` table to store user-specific data, including subscription plans and feature usage counters. It also sets up a trigger to automatically create a profile for new users upon sign-up.
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Hotel, Utensils, Car, ShoppingBag, Plus, Trash2, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { runGroqQuery } from '../../lib/groq';
 
-## Query Description:
-- **Creates `profiles` table**: This new table will store user profiles, linked to `auth.users`. It includes columns for plan type and usage tracking. No existing data is affected as this is a new table.
-- **Creates `handle_new_user` function**: A trigger function that inserts a new row into `public.profiles` whenever a new user is added to `auth.users`.
-- **Creates trigger `on_auth_user_created`**: This trigger executes the `handle_new_user` function after a new user signs up, ensuring every user has a profile.
-- **Enables RLS on `profiles`**: Secures the new table.
-- **Creates RLS policies**:
-  - Allows users to view their own profile.
-  - Allows users to update their own profile.
-  - Allows the app to create profiles via the trigger.
+interface BudgetItem {
+  id: string;
+  category: 'Hotel' | 'Food' | 'Transport' | 'Extras';
+  amount: number;
+}
 
-## Metadata:
-- Schema-Category: "Structural"
-- Impact-Level: "Low"
-- Requires-Backup: false
-- Reversible: true (manually, by dropping table, trigger, and function)
+interface DailyRecord {
+  date: string;
+  estimated: number;
+  actual: number;
+}
 
-## Structure Details:
-- **Table Added**: `public.profiles`
-- **Columns**: `id`, `updated_at`, `full_name`, `avatar_url`, `plan_type`, `food_scans_used`, `trip_planner_runs`
-- **Function Added**: `public.handle_new_user`
-- **Trigger Added**: `on_auth_user_created` on `auth.users`
+const BudgetTrackerPage: React.FC = () => {
+  const [city, setCity] = useState('Delhi');
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([
+    { id: 'hotel1', category: 'Hotel', amount: 2000 },
+    { id: 'food1', category: 'Food', amount: 1000 },
+    { id: 'transport1', category: 'Transport', amount: 500 },
+  ]);
+  const [history, setHistory] = useState<DailyRecord[]>([]);
+  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-## Security Implications:
-- RLS Status: Enabled on `profiles`.
-- Policy Changes: New policies are added for the `profiles` table to ensure users can only access and modify their own data.
-- Auth Requirements: Policies are based on `auth.uid()`.
+  const estimatedTotal = budgetItems.reduce((sum, item) => sum + item.amount, 0);
 
-## Performance Impact:
-- Indexes: Primary key index on `profiles.id`.
-- Triggers: A trigger is added to `auth.users`, which will have a negligible performance impact on user sign-ups.
-- Estimated Impact: Low.
-*/
+  const addBudgetItem = (category: 'Hotel' | 'Food' | 'Transport' | 'Extras') => {
+    setBudgetItems([...budgetItems, { id: Date.now().toString(), category, amount: 0 }]);
+  };
 
--- 1. Create the profiles table
-create table public.profiles (
-  id uuid not null references auth.users on delete cascade,
-  updated_at timestamp with time zone,
-  full_name text,
-  avatar_url text,
-  plan_type text not null default 'free',
-  food_scans_used integer not null default 0,
-  trip_planner_runs integer not null default 0,
+  const updateBudgetItem = (id: string, amount: number) => {
+    setBudgetItems(budgetItems.map(item => item.id === id ? { ...item, amount } : item));
+  };
 
-  primary key (id)
-);
+  const removeBudgetItem = (id: string) => {
+    setBudgetItems(budgetItems.filter(item => item.id !== id));
+  };
 
-alter table public.profiles enable row level security;
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'Hotel': return <Hotel className="w-5 h-5 text-blue-500" />;
+      case 'Food': return <Utensils className="w-5 h-5 text-green-500" />;
+      case 'Transport': return <Car className="w-5 h-5 text-amber-500" />;
+      case 'Extras': return <ShoppingBag className="w-5 h-5 text-purple-500" />;
+      default: return null;
+    }
+  };
 
--- 2. Create RLS policies for profiles
-create policy "Public profiles are viewable by everyone."
-  on public.profiles for select
-  using ( true );
+  const handleAnalysis = async () => {
+    setIsLoading(true);
+    setAnalysis(null);
+    const prompt = `
+      Analyze this daily travel budget for ${city}, India.
+      Estimated Budget: Hotel: ${budgetItems.find(i=>i.category==='Hotel')?.amount || 0} INR, Food: ${budgetItems.find(i=>i.category==='Food')?.amount || 0} INR, Transport: ${budgetItems.find(i=>i.category==='Transport')?.amount || 0} INR, Extras: ${budgetItems.find(i=>i.category==='Extras')?.amount || 0} INR.
+      Total: ${estimatedTotal} INR.
+      Provide a JSON object with:
+      1. "status": "Overspent" | "Saved" | "On Track".
+      2. "difference": a number (negative for overspent).
+      3. "saving_tips": An array of 3 short, actionable money-saving tips specific to ${city}.
+      
+      Example JSON:
+      {
+        "status": "On Track",
+        "difference": 100,
+        "saving_tips": [
+          "Use the Delhi Metro instead of taxis to save on transport.",
+          "Eat at local dhabas for authentic and cheap meals.",
+          "Look for budget guesthouses in Paharganj."
+        ]
+      }
+    `;
 
-create policy "Users can insert their own profile."
-  on public.profiles for insert
-  with check ( auth.uid() = id );
+    try {
+      const response = await runGroqQuery(prompt);
+      const parsedResponse = JSON.parse(response);
+      setAnalysis(parsedResponse);
+    } catch (e) {
+      console.error(e);
+      setAnalysis({ error: "Could not get analysis." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-create policy "Users can update own profile."
-  on public.profiles for update
-  using ( auth.uid() = id );
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('budgetHistory');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
 
--- 3. Create a trigger to create a profile for new users
-create function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-begin
-  insert into public.profiles (id, full_name, avatar_url)
-  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
-  return new;
-end;
-$$;
+  const saveDay = (actual: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newRecord: DailyRecord = { date: today, estimated: estimatedTotal, actual };
+    const updatedHistory = [newRecord, ...history.filter(h => h.date !== today)].slice(0, 7);
+    setHistory(updatedHistory);
+    localStorage.setItem('budgetHistory', JSON.stringify(updatedHistory));
+    handleAnalysis();
+  };
 
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
+  return (
+    <div className="pb-24 bg-gray-50 min-h-screen">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </Link>
+        <h1 className="text-xl font-medium text-gray-900">Daily Budget Tracker</h1>
+      </div>
+
+      <div className="p-4 space-y-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="font-medium text-lg mb-4">Plan Your Day</h2>
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-600">City</label>
+            <select value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 p-2 border rounded-lg bg-gray-50">
+              <option>Delhi</option>
+              <option>Mumbai</option>
+              <option>Jaipur</option>
+              <option>Goa</option>
+            </select>
+          </div>
+          <div className="space-y-3">
+            {budgetItems.map(item => (
+              <div key={item.id} className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-grow">
+                  {getCategoryIcon(item.category)}
+                  <span className="font-medium w-20">{item.category}</span>
+                </div>
+                <input
+                  type="number"
+                  value={item.amount}
+                  onChange={e => updateBudgetItem(item.id, parseInt(e.target.value) || 0)}
+                  className="w-24 p-2 border rounded-lg text-right"
+                />
+                <span className="font-medium">INR</span>
+                <button onClick={() => removeBudgetItem(item.id)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            ))}
+          </div>
+          <div className="flex space-x-2 mt-4">
+            <button onClick={() => addBudgetItem('Extras')} className="text-sm flex items-center space-x-1 text-blue-600"><Plus className="w-4 h-4" /><span>Add Item</span></button>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-4 text-center">
+          <div className="bg-white rounded-xl shadow-sm border p-4">
+            <p className="text-sm text-gray-500">Daily Budget</p>
+            <p className="text-2xl font-medium text-gray-800">₹{estimatedTotal.toLocaleString()}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border p-4">
+            <p className="text-sm text-gray-500">Weekly Estimate</p>
+            <p className="text-2xl font-medium text-gray-800">₹{(estimatedTotal * 7).toLocaleString()}</p>
+          </div>
+        </motion.div>
+
+        <motion.button 
+          onClick={() => {
+            const actualSpending = prompt("Enter today's actual spending (INR):");
+            if (actualSpending && !isNaN(Number(actualSpending))) {
+              saveDay(Number(actualSpending));
+            }
+          }}
+          className="w-full py-3 bg-orange-500 text-white font-medium rounded-xl shadow-lg"
+        >
+          Log Today's Spending
+        </motion.button>
+
+        <AnimatePresence>
+          {isLoading && <div className="text-center p-4">Loading analysis...</div>}
+          {analysis && !analysis.error && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
+              <h3 className="font-medium text-lg">AI Analysis</h3>
+              <div className={`flex items-center space-x-2 p-3 rounded-lg ${analysis.difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                {analysis.difference >= 0 ? <TrendingUp className="w-6 h-6 text-green-500" /> : <TrendingDown className="w-6 h-6 text-red-500" />}
+                <div>
+                  <p className={`font-medium ${analysis.difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>{analysis.status}</p>
+                  <p className="text-sm text-gray-600">
+                    {analysis.difference >= 0 ? `You saved ₹${analysis.difference}` : `You overspent by ₹${Math.abs(analysis.difference)}`}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2 flex items-center space-x-2"><Info className="w-4 h-4 text-blue-500"/><span>Money-Saving Tips for {city}</span></h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 pl-4">
+                  {analysis.saving_tips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}
+                </ul>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {history.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl shadow-sm border p-4">
+            <h2 className="font-medium text-lg mb-4">Recent History</h2>
+            <div className="space-y-2">
+              {history.map(record => {
+                const difference = record.estimated - record.actual;
+                return (
+                  <div key={record.date} className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                    <div>
+                      <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-gray-500">Est: ₹{record.estimated} | Actual: ₹{record.actual}</p>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {difference >= 0 ? `+₹${difference}` : `-₹${Math.abs(difference)}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default BudgetTrackerPage;

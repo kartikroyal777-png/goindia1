@@ -1,52 +1,66 @@
-import React from 'react';
-import { ArrowLeft, Bell, Palette, Globe } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import Groq from "groq-sdk";
 
-const AppSettingsPage = () => {
-  const navigate = useNavigate();
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </motion.button>
-        <h1 className="text-xl font-bold text-gray-900">App Settings</h1>
-      </div>
-      <div className="p-4 space-y-4">
-        <div className="bg-white rounded-xl shadow-sm border p-4">
-          <h2 className="font-semibold text-lg mb-4">General</h2>
-          <div className="flex justify-between items-center py-2">
-            <div className="flex items-center space-x-3">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <span>Push Notifications</span>
-            </div>
-            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-            </div>
-          </div>
-           <div className="flex justify-between items-center py-2">
-            <div className="flex items-center space-x-3">
-              <Palette className="w-5 h-5 text-gray-500" />
-              <span>Dark Mode</span>
-            </div>
-            <span className="text-sm text-gray-400">Coming Soon</span>
-          </div>
-           <div className="flex justify-between items-center py-2">
-            <div className="flex items-center space-x-3">
-              <Globe className="w-5 h-5 text-gray-500" />
-              <span>Language</span>
-            </div>
-            <select className="border-none bg-gray-100 rounded-md p-1 text-sm">
-                <option>English</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const handleApiError = (error: any): string => {
+  console.error("Error calling Groq API:", error);
+  if (!GROQ_API_KEY) {
+    return `The VITE_GROQ_API_KEY is missing. Please ensure it's set in your .env file.`;
+  }
+  return `Sorry, an unexpected error occurred with the AI assistant. Please try again later. (Details: ${error.message || 'Unknown error'})`;
 };
 
-export default AppSettingsPage;
+let groq: Groq | null = null;
+if (GROQ_API_KEY) {
+  groq = new Groq({
+    apiKey: GROQ_API_KEY,
+    dangerouslyAllowBrowser: true,
+  });
+}
+
+const cleanJsonString = (rawText: string): string => {
+  let cleanedText = rawText.trim();
+  
+  const jsonMatch = cleanedText.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch && jsonMatch[1]) {
+    cleanedText = jsonMatch[1];
+  }
+
+  const firstBracket = cleanedText.indexOf('{');
+  const firstSquareBracket = cleanedText.indexOf('[');
+  let start = -1;
+
+  if (firstBracket === -1 && firstSquareBracket === -1) return cleanedText;
+  if (firstBracket === -1) start = firstSquareBracket;
+  else if (firstSquareBracket === -1) start = firstBracket;
+  else start = Math.min(firstBracket, firstSquareBracket);
+
+  const lastBracket = cleanedText.lastIndexOf('}');
+  const lastSquareBracket = cleanedText.lastIndexOf(']');
+  let end = Math.max(lastBracket, lastSquareBracket);
+
+  if (start === -1 || end === -1) return cleanedText;
+
+  return cleanedText.substring(start, end + 1);
+};
+
+
+export const runGroqQuery = async (prompt: string): Promise<string> => {
+  if (!groq) {
+    throw new Error(handleApiError({ message: 'Groq API key not configured' }));
+  }
+
+  try {
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.1-8b-instant',
+    });
+
+    const response = chatCompletion.choices[0]?.message?.content || '';
+    
+    return cleanJsonString(response);
+
+  } catch (error: any) {
+    throw new Error(handleApiError(error));
+  }
+};

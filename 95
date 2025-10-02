@@ -1,56 +1,100 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, MapPin } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
+import { City } from '../../types';
 
-const dos = [
-  "Start bargaining at 50% of quoted price",
-  "Stay polite but firm",
-  "Walk away if price doesn’t drop to fair range",
-  "Research fair prices before bargaining",
-  "Use local phrases to build rapport",
-];
+interface SearchBarProps {
+  onSearch: (query: string) => void;
+  placeholder?: string;
+}
 
-const donts = [
-  "Don’t show excitement for the item",
-  "Don’t argue aggressively",
-  "Don’t bargain in fixed-price government shops",
-  "Don’t accept first quoted price",
-  "Don’t carry large cash amounts openly",
-];
+const SearchBar: React.FC<SearchBarProps> = ({ 
+  onSearch, 
+  placeholder = "Search city, place or keyword (e.g., forts, lakes)" 
+}) => {
+  const [query, setQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<City[]>([]);
 
-const DosAndDonts: React.FC = () => {
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (query.length > 1) {
+        const { data } = await supabase
+          .from('cities')
+          .select('name, state')
+          .ilike('name', `%${query}%`)
+          .limit(5);
+        setSuggestions(data || []);
+      } else {
+        setSuggestions([]);
+      }
+    };
+
+    const debounce = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(debounce);
+  }, [query]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(query);
+    setIsFocused(false);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl p-4 border shadow-sm">
-        <h3 className="font-semibold text-lg text-green-600 flex items-center space-x-2 mb-3">
-          <CheckCircle2 />
-          <span>Do's</span>
-        </h3>
-        <ul className="space-y-2">
-          {dos.map((item, i) => (
-            <li key={i} className="flex items-start space-x-2 text-sm">
-              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </motion.div>
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl p-4 border shadow-sm">
-        <h3 className="font-semibold text-lg text-red-600 flex items-center space-x-2 mb-3">
-          <XCircle />
-          <span>Don'ts</span>
-        </h3>
-        <ul className="space-y-2">
-          {donts.map((item, i) => (
-            <li key={i} className="flex items-start space-x-2 text-sm">
-              <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </motion.div>
+    <div className="relative">
+      <motion.form
+        onSubmit={handleSubmit}
+        className="relative"
+        initial={{ scale: 0.95 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className={`relative flex items-center bg-white rounded-xl border transition-all duration-300 ${
+          isFocused ? 'border-orange-500 shadow-lg shadow-orange-100' : 'border-gray-200 shadow-sm'
+        }`}>
+          <Search className="absolute left-4 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+            placeholder={placeholder}
+            className="w-full pl-12 pr-4 py-4 text-gray-900 placeholder-gray-500 bg-transparent rounded-xl focus:outline-none text-sm"
+          />
+        </div>
+      </motion.form>
+
+      <AnimatePresence>
+        {isFocused && suggestions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 max-h-60 overflow-y-auto"
+          >
+            {suggestions.map((suggestion) => (
+              <motion.button
+                key={suggestion.name}
+                onClick={() => {
+                  const fullQuery = `${suggestion.name}, ${suggestion.state}`;
+                  setQuery(fullQuery);
+                  onSearch(fullQuery);
+                  setIsFocused(false);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-50 last:border-b-0"
+                whileHover={{ backgroundColor: '#f9fafb' }}
+              >
+                <MapPin className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-700">{suggestion.name}, <span className="text-gray-500">{suggestion.state}</span></span>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-export default DosAndDonts;
+export default SearchBar;

@@ -1,82 +1,232 @@
-/*
-# [Create Bargaining Price Guide Table]
-This migration creates the `bargaining_price_guide` table to store fair and quoted prices for various items in different locations. It also sets up Row Level Security (RLS) to allow public read access and restricts write operations to administrators.
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  emoji: string;
+}
 
-## Query Description: [This operation creates a new table for the Bargaining Coach feature. It is a structural change and does not affect any existing data. It is safe to run on a production database.]
+export interface CityCategory {
+  city_id: string;
+  category_id: string;
+  categories?: Category; // Make optional as we might only fetch the ID
+}
 
-## Metadata:
-- Schema-Category: ["Structural"]
-- Impact-Level: ["Low"]
-- Requires-Backup: [false]
-- Reversible: [true]
+export interface City {
+  id:string;
+  name: string;
+  state: string;
+  description: string;
+  short_tagline: string;
+  thumbnail_url: string;
+  popularity_score: number;
+  safety_score: number;
+  best_time_to_visit: string;
+  weather_info: string;
+  city_categories?: CityCategory[];
+}
 
-## Structure Details:
-- Table Created: `public.bargaining_price_guide`
-- Columns: `id`, `location_name`, `item_name`, `fair_price_range`, `quoted_price_range`, `created_at`
+export interface Tehsil {
+  id: string;
+  city_id: string;
+  name: string;
+  description: string;
+  thumbnail_url: string;
+  category: string;
+  safety_rating: number;
+  location_count: number;
+}
 
-## Security Implications:
-- RLS Status: [Enabled]
-- Policy Changes: [Yes]
-- Auth Requirements: [Admin role for write, public for read]
+export interface LocationImage {
+  id: string;
+  location_id: string;
+  image_url: string;
+  alt_text?: string;
+}
 
-## Performance Impact:
-- Indexes: [Primary Key on `id`]
-- Triggers: [None]
-- Estimated Impact: [Low. Creates a new table with minimal impact on overall database performance.]
-*/
+interface PhotoSpot {
+  title: string;
+  description: string;
+  image_url: string;
+  map_link: string;
+}
 
--- Create the table for bargaining price guides
-CREATE TABLE public.bargaining_price_guide (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    location_name TEXT NOT NULL,
-    item_name TEXT NOT NULL,
-    fair_price_range TEXT,
-    quoted_price_range TEXT,
-    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
-);
+interface Recommendation {
+  name: string;
+  image_url: string;
+  map_link: string;
+}
 
--- Add comments to the table and columns for clarity
-COMMENT ON TABLE public.bargaining_price_guide IS 'Stores fair and quoted price ranges for items to help users in bargaining.';
-COMMENT ON COLUMN public.bargaining_price_guide.location_name IS 'The city or market where the item is sold.';
-COMMENT ON COLUMN public.bargaining_price_guide.item_name IS 'The name of the item (e.g., T-shirt, Handicraft).';
-COMMENT ON COLUMN public.bargaining_price_guide.fair_price_range IS 'The fair price range for the item (e.g., ₹150-300).';
-COMMENT ON COLUMN public.bargaining_price_guide.quoted_price_range IS 'The commonly quoted price range by sellers (e.g., ₹600-800).';
+interface LocalFood {
+  name: string;
+  shop: string;
+  image_url: string;
+  map_link: string;
+}
 
--- Enable Row Level Security
-ALTER TABLE public.bargaining_price_guide ENABLE ROW LEVEL SECURITY;
+interface InfluencerVideo {
+  title: string;
+  video_id: string;
+  influencer_name: string;
+}
 
--- Create a helper function to identify the admin user based on the app's logic
-CREATE OR REPLACE FUNCTION is_admin()
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF auth.role() = 'service_role' THEN
-    RETURN TRUE;
-  END IF;
-  IF auth.jwt() IS NOT NULL AND auth.jwt()->>'email' = 'kartikroyal777@gmail.com' THEN
-    RETURN TRUE;
-  ELSE
-    RETURN FALSE;
-  END IF;
-END;
-$$;
+export interface Location {
+  id: string;
+  tehsil_id: string;
+  name: string;
+  category: string;
+  short_intro: string;
+  image_url: string;
+  latitude: number | null;
+  longitude: number | null;
+  images: LocationImage[];
+  details: {
+    about?: {
+      historical_background: string;
+      cultural_significance: string;
+      why_famous: string;
+    };
+    opening_hours?: {
+      daily_timings: Record<string, string>;
+      weekly_closures: string[];
+      seasonal_changes: string;
+    };
+    best_time_to_visit?: {
+      best_season: string;
+      best_time_of_day: string;
+      festival_timing: string;
+    };
+    transport?: {
+      nearest_airport: string;
+      nearest_railway_station: string;
+      last_mile_options: string;
+      taxi_cost_estimate: string;
+    };
+    safety_risks?: {
+      safety_score: number;
+      scams_warnings: string[];
+      womens_safety_rating: string;
+      emergency_contacts: { name: string; number: string }[];
+    };
+    cultural_etiquette?: {
+      dress_code: string;
+      dos_donts: string[];
+      temple_etiquette: string;
+      photography_rules: string;
+    };
+    costs_money?: {
+      ticket_prices: { local: string; foreigner: string };
+      avg_budget_per_day: string;
+      haggling_info: string;
+      digital_payment_availability: string;
+    };
+    amenities?: {
+      toilets: string;
+      wifi: string;
+      seating: string;
+      water_refills: string;
+      cloakrooms: string;
+    };
+    hygiene_index?: {
+      rating: number;
+      notes: string;
+    };
+    guides?: {
+      availability: string;
+      booking_info: string;
+    };
+    map_navigation?: {
+      google_maps_link: string;
+    };
+    events_festivals?: {
+      event_name: string;
+      event_date: string;
+      type: string;
+    };
+    things_to_do?: {
+      main_activities: string[];
+      nearby_attractions: string[];
+    };
+    photo_spots?: PhotoSpot[];
+    recommended_restaurants?: Recommendation[];
+    recommended_hotels?: Recommendation[];
+    local_foods?: LocalFood[];
+    influencer_videos?: InfluencerVideo[];
+  };
+}
 
--- Grant execute permission on the function to authenticated users
-GRANT EXECUTE ON FUNCTION is_admin() TO authenticated;
+export interface SavedPlace {
+  user_id: string;
+  location_id: string;
+  locations: Location; // For joined data
+}
 
--- Create policies for the table
--- 1. Allow public read access to everyone
-CREATE POLICY "Allow public read access"
-ON public.bargaining_price_guide
-FOR SELECT
-USING (true);
+export interface TripPreferences {
+  days: number;
+  destination: string;
+  style: 'cultural' | 'romantic' | 'family' | 'adventure';
+  companions: 'solo' | 'couple' | 'family' | 'friends';
+}
 
--- 2. Allow admins to perform all actions (insert, update, delete)
-CREATE POLICY "Allow admins full access"
-ON public.bargaining_price_guide
-FOR ALL
-USING (is_admin())
-WITH CHECK (is_admin());
+export interface SavedTrip {
+  id: string;
+  user_id: string;
+  created_at: string;
+  trip_details: {
+    preferences: TripPreferences;
+    itinerary: DayPlan[];
+  }
+}
+
+export interface DayPlan {
+  day: number;
+  title: string;
+  activities: Activity[];
+}
+
+export interface Activity {
+  id: string;
+  time: 'Morning' | 'Afternoon' | 'Evening';
+  title: string;
+  description: string;
+  type: 'spot' | 'hotel' | 'food';
+  google_maps_link?: string;
+}
+
+export interface SafetyAlert {
+  id: string;
+  location: string;
+  type: 'scam' | 'safety' | 'general';
+  severity: 'low' | 'medium' | 'high';
+  title: string;
+  description: string;
+  reported_at: string;
+  verified: boolean;
+}
+
+export interface Phrase {
+  id: string;
+  category: string;
+  en: string;
+  hi: string;
+  pronunciation: string | null;
+  is_adult: boolean;
+  created_at: string;
+}
+
+export interface BargainingPrice {
+  id: string;
+  location_name: string;
+  item_name: string;
+  fair_price_range: string;
+  quoted_price_range: string;
+}
+
+export interface Profile {
+  id: string;
+  updated_at: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  plan_type: 'free' | 'paid';
+  food_scanner_used: number;
+  trip_planner_used: number;
+}

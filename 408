@@ -1,99 +1,87 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Bell, Shield, Tag, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+-- This migration fixes the is_admin function and consolidates the schema.
 
-interface Notification {
-  id: number;
-  type: 'safety' | 'promo' | 'info';
-  title: string;
-  message: string;
-  created_at: string;
-}
+-- 1. Drop the faulty function if it exists to avoid conflicts.
+DROP FUNCTION IF EXISTS public.is_admin(user_id uuid);
 
-const getIcon = (type: string) => {
-  switch (type) {
-    case 'alert': return <Shield className="w-5 h-5 text-red-500" />;
-    case 'promo': return <Tag className="w-5 h-5 text-green-500" />;
-    default: return <Bell className="w-5 h-5 text-blue-500" />;
-  }
-};
+-- 2. Create the correct is_admin() function.
+-- This function checks if the currently authenticated user's email is the admin email.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT auth.email() = 'kartikroyal777@gmail.com';
+$$;
 
-const NotificationsPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+-- Grant usage on the new function to roles that will use it in RLS
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      setLoading(true);
-      setError(null);
-      const { data, error: fetchError } = await supabase
-        .from('notifications')
-        .select('*')
-        .order('created_at', { ascending: false });
 
-      if (fetchError) {
-        setError('Could not fetch notifications.');
-        console.error(fetchError);
-      } else {
-        setNotifications(data || []);
-      }
-      setLoading(false);
-    };
-    fetchNotifications();
-  }, []);
+-- 3. Ensure all necessary columns exist on the 'locations' table.
+DO $$
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='locations' AND column_name='details') THEN
+    ALTER TABLE public.locations ADD COLUMN details jsonb;
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='locations' AND column_name='latitude') THEN
+    ALTER TABLE public.locations ADD COLUMN latitude double precision;
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='locations' AND column_name='longitude') THEN
+    ALTER TABLE public.locations ADD COLUMN longitude double precision;
+  END IF;
+END $$;
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <motion.button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full hover:bg-gray-100"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </motion.button>
-          <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
-        </div>
-        <button onClick={() => window.location.reload()} disabled={loading} className="p-2 rounded-full hover:bg-gray-100">
-          <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-      <div className="p-4 space-y-3">
-        {loading ? (
-          <p className="text-center text-gray-500">Loading notifications...</p>
-        ) : error ? (
-          <p className="text-center text-red-500">{error}</p>
-        ) : notifications.length === 0 ? (
-          <p className="text-center text-gray-500 pt-10">You have no new notifications.</p>
-        ) : (
-          notifications.map((notif, index) => (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="p-4 rounded-xl flex items-start space-x-4 bg-white border border-gray-200"
-            >
-              <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
-                {getIcon(notif.type)}
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-800 font-semibold">{notif.title}</p>
-                <p className="text-sm text-gray-600">{notif.message}</p>
-                <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
-              </div>
-            </motion.div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-};
 
-export default NotificationsPage;
+-- 4. Create 'location_images' table if it doesn't exist.
+CREATE TABLE IF NOT EXISTS public.location_images (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    location_id uuid NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
+    image_url text NOT NULL,
+    alt_text text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+-- 5. Create 'bargaining_price_guide' table if it doesn't exist.
+CREATE TABLE IF NOT EXISTS public.bargaining_price_guide (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    location_name text NOT NULL,
+    item_name text NOT NULL,
+    fair_price_range text,
+    quoted_price_range text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+-- 6. Reset and apply all RLS policies using the correct is_admin() function.
+-- Drop old policies first to prevent conflicts.
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.locations;
+DROP POLICY IF EXISTS "Enable all access for admin" ON public.locations;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.location_images;
+DROP POLICY IF EXISTS "Enable all access for admin" ON public.location_images;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.bargaining_price_guide;
+DROP POLICY IF EXISTS "Enable all access for admin" ON public.bargaining_price_guide;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.notifications;
+DROP POLICY IF EXISTS "Enable all access for admin" ON public.notifications;
+
+-- Enable RLS on all relevant tables
+ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.location_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bargaining_price_guide ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for 'locations'
+CREATE POLICY "Enable read access for all users" ON public.locations FOR SELECT USING (true);
+CREATE POLICY "Enable all access for admin" ON public.locations FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- Create policies for 'location_images'
+CREATE POLICY "Enable read access for all users" ON public.location_images FOR SELECT USING (true);
+CREATE POLICY "Enable all access for admin" ON public.location_images FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- Create policies for 'bargaining_price_guide'
+CREATE POLICY "Enable read access for all users" ON public.bargaining_price_guide FOR SELECT USING (true);
+CREATE POLICY "Enable all access for admin" ON public.bargaining_price_guide FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- Create policies for 'notifications'
+CREATE POLICY "Enable read access for all users" ON public.notifications FOR SELECT USING (true);
+CREATE POLICY "Enable all access for admin" ON public.notifications FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
