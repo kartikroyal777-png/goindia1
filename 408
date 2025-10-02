@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Bell, Shield, Tag, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -26,26 +26,25 @@ const NotificationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (fetchError) {
-      setError('Could not fetch notifications.');
-      console.error(fetchError);
-    } else {
-      setNotifications(data || []);
-    }
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
+    const fetchNotifications = async () => {
+      setLoading(true);
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        setError('Could not fetch notifications.');
+        console.error(fetchError);
+      } else {
+        setNotifications(data || []);
+      }
+      setLoading(false);
+    };
     fetchNotifications();
-  }, [fetchNotifications]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -61,7 +60,7 @@ const NotificationsPage: React.FC = () => {
           </motion.button>
           <h1 className="text-xl font-semibold text-gray-900">Notifications</h1>
         </div>
-        <button onClick={fetchNotifications} disabled={loading} className="p-2 rounded-full hover:bg-gray-100">
+        <button onClick={() => window.location.reload()} disabled={loading} className="p-2 rounded-full hover:bg-gray-100">
           <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
@@ -85,7 +84,7 @@ const NotificationsPage: React.FC = () => {
                 {getIcon(notif.type)}
               </div>
               <div className="flex-1">
-                <p className="text-gray-800">{notif.title}</p>
+                <p className="text-gray-800 font-semibold">{notif.title}</p>
                 <p className="text-sm text-gray-600">{notif.message}</p>
                 <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleString()}</p>
               </div>

@@ -203,7 +203,7 @@ const TripPlannerPage: React.FC = () => {
       case 1: // Days
         return (
           <>
-            <h2 className="text-2xl font-medium text-gray-900 mb-4 text-center">How many days are you planning?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4 text-center">How many days are you planning?</h2>
             <div className="flex items-center justify-center space-x-4">
               <motion.button whileTap={{ scale: 0.9 }} onClick={() => setPreferences(p => ({ ...p, days: Math.max(1, p.days - 1) }))} className="p-3 bg-white rounded-full shadow-md"><Minus /></motion.button>
               <span className="text-5xl font-semibold w-24 text-center">{preferences.days}</span>
@@ -214,13 +214,13 @@ const TripPlannerPage: React.FC = () => {
       case 2: // Destination
         return (
           <>
-            <h2 className="text-2xl font-medium text-gray-900 mb-4 text-center">Where do you want to go?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4 text-center">Where do you want to go?</h2>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input type="text" value={preferences.destination} onChange={e => setPreferences(p => ({ ...p, destination: e.target.value }))} placeholder="e.g., Jaipur, Kerala, Goa" className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:border-orange-500" />
             </div>
             <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-500 mb-2">Trending Destinations:</h3>
+              <h3 className="text-sm font-semibold text-gray-500 mb-2">Trending Destinations:</h3>
               <div className="flex flex-wrap gap-2">
                 {trendingCities.map(city => <button key={city.id} onClick={() => setPreferences(p => ({ ...p, destination: city.name }))} className="px-3 py-1.5 bg-white border rounded-full text-sm hover:bg-orange-50">{city.name}</button>)}
               </div>
@@ -230,12 +230,12 @@ const TripPlannerPage: React.FC = () => {
       case 3: // Style
         return (
           <>
-            <h2 className="text-2xl font-medium text-gray-900 mb-6 text-center">What's your travel style?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">What's your travel style?</h2>
             <div className="grid grid-cols-2 gap-4">
               {styleOptions.map(({ id, label, icon: Icon }) => (
                 <motion.button key={id} onClick={() => setPreferences(p => ({ ...p, style: id }))} className={`p-4 border-2 rounded-xl text-center transition-colors ${preferences.style === id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:border-orange-300'}`}>
                   <Icon className={`w-8 h-8 mx-auto mb-2 ${preferences.style === id ? 'text-orange-500' : 'text-gray-500'}`} />
-                  <span className="font-medium">{label}</span>
+                  <span className="font-semibold">{label}</span>
                 </motion.button>
               ))}
             </div>
@@ -244,12 +244,12 @@ const TripPlannerPage: React.FC = () => {
       case 4: // Companions
         return (
           <>
-            <h2 className="text-2xl font-medium text-gray-900 mb-6 text-center">Who are you traveling with?</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">Who are you traveling with?</h2>
             <div className="grid grid-cols-2 gap-4">
               {companionOptions.map(({ id, label, icon: Icon }) => (
                 <motion.button key={id} onClick={() => setPreferences(p => ({ ...p, companions: id }))} className={`p-4 border-2 rounded-xl text-center transition-colors ${preferences.companions === id ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white hover:border-orange-300'}`}>
                   <Icon className={`w-8 h-8 mx-auto mb-2 ${preferences.companions === id ? 'text-orange-500' : 'text-gray-500'}`} />
-                  <span className="font-medium">{label}</span>
+                  <span className="font-semibold">{label}</span>
                 </motion.button>
               ))}
             </div>
@@ -294,7 +294,7 @@ const TripPlannerPage: React.FC = () => {
         <div className="sticky top-[72px] bg-white/80 backdrop-blur-sm z-10 p-4">
           <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
             {itinerary.map(day => (
-              <motion.button key={day.day} onClick={() => setActiveDay(day.day)} className={`relative px-4 py-2 rounded-full font-medium text-sm flex-shrink-0 transition-all ${activeDay === day.day ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
+              <motion.button key={day.day} onClick={() => setActiveDay(day.day)} className={`relative px-4 py-2 rounded-full font-semibold text-sm flex-shrink-0 transition-all ${activeDay === day.day ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
                 Day {day.day}
               </motion.button>
             ))}
@@ -304,7 +304,7 @@ const TripPlannerPage: React.FC = () => {
           <motion.div key={activeDay} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="p-4">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-800">{currentDayData?.title}</h3>
-              <div className="flex items-center space-x-2 text-gray-600"><WeatherIcon className="w-5 h-5" /><span className="font-medium text-sm">28°C</span></div>
+              <div className="flex items-center space-x-2 text-gray-600"><WeatherIcon className="w-5 h-5" /><span className="font-semibold text-sm">28°C</span></div>
             </div>
             <div className="space-y-4">
               {currentDayData?.activities.map((activity) => (
@@ -324,7 +324,7 @@ const TripPlannerPage: React.FC = () => {
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-3">{activity.description}</p>
-                      {activity.google_maps_link && <motion.a href={activity.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-600 flex items-center space-x-1" whileHover={{ scale: 1.05 }}><MapPin className="w-4 h-4" /><span className="hover:underline">View on Map</span></motion.a>}
+                      {activity.google_maps_link && <motion.a href={activity.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-600 flex items-center space-x-1" whileHover={{ scale: 1.05 }}><MapPin className="w-4 h-4" /><span className="hover:underline">View on Map</span></motion.a>}
                     </>
                   )}
                 </motion.div>

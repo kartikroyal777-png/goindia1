@@ -113,7 +113,7 @@ const TranslatePage: React.FC = () => {
         <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
         </Link>
-        <h1 className="text-xl text-gray-900">Language Helper</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Language Helper</h1>
       </div>
 
       <div className="p-4">
@@ -167,14 +167,14 @@ const TranslatePage: React.FC = () => {
             <div key={category} className="mb-6">
               <div className="flex items-center space-x-2 mb-4">
                 <BookOpen className="w-5 h-5 text-blue-500" />
-                <h2 className="text-lg font-medium text-gray-900">{category}</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{category}</h2>
               </div>
               <div className="space-y-3">
                 {phrases.map((phrase, index) => (
                   <motion.div key={phrase.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-gray-900">{phrase.en}</p>
+                        <p className="font-semibold text-gray-900">{phrase.en}</p>
                         <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
                         <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
                       </div>
@@ -190,7 +190,7 @@ const TranslatePage: React.FC = () => {
         )}
         {!showAdultContent && phraseCategories[adultCategoryTitle] && (
            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-             <h3 className="font-medium text-red-800">Adult Content Filter</h3>
+             <h3 className="font-semibold text-red-800">Adult Content Filter</h3>
              <p className="text-sm text-red-700 my-2">For educational purposes, a section with common slang and explicit words is available. Viewer discretion is advised.</p>
              <button onClick={() => setShowAdultContent(true)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-md flex items-center justify-center mx-auto space-x-2">
               <Eye className="w-4 h-4" />

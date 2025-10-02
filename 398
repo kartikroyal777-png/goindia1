@@ -7,6 +7,10 @@ html, body, #root {
   overflow-x: hidden;
 }
 
+body {
+  @apply font-semibold;
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

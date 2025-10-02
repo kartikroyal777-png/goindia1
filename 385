@@ -9,8 +9,7 @@ import { supabase } from '../../lib/supabase';
 const TehsilPage: React.FC = () => {
   const { tehsilId } = useParams<{ tehsilId: string }>();
   const navigate = useNavigate();
-  const [tehsil, setTehsil] = useState<Tehsil | null>(null);
-  const [city, setCity] = useState<City | null>(null);
+  const [tehsil, setTehsil] = useState<(Tehsil & { cities: City }) | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,38 +20,30 @@ const TehsilPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch tehsil details
-      const { data: tehsilData, error: tehsilError } = await supabase
-        .from('tehsils')
-        .select('*, cities(*)')
-        .eq('id', tehsilId)
-        .single();
-      
-      if (tehsilError || !tehsilData) {
-        setError('Could not find the requested area.');
-        console.error(tehsilError);
-        setLoading(false);
-        return;
-      }
-      
-      const { cities, ...tehsilInfo } = tehsilData;
-      setTehsil(tehsilInfo as Tehsil);
-      setCity(cities as City);
+      try {
+        const { data: tehsilData, error: tehsilError } = await supabase
+          .from('tehsils')
+          .select('*, cities(*)')
+          .eq('id', tehsilId)
+          .single();
+        
+        if (tehsilError) throw tehsilError;
+        setTehsil(tehsilData as Tehsil & { cities: City });
 
-      // Fetch locations for the tehsil
-      const { data: locationsData, error: locationsError } = await supabase
-        .from('locations')
-        .select('*, details')
-        .eq('tehsil_id', tehsilId);
-      
-      if (locationsError) {
-        setError('Could not fetch locations for this area.');
-        console.error(locationsError);
-      } else {
+        const { data: locationsData, error: locationsError } = await supabase
+          .from('locations')
+          .select('*, details, images:location_images(*)')
+          .eq('tehsil_id', tehsilId);
+        
+        if (locationsError) throw locationsError;
         setLocations(locationsData as Location[]);
+
+      } catch (err: any) {
+        setError(`Could not fetch area data: ${err.message}`);
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     fetchData();
@@ -62,9 +53,11 @@ const TehsilPage: React.FC = () => {
     return <div className="p-4 text-center">Loading...</div>;
   }
 
-  if (error || !tehsil || !city) {
+  if (error || !tehsil) {
     return <div className="p-4 text-center text-red-500">{typeof error === 'string' ? error : JSON.stringify(error) || 'Area not found.'}</div>;
   }
+  
+  const city = tehsil.cities;
 
   return (
     <div className="bg-gray-50 min-h-screen pb-10">
@@ -84,7 +77,7 @@ const TehsilPage: React.FC = () => {
 
         <div className="absolute bottom-4 left-4 text-white">
           <p className="text-md">{city.name}</p>
-          <h1 className="text-3xl">{tehsil.name}</h1>
+          <h1 className="text-3xl font-semibold">{tehsil.name}</h1>
         </div>
       </div>
 
@@ -97,7 +90,7 @@ const TehsilPage: React.FC = () => {
       <div className="p-4">
         <div className="flex items-center space-x-2 mb-4">
           <Landmark className="w-5 h-5 text-orange-500" />
-          <h2 className="text-xl text-gray-900">
+          <h2 className="text-xl font-semibold text-gray-900">
             Popular Locations
           </h2>
         </div>

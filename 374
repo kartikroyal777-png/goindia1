@@ -4,66 +4,26 @@ import { useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import CategoryBar from './CategoryBar';
 import CityCard from './CityCard';
-import { City, Category } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { City } from '../../types';
 import { Bot, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import AssistantModal from '../Assistant/AssistantModal';
+import { useData } from '../../contexts/DataContext';
 
 const CITIES_PER_PAGE = 6;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const { cities: allCities, categories: allCategories, loading, error, refetch } = useData();
+  
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [allCities, setAllCities] = useState<City[]>([]);
-  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [filteredCities, setFilteredCities] = useState<City[]>([]);
   const [displayedCities, setDisplayedCities] = useState<City[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
-  const fetchInitialData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
-    const [citiesResult, categoriesResult] = await Promise.allSettled([
-      supabase.from('cities').select('*, city_categories(category_id)'),
-      supabase.from('categories').select('*').order('name')
-    ]);
-
-    let errors: string[] = [];
-
-    if (citiesResult.status === 'fulfilled' && !citiesResult.value.error) {
-      setAllCities(citiesResult.value.data || []);
-    } else {
-      const cityError = citiesResult.status === 'rejected' ? citiesResult.reason : (citiesResult.value as any).error;
-      console.error("City fetch error:", cityError);
-      errors.push(`Could not fetch cities: ${cityError?.message || 'Unknown error'}`);
-    }
-
-    if (categoriesResult.status === 'fulfilled' && !categoriesResult.value.error) {
-      setAllCategories(categoriesResult.value.data || []);
-    } else {
-      const categoryError = categoriesResult.status === 'rejected' ? categoriesResult.reason : (categoriesResult.value as any).error;
-      console.error("Category fetch error:", categoryError);
-      errors.push(`Could not fetch categories: ${categoryError?.message || 'Unknown error'}`);
-    }
-
-    if (errors.length > 0) {
-      setError(errors.join(' '));
-    }
-
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
-  
   const handleCitySelect = (city: City) => {
     navigate(`/city/${city.id}`);
   };
@@ -94,8 +54,10 @@ const HomePage: React.FC = () => {
   }, [searchQuery, selectedCategory, allCities]);
 
   useEffect(() => {
-    applyFiltersAndSort();
-  }, [applyFiltersAndSort]);
+    if (!loading) {
+      applyFiltersAndSort();
+    }
+  }, [applyFiltersAndSort, loading]);
 
   const loadMoreCities = () => {
     if (!hasMore || loadingMore) return;
@@ -116,7 +78,7 @@ const HomePage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md mx-auto"
         >
-          <h1 className="text-2xl font-medium text-gray-900 mb-2 text-center">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2 text-center">
             Discover <span className="text-orange-500">Incredible India</span>
           </h1>
           <p className="text-gray-600 text-center mb-6">
@@ -134,7 +96,7 @@ const HomePage: React.FC = () => {
 
       <div className="px-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">
+          <h2 className="text-lg font-semibold text-gray-900">
             {searchQuery || selectedCategory ? `Results (${filteredCities.length})` : 'Popular Destinations'}
           </h2>
         </div>
@@ -155,7 +117,7 @@ const HomePage: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Could Not Load Destinations</h3>
             <p className="text-gray-500 mb-6 max-w-sm mx-auto">{typeof error === 'string' ? error : JSON.stringify(error)}</p>
             <motion.button
-              onClick={fetchInitialData}
+              onClick={refetch}
               className="flex items-center justify-center space-x-2 mx-auto px-4 py-2 bg-orange-500 text-white rounded-lg shadow-md"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

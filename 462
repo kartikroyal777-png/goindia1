@@ -1,0 +1,80 @@
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import { City, Category } from '../types';
+
+interface DataContextType {
+  cities: City[];
+  categories: Category[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [cities, setCities] = useState<City[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    const [citiesResult, categoriesResult] = await Promise.allSettled([
+      supabase.from('cities').select('*, city_categories(category_id)'),
+      supabase.from('categories').select('*').order('name')
+    ]);
+
+    let errors: string[] = [];
+
+    if (citiesResult.status === 'fulfilled' && !citiesResult.value.error) {
+      setCities(citiesResult.value.data || []);
+    } else {
+      const cityError = citiesResult.status === 'rejected' ? citiesResult.reason : (citiesResult.value as any).error;
+      console.error("City fetch error:", cityError);
+      errors.push(`Could not fetch cities: ${cityError?.message || 'Unknown error'}`);
+    }
+
+    if (categoriesResult.status === 'fulfilled' && !categoriesResult.value.error) {
+      setCategories(categoriesResult.value.data || []);
+    } else {
+      const categoryError = categoriesResult.status === 'rejected' ? categoriesResult.reason : (categoriesResult.value as any).error;
+      console.error("Category fetch error:", categoryError);
+      errors.push(`Could not fetch categories: ${categoryError?.message || 'Unknown error'}`);
+    }
+
+    if (errors.length > 0) {
+      setError(errors.join(' '));
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const value = {
+    cities,
+    categories,
+    loading,
+    error,
+    refetch: fetchData,
+  };
+
+  return (
+    <DataContext.Provider value={value}>
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
+};

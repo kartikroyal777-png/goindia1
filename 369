@@ -20,35 +20,30 @@ const CityPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch city details
-      const { data: cityData, error: cityError } = await supabase
-        .from('cities')
-        .select('*')
-        .eq('id', cityId)
-        .single();
-      
-      if (cityError || !cityData) {
-        setError(`Could not find the requested city: ${cityError?.message || 'Not found'}`);
-        console.error(cityError);
-        setLoading(false);
-        return;
-      }
-      setCity(cityData);
+      try {
+        const { data: cityData, error: cityError } = await supabase
+          .from('cities')
+          .select('*')
+          .eq('id', cityId)
+          .single();
+        
+        if (cityError) throw cityError;
+        setCity(cityData);
 
-      // Fetch tehsils for the city
-      const { data: tehsilsData, error: tehsilsError } = await supabase
-        .from('tehsils')
-        .select('*')
-        .eq('city_id', cityId);
-      
-      if (tehsilsError) {
-        setError(`Could not fetch areas for this city: ${tehsilsError.message}`);
-        console.error(tehsilsError);
-      } else {
+        const { data: tehsilsData, error: tehsilsError } = await supabase
+          .from('tehsils')
+          .select('*')
+          .eq('city_id', cityId);
+        
+        if (tehsilsError) throw tehsilsError;
         setTehsils(tehsilsData);
+
+      } catch (err: any) {
+        setError(`Could not fetch city data: ${err.message}`);
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     fetchData();
@@ -114,7 +109,7 @@ const CityPage: React.FC = () => {
 
       {/* Tehsils List */}
       <div className="p-4">
-        <h2 className="text-xl font-medium text-gray-900 mb-4">Explore Areas in {city.name}</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore Areas in {city.name}</h2>
         <div className="grid grid-cols-1 gap-4">
           {tehsils.length > 0 ? tehsils.map((tehsil, index) => (
             <motion.div
