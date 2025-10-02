@@ -1,158 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Banknote, Repeat, Loader2, AlertTriangle, Building, Shield } from 'lucide-react';
-import { runGroqQuery } from '../../lib/groq';
+import React from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-interface ExchangeResult {
-  source_currency: string;
-  target_currency: string;
-  amount: number;
-  converted_amount: string;
-  reverse_conversion: string;
-  authorized_dealers: string[];
-  atm_tips: string;
-  fraud_alert: string;
-  last_updated: string;
-}
-
-const CurrencyExchangerPage: React.FC = () => {
-  const [amount, setAmount] = useState('100');
-  const [fromCurrency, setFromCurrency] = useState('USD');
-  const [toCurrency, setToCurrency] = useState('INR');
-  const [result, setResult] = useState<ExchangeResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const currencies = ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'INR'];
-
-  const handleConvert = async () => {
-    if (!amount || isNaN(Number(amount))) {
-      setError('Please enter a valid amount.');
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
-
-    const prompt = `
-      You are a backend assistant for a travel app. Convert ${amount} ${fromCurrency} to ${toCurrency}.
-      Your response must be a valid JSON object. Ensure all keys and string values are enclosed in double quotes. Do not include any text or markdown formatting outside of the JSON object.
-      The JSON object must have the following structure:
-      {
-        "source_currency": "${fromCurrency}",
-        "target_currency": "${toCurrency}",
-        "amount": ${Number(amount)},
-        "converted_amount": "string with currency symbol",
-        "reverse_conversion": "string like '1 ${toCurrency} ≈ X.XXX ${fromCurrency}'",
-        "authorized_dealers": ["Dealer Name - Location", "Another Dealer - Location"],
-        "atm_tips": "A short, helpful tip about using ATMs in India.",
-        "fraud_alert": "A common currency exchange scam to watch out for.",
-        "last_updated": "A recent timestamp like 'YYYY-MM-DD HH:MM IST'"
-      }
-      Use live exchange rates for conversion. Provide dummy but realistic dealer names if you don't have real data.
-    `;
-
-    try {
-      const response = await runGroqQuery(prompt);
-      const parsedResult: ExchangeResult = JSON.parse(response);
-      setResult(parsedResult);
-    } catch (e: any) {
-      setError(e.message || "Failed to get exchange rates. The AI model might be busy. Please try again.");
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    handleConvert();
-  }, []);
+const PrivacyPolicyPage = () => {
+  const navigate = useNavigate();
 
   return (
-    <div className="pb-24 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50 pb-10">
       <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-medium text-gray-900">Currency Exchanger</h1>
+        </motion.button>
+        <h1 className="text-xl font-bold text-gray-900">Privacy Policy</h1>
       </div>
-
-      <div className="p-4 space-y-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
-          <div className="grid grid-cols-5 gap-2 items-end">
-            <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-600">Amount</label>
-              <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-gray-50 text-lg font-medium" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-sm font-medium text-gray-600">From</label>
-              <select value={fromCurrency} onChange={e => setFromCurrency(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-gray-50">
-                {currencies.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="col-span-1 flex justify-center pb-2">
-              <motion.button whileTap={{ scale: 0.9, rotate: 180 }} onClick={() => { setFromCurrency(toCurrency); setToCurrency(fromCurrency); }} className="p-2 bg-gray-100 rounded-full">
-                <Repeat className="w-5 h-5 text-gray-600" />
-              </motion.button>
-            </div>
-          </div>
-           <div className="mt-4">
-              <label className="text-sm font-medium text-gray-600">To</label>
-              <select value={toCurrency} onChange={e => setToCurrency(e.target.value)} className="w-full mt-1 p-3 border rounded-lg bg-gray-50">
-                {currencies.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          <motion.button
-            onClick={handleConvert}
-            disabled={isLoading}
-            className="w-full mt-6 py-3 bg-green-600 text-white font-medium rounded-xl shadow-lg disabled:opacity-60 flex items-center justify-center space-x-2"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Repeat className="w-5 h-5" />}
-            <span>{isLoading ? 'Converting...' : 'Convert'}</span>
-          </motion.button>
-        </motion.div>
-
-        <AnimatePresence>
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-red-100 border border-red-300 text-red-800 p-4 rounded-lg flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium">Conversion Error</h4>
-                <p className="text-sm">{typeof error === 'string' ? error : JSON.stringify(error)}</p>
-              </div>
-            </motion.div>
-          )}
-
-          {result && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              <div className="bg-white rounded-xl shadow-sm border p-4 text-center">
-                <p className="text-sm text-gray-500">{result.amount} {result.source_currency} equals</p>
-                <p className="text-4xl font-medium text-gray-800 my-2">{result.converted_amount}</p>
-                <p className="text-gray-600">{result.reverse_conversion}</p>
-                <p className="text-xs text-gray-400 mt-3">Last updated: {result.last_updated}</p>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-medium text-lg mb-2 flex items-center space-x-2"><Building className="w-5 h-5 text-blue-500" /><span>Exchange Options</span></h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 pl-4">
-                  {result.authorized_dealers.map((dealer, i) => <li key={i}>{dealer}</li>)}
-                </ul>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-sm border p-4">
-                <h3 className="font-medium text-lg mb-2 flex items-center space-x-2"><Shield className="w-5 h-5 text-green-500" /><span>Safety Tips</span></h3>
-                <p className="text-sm text-gray-700 mb-2"><strong>ATM Tip:</strong> {result.atm_tips}</p>
-                <p className="text-sm text-gray-700"><strong>Fraud Alert:</strong> {result.fraud_alert}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="p-4">
+        <div className="bg-white rounded-xl shadow-sm border p-6 prose">
+            <p>Last updated: October 27, 2025</p>
+            <p>
+                This Privacy Policy describes Our policies and procedures on the collection,
+                use and disclosure of Your information when You use the Service and tells
+                You about Your privacy rights and how the law protects You.
+            </p>
+            <h2>Interpretation and Definitions</h2>
+            <h3>Interpretation</h3>
+            <p>
+                The words of which the initial letter is capitalized have meanings
+                defined under the following conditions. The following definitions shall
+                have the same meaning regardless of whether they appear in singular or in
+                plural.
+            </p>
+            <h3>Definitions</h3>
+            <p>For the purposes of this Privacy Policy:</p>
+            <ul>
+                <li><strong>Account</strong> means a unique account created for You to access our Service or parts of our Service.</li>
+                <li><strong>Company</strong> (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to Go India.</li>
+                <li><strong>Personal Data</strong> is any information that relates to an identified or identifiable individual.</li>
+                <li><strong>Service</strong> refers to the Application.</li>
+                <li><strong>Usage Data</strong> refers to data collected automatically, either generated by the use of the Service or from the Service infrastructure itself (for example, the duration of a page visit).</li>
+            </ul>
+            <h2>Collecting and Using Your Personal Data</h2>
+            <h3>Types of Data Collected</h3>
+            <h4>Personal Data</h4>
+            <p>
+                While using Our Service, We may ask You to provide Us with certain
+                personally identifiable information that can be used to contact or
+                identify You. Personally identifiable information may include, but is not
+                limited to: Email address, First name and last name, Usage Data.
+            </p>
+            <p>
+                [Placeholder for more detailed privacy policy content...]
+            </p>
+        </div>
       </div>
     </div>
   );
 };
 
-export default CurrencyExchangerPage;
+export default PrivacyPolicyPage;

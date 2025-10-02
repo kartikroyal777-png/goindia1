@@ -1,232 +1,123 @@
-export interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  emoji: string;
-}
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Landmark } from 'lucide-react';
+import LocationCard from '../components/Tehsil/LocationCard';
+import { Tehsil, Location, City } from '../types';
+import { supabase } from '../lib/supabase';
 
-export interface CityCategory {
-  city_id: string;
-  category_id: string;
-  categories?: Category; // Make optional as we might only fetch the ID
-}
+const TehsilPage: React.FC = () => {
+  const { tehsilId } = useParams<{ tehsilId: string }>();
+  const navigate = useNavigate();
+  const [tehsil, setTehsil] = useState<Tehsil | null>(null);
+  const [city, setCity] = useState<City | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export interface City {
-  id:string;
-  name: string;
-  state: string;
-  description: string;
-  short_tagline: string;
-  thumbnail_url: string;
-  popularity_score: number;
-  safety_score: number;
-  best_time_to_visit: string;
-  weather_info: string;
-  city_categories?: CityCategory[];
-}
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!tehsilId) return;
+      setLoading(true);
+      setError(null);
 
-export interface Tehsil {
-  id: string;
-  city_id: string;
-  name: string;
-  description: string;
-  thumbnail_url: string;
-  category: string;
-  safety_rating: number;
-  location_count: number;
-}
+      // Fetch tehsil details
+      const { data: tehsilData, error: tehsilError } = await supabase
+        .from('tehsils')
+        .select('*, cities(*)')
+        .eq('id', tehsilId)
+        .single();
+      
+      if (tehsilError || !tehsilData) {
+        setError('Could not find the requested area.');
+        console.error(tehsilError);
+        setLoading(false);
+        return;
+      }
+      
+      const { cities, ...tehsilInfo } = tehsilData;
+      setTehsil(tehsilInfo as Tehsil);
+      setCity(cities as City);
 
-export interface LocationImage {
-  id: string;
-  location_id: string;
-  image_url: string;
-  alt_text?: string;
-}
+      // Fetch locations for the tehsil
+      const { data: locationsData, error: locationsError } = await supabase
+        .from('locations')
+        .select('*, details, images:location_images(*)')
+        .eq('tehsil_id', tehsilId);
+      
+      if (locationsError) {
+        setError('Could not fetch locations for this area.');
+        console.error(locationsError);
+      } else {
+        setLocations(locationsData as Location[]);
+      }
+      
+      setLoading(false);
+    };
 
-interface PhotoSpot {
-  title: string;
-  description: string;
-  image_url: string;
-  map_link: string;
-}
+    fetchData();
+  }, [tehsilId]);
 
-interface Recommendation {
-  name: string;
-  image_url: string;
-  map_link: string;
-}
-
-interface LocalFood {
-  name: string;
-  shop: string;
-  image_url: string;
-  map_link: string;
-}
-
-interface InfluencerVideo {
-  title: string;
-  video_id: string;
-  influencer_name: string;
-}
-
-export interface Location {
-  id: string;
-  tehsil_id: string;
-  name: string;
-  category: string;
-  short_intro: string;
-  image_url: string;
-  latitude: number | null;
-  longitude: number | null;
-  images: LocationImage[];
-  details: {
-    about?: {
-      historical_background: string;
-      cultural_significance: string;
-      why_famous: string;
-    };
-    opening_hours?: {
-      daily_timings: Record<string, string>;
-      weekly_closures: string[];
-      seasonal_changes: string;
-    };
-    best_time_to_visit?: {
-      best_season: string;
-      best_time_of_day: string;
-      festival_timing: string;
-    };
-    transport?: {
-      nearest_airport: string;
-      nearest_railway_station: string;
-      last_mile_options: string;
-      taxi_cost_estimate: string;
-    };
-    safety_risks?: {
-      safety_score: number;
-      scams_warnings: string[];
-      womens_safety_rating: string;
-      emergency_contacts: { name: string; number: string }[];
-    };
-    cultural_etiquette?: {
-      dress_code: string;
-      dos_donts: string[];
-      temple_etiquette: string;
-      photography_rules: string;
-    };
-    costs_money?: {
-      ticket_prices: { local: string; foreigner: string };
-      avg_budget_per_day: string;
-      haggling_info: string;
-      digital_payment_availability: string;
-    };
-    amenities?: {
-      toilets: string;
-      wifi: string;
-      seating: string;
-      water_refills: string;
-      cloakrooms: string;
-    };
-    hygiene_index?: {
-      rating: number;
-      notes: string;
-    };
-    guides?: {
-      availability: string;
-      booking_info: string;
-    };
-    map_navigation?: {
-      google_maps_link: string;
-    };
-    events_festivals?: {
-      event_name: string;
-      event_date: string;
-      type: string;
-    };
-    things_to_do?: {
-      main_activities: string[];
-      nearby_attractions: string[];
-    };
-    photo_spots?: PhotoSpot[];
-    recommended_restaurants?: Recommendation[];
-    recommended_hotels?: Recommendation[];
-    local_foods?: LocalFood[];
-    influencer_videos?: InfluencerVideo[];
-  };
-}
-
-export interface SavedPlace {
-  user_id: string;
-  location_id: string;
-  locations: Location; // For joined data
-}
-
-export interface TripPreferences {
-  days: number;
-  destination: string;
-  style: 'cultural' | 'romantic' | 'family' | 'adventure';
-  companions: 'solo' | 'couple' | 'family' | 'friends';
-}
-
-export interface SavedTrip {
-  id: string;
-  user_id: string;
-  created_at: string;
-  trip_details: {
-    preferences: TripPreferences;
-    itinerary: DayPlan[];
+  if (loading) {
+    return <div className="p-4 text-center">Loading...</div>;
   }
-}
 
-export interface DayPlan {
-  day: number;
-  title: string;
-  activities: Activity[];
-}
+  if (error || !tehsil || !city) {
+    return <div className="p-4 text-center text-red-500">{error || 'Area not found.'}</div>;
+  }
 
-export interface Activity {
-  id: string;
-  time: 'Morning' | 'Afternoon' | 'Evening';
-  title: string;
-  description: string;
-  type: 'spot' | 'hotel' | 'food';
-  google_maps_link?: string;
-}
+  return (
+    <div className="bg-gray-50 min-h-screen pb-10">
+      {/* Header */}
+      <div className="relative h-56">
+        <img src={tehsil.thumbnail_url} alt={tehsil.name} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        
+        <motion.button
+          onClick={() => navigate(`/city/${city.id}`)}
+          className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-full"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
 
-export interface SafetyAlert {
-  id: string;
-  location: string;
-  type: 'scam' | 'safety' | 'general';
-  severity: 'low' | 'medium' | 'high';
-  title: string;
-  description: string;
-  reported_at: string;
-  verified: boolean;
-}
+        <div className="absolute bottom-4 left-4 text-white">
+          <p className="text-md">{city.name}</p>
+          <h1 className="text-3xl">{tehsil.name}</h1>
+        </div>
+      </div>
 
-export interface Phrase {
-  id: string;
-  category: string;
-  en: string;
-  hi: string;
-  pronunciation: string | null;
-  is_adult: boolean;
-  created_at: string;
-}
+      {/* Tehsil Info */}
+      <div className="p-4">
+        <p className="text-gray-600 mb-4">{tehsil.description}</p>
+      </div>
 
-export interface BargainingPrice {
-  id: string;
-  location_name: string;
-  item_name: string;
-  fair_price_range: string;
-  quoted_price_range: string;
-}
+      {/* Locations List */}
+      <div className="p-4">
+        <div className="flex items-center space-x-2 mb-4">
+          <Landmark className="w-5 h-5 text-orange-500" />
+          <h2 className="text-xl text-gray-900">
+            Popular Locations
+          </h2>
+        </div>
+        <div className="space-y-4">
+          {locations.length > 0 ? locations.map((location, index) => (
+            <motion.div
+              key={location.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <LocationCard location={location} onClick={() => navigate(`/location/${location.id}`)} />
+            </motion.div>
+          )) : (
+             <p className="text-gray-500">No popular locations listed for this area yet.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-export interface Profile {
-  id: string;
-  updated_at: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  plan_type: 'free' | 'paid';
-  food_scanner_used: number;
-  trip_planner_used: number;
-}
+export default TehsilPage;

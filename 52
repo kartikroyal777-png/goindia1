@@ -1,87 +1,66 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Star, Shield, Thermometer } from 'lucide-react';
-import { City } from '../../types';
-
-interface CityCardProps {
-  city: City;
-  onClick: (city: City) => void;
-  index: number;
-}
-
-const CityCard: React.FC<CityCardProps> = ({ city, onClick, index }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
-      whileHover={{ scale: 1.02, y: -4 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={() => onClick(city)}
-      className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden border border-gray-100"
-    >
-      {/* Image */}
-      <div className="relative h-48 overflow-hidden">
-        <img
-          src={city.thumbnail_url}
-          alt={city.name}
-          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-        />
-        
-        {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-        
-        {/* Popularity badge */}
-        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center space-x-1">
-          <Star className="w-3 h-3 text-yellow-500 fill-current" />
-          <span className="text-xs text-gray-700">{city.popularity_score}</span>
-        </div>
-        
-        {/* State badge */}
-        <div className="absolute top-3 left-3 bg-orange-500 text-white px-2 py-1 rounded-full text-xs">
-          {city.state}
-        </div>
-        
-        {/* City name overlay */}
-        <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="text-white text-lg font-medium">{city.name}</h3>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-4">
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{city.short_tagline}</p>
-        
-        {/* Stats */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {/* Safety Score */}
-            <div className="flex items-center space-x-1">
-              <Shield className="w-4 h-4 text-green-500" />
-              <span className="text-sm text-gray-600">{city.safety_score}/10</span>
-            </div>
-            
-            {/* Best time indicator */}
-            <div className="flex items-center space-x-1">
-              <Thermometer className="w-4 h-4 text-blue-500" />
-              <span className="text-sm text-gray-600">
-                {city.best_time_to_visit.split(' ')[0]}
-              </span>
-            </div>
-          </div>
-          
-          {/* View button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="text-orange-500 text-sm hover:text-orange-600 transition-colors"
-          >
-            Explore →
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
-  );
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './src/**/*.{js,jsx,ts,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: '#FF5722',
+        orange: {
+          50: '#fff3e0',
+          100: '#ffe0b2',
+          200: '#ffcc80',
+          300: '#ffb74d',
+          400: '#ffa726',
+          500: '#FF5722',
+          600: '#f57c00',
+          700: '#ef6c00',
+          800: '#e65100',
+          900: '#d84315',
+        },
+        blue: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          500: '#3b82f6',
+          600: '#2563eb',
+        },
+        charcoal: '#36454F',
+        'light-gray': '#F5F5F5',
+        success: '#28a745',
+        amber: '#ffc107',
+        danger: '#dc3545',
+      },
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'bounce-gentle': 'bounceGentle 2s infinite',
+        'scan': 'scan 2s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        bounceGentle: {
+          '0%, 20%, 50%, 80%, 100%': { transform: 'translateY(0)' },
+          '40%': { transform: 'translateY(-10px)' },
+          '60%': { transform: 'translateY(-5px)' },
+        },
+        scan: {
+          'from': { top: '0%' },
+          'to': { top: 'calc(100% - 4px)' },
+        },
+      }
+    },
+  },
+  plugins: [],
 };
-
-export default CityCard;

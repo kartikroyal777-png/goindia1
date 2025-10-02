@@ -1,38 +1,47 @@
 import React from 'react';
-import { ArrowLeft, FileText } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowLeft, Bell, Palette, Globe } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-const TermsPage: React.FC = () => {
+const AppSettingsPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <Link to="/profile" className="p-2 rounded-full hover:bg-gray-100">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-bold text-gray-900">Terms of Use</h1>
+        </motion.button>
+        <h1 className="text-xl font-bold text-gray-900">App Settings</h1>
       </div>
-      <div className="p-6 space-y-6 text-gray-700 leading-relaxed">
-        <p>By using GoIndia, you agree to the following:</p>
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-bold text-gray-800">Information Accuracy</h3>
-            <p>We provide travel data from APIs, local authorities, and user input. While we strive for accuracy, conditions (weather, safety, timings) may change without notice.</p>
+      <div className="p-4 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="font-semibold text-lg mb-4">General</h2>
+          <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Bell className="w-5 h-5 text-gray-500" />
+              <span>Push Notifications</span>
+            </div>
+            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Personal Use Only</h3>
-            <p>The app is intended for personal, non-commercial use by travelers.</p>
+           <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Palette className="w-5 h-5 text-gray-500" />
+              <span>Dark Mode</span>
+            </div>
+            <span className="text-sm text-gray-400">Coming Soon</span>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Third-Party Services</h3>
-            <p>GoIndia integrates with third-party providers (maps, weather, booking, payments). We are not responsible for their policies or service availability.</p>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Liability Disclaimer</h3>
-            <p>GoIndia is a guide. Users are responsible for their own safety and decisions while traveling.</p>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Changes to Terms</h3>
-            <p>Terms may be updated periodically, and continued use of the app means acceptance of changes.</p>
+           <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Globe className="w-5 h-5 text-gray-500" />
+              <span>Language</span>
+            </div>
+            <select className="border-none bg-gray-100 rounded-md p-1 text-sm">
+                <option>English</option>
+            </select>
           </div>
         </div>
       </div>
@@ -40,4 +49,4 @@ const TermsPage: React.FC = () => {
   );
 };
 
-export default TermsPage;
+export default AppSettingsPage;

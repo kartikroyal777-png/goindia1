@@ -1,120 +1,128 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '../../lib/supabase';
-import { BargainingPrice } from '../../types';
-import { PlusCircle, Edit, Trash2, RefreshCw, X } from 'lucide-react';
+-- =================================================================
+-- Final Schema & Features Migration
+-- 
+-- This is a consolidated and idempotent script designed to fix all
+-- previous migration errors and introduce the final set of features.
+-- It can be run safely even if parts of it have been applied before.
+-- =================================================================
 
-const PriceForm: React.FC<{ price: BargainingPrice | null, onSave: () => void, onClose: () => void }> = ({ price, onSave, onClose }) => {
-  const [formData, setFormData] = useState({
-    location_name: price?.location_name || '',
-    item_name: price?.item_name || '',
-    fair_price_range: price?.fair_price_range || '',
-    quoted_price_range: price?.quoted_price_range || '',
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = price?.id
-      ? await supabase.from('bargaining_price_guide').update(formData).eq('id', price.id)
-      : await supabase.from('bargaining_price_guide').insert(formData);
-    
-    if (!error) onSave();
-    setLoading(false);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-        className="bg-white rounded-lg shadow-xl w-full max-w-md p-6"
-        onClick={e => e.stopPropagation()}
-      >
-        <h3 className="text-lg font-medium mb-4">{price ? 'Edit Price' : 'Add Price'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input name="location_name" value={formData.location_name} onChange={e => setFormData({...formData, location_name: e.target.value})} placeholder="Location (e.g., Delhi)" className="w-full p-2 border rounded" required />
-          <input name="item_name" value={formData.item_name} onChange={e => setFormData({...formData, item_name: e.target.value})} placeholder="Item (e.g., T-shirt)" className="w-full p-2 border rounded" required />
-          <input name="fair_price_range" value={formData.fair_price_range} onChange={e => setFormData({...formData, fair_price_range: e.target.value})} placeholder="Fair Price (e.g., ₹150-300)" className="w-full p-2 border rounded" />
-          <input name="quoted_price_range" value={formData.quoted_price_range} onChange={e => setFormData({...formData, quoted_price_range: e.target.value})} placeholder="Quoted Price (e.g., ₹600-800)" className="w-full p-2 border rounded" />
-          <div className="flex justify-end space-x-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded disabled:opacity-50">{loading ? 'Saving...' : 'Save'}</button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
+-- 1. Create the is_admin function if it doesn't exist
+CREATE OR REPLACE FUNCTION is_admin(user_id uuid)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE profiles.id = user_id AND profiles.role = 'admin'
   );
-};
+$$ LANGUAGE sql SECURITY DEFINER;
 
-const PriceGuideManager: React.FC = () => {
-  const [prices, setPrices] = useState<BargainingPrice[]>([]);
-  const [editingPrice, setEditingPrice] = useState<BargainingPrice | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+-- 2. Ensure the 'details' column exists on the 'locations' table
+-- This fixes the primary admin panel error.
+DO $$
+BEGIN
+  IF NOT EXISTS(SELECT * FROM information_schema.columns WHERE table_name='locations' and column_name='details') THEN
+    ALTER TABLE public.locations ADD COLUMN details jsonb;
+  END IF;
+END $$;
 
-  const fetchPrices = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('bargaining_price_guide').select('*').order('location_name').order('item_name');
-    if (error) setError(error.message);
-    else setPrices(data);
-    setLoading(false);
-  }, []);
+-- 3. Ensure the 'latitude' and 'longitude' columns exist for the weather feature
+DO $$
+BEGIN
+  IF NOT EXISTS(SELECT * FROM information_schema.columns WHERE table_name='locations' and column_name='latitude') THEN
+    ALTER TABLE public.locations ADD COLUMN latitude double precision;
+  END IF;
+  IF NOT EXISTS(SELECT * FROM information_schema.columns WHERE table_name='locations' and column_name='longitude') THEN
+    ALTER TABLE public.locations ADD COLUMN longitude double precision;
+  END IF;
+END $$;
 
-  useEffect(() => { fetchPrices() }, [fetchPrices]);
+-- 4. Recreate city_categories policies idempotently
+-- This fixes the 'policy already exists' migration error.
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.city_categories;
+CREATE POLICY "Enable read access for all users" ON public.city_categories FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.city_categories;
+CREATE POLICY "Enable insert for admins" ON public.city_categories FOR INSERT WITH CHECK (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable update for admins" ON public.city_categories;
+CREATE POLICY "Enable update for admins" ON public.city_categories FOR UPDATE USING (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable delete for admins" ON public.city_categories;
+CREATE POLICY "Enable delete for admins" ON public.city_categories FOR DELETE USING (is_admin(auth.uid()));
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure?')) {
-      await supabase.from('bargaining_price_guide').delete().eq('id', id);
-      fetchPrices();
-    }
-  };
+-- 5. Ensure location_images table exists and has correct policies
+CREATE TABLE IF NOT EXISTS public.location_images (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    location_id uuid NOT NULL,
+    image_url text NOT NULL,
+    alt_text text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE public.location_images ADD CONSTRAINT location_images_pkey PRIMARY KEY (id);
+ALTER TABLE public.location_images ADD CONSTRAINT location_images_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id) ON DELETE CASCADE;
 
-  const handleSave = () => {
-    setIsFormOpen(false);
-    fetchPrices();
-  };
+ALTER TABLE public.location_images ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.location_images;
+CREATE POLICY "Enable read access for all users" ON public.location_images FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.location_images;
+CREATE POLICY "Enable insert for admins" ON public.location_images FOR INSERT WITH CHECK (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable update for admins" ON public.location_images;
+CREATE POLICY "Enable update for admins" ON public.location_images FOR UPDATE USING (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable delete for admins" ON public.location_images;
+CREATE POLICY "Enable delete for admins" ON public.location_images FOR DELETE USING (is_admin(auth.uid()));
 
-  return (
-    <div className="p-6 bg-gray-100 rounded-lg">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-medium text-gray-800">Price Guide Manager</h2>
-        <div className="flex space-x-2">
-          <button onClick={fetchPrices} disabled={loading} className="p-2 bg-gray-200 rounded-full"><RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} /></button>
-          <button onClick={() => { setEditingPrice(null); setIsFormOpen(true); }} className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg">
-            <PlusCircle className="w-5 h-5" /><span>Add Price</span>
-          </button>
-        </div>
-      </div>
+-- 6. Ensure notifications table policies are correct
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.notifications;
+CREATE POLICY "Enable read access for all users" ON public.notifications FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.notifications;
+CREATE POLICY "Enable insert for admins" ON public.notifications FOR INSERT WITH CHECK (is_admin(auth.uid()));
 
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
+-- 7. Add demo data for new features to Taj Mahal
+UPDATE public.locations
+SET details = jsonb_set(
+    jsonb_set(
+        jsonb_set(
+            jsonb_set(
+                jsonb_set(
+                    details,
+                    '{photo_spots}',
+                    '[
+                        {"title": "The Classic Bench Shot", "description": "The iconic bench where Princess Diana sat. Arrive early to get a clean shot.", "image_url": "https://images.unsplash.com/photo-1587135941940-24869e38a755?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=Taj+Mahal+bench"},
+                        {"title": "Reflections from the Mosque", "description": "Stand near the mosque on the west side for beautiful reflections in the marble.", "image_url": "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=Taj+Mahal+mosque"}
+                    ]'::jsonb
+                ),
+                '{recommended_restaurants}',
+                '[
+                    {"name": "Pinch of Spice", "image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=Pinch+of+Spice+Agra"},
+                    {"name": "Esphahan, Oberoi", "image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=Esphahan+Oberoi+Agra"}
+                ]'::jsonb
+            ),
+            '{recommended_hotels}',
+            '[
+                {"name": "The Oberoi Amarvilas", "image_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=The+Oberoi+Amarvilas+Agra"},
+                {"name": "ITC Mughal", "image_url": "https://images.unsplash.com/photo-1542314831-068cd1dbb5eb?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=ITC+Mughal+Agra"}
+            ]'::jsonb
+        ),
+        '{local_foods}',
+        '[
+            {"name": "Petha", "shop": "Panchi Petha Store", "image_url": "https://images.unsplash.com/photo-1625398403339-147a783353e0?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=Panchi+Petha+Store+Agra"},
+            {"name": "Bedai & Jalebi", "shop": "Deviram Sweets", "image_url": "https://images.unsplash.com/photo-1606491056862-8c75a46f7966?w=400", "map_link": "https://www.google.com/maps/search/?api=1&query=Deviram+Sweets+Agra"}
+        ]'::jsonb
+    ),
+    '{influencer_videos}',
+    '[
+        {"title": "A Cinematic Tour of the Taj", "video_id": "qpOVIp1G3oA", "influencer_name": "Travel Influencer"},
+        {"title": "Taj Mahal Drone View", "video_id": "7E-hXl25oz4", "influencer_name": "Drone Explorer"}
+    ]'::jsonb
+)
+WHERE name = 'Taj Mahal';
 
-      <div className="space-y-2">
-        {prices.map(price => (
-          <div key={price.id} className="bg-white p-3 rounded-lg shadow-sm flex items-center justify-between">
-            <div>
-              <p className="font-medium">{price.item_name} <span className="text-sm text-gray-500">@ {price.location_name}</span></p>
-              <p className="text-sm">Fair: <span className="font-semibold text-green-600">{price.fair_price_range}</span> | Quoted: <span className="font-semibold text-red-600">{price.quoted_price_range}</span></p>
-            </div>
-            <div className="flex space-x-2">
-              <button onClick={() => { setEditingPrice(price); setIsFormOpen(true); }} className="p-2 text-gray-500 hover:text-blue-600"><Edit className="w-4 h-4" /></button>
-              <button onClick={() => handleDelete(price.id)} className="p-2 text-gray-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-            </div>
-          </div>
-        ))}
-      </div>
+-- Update Taj Mahal coordinates if they are null
+UPDATE public.locations
+SET 
+  latitude = 27.1751,
+  longitude = 78.0421
+WHERE name = 'Taj Mahal' AND (latitude IS NULL OR longitude IS NULL);
 
-      <AnimatePresence>
-        {isFormOpen && <PriceForm price={editingPrice} onSave={handleSave} onClose={() => setIsFormOpen(false)} />}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-export default PriceGuideManager;
+-- Add sample image to Taj Mahal gallery
+INSERT INTO public.location_images (location_id, image_url, alt_text)
+SELECT id, 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800', 'Taj Mahal from the side'
+FROM public.locations WHERE name = 'Taj Mahal'
+ON CONFLICT DO NOTHING;

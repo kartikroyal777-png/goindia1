@@ -1,54 +1,43 @@
 import React from 'react';
-import { ArrowLeft, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Volume2 } from 'lucide-react';
 
-const PrivacyPage: React.FC = () => {
+const phrases = [
+  { en: "Too expensive, give me local price.", hi: "Bahut mehenga hai, sahi daam lagaiye.", pronunciation: "Bahut mehenga hai, sahi daam lagaiye" },
+  { en: "I will check another shop.", hi: "Main doosri dukaan dekh lunga.", pronunciation: "Main doosri dukaan dekh lunga" },
+  { en: "Please reduce a little, brother.", hi: "Thoda kam karo bhaiya.", pronunciation: "Thoda kam karo bhaiya" },
+  { en: "This is tourist price.", hi: "Ye toh tourist price hai.", pronunciation: "Ye toh tourist price hai" },
+];
+
+const CommonPhrases: React.FC = () => {
+  const speak = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'hi-IN';
+      speechSynthesis.speak(utterance);
+    } else {
+      alert('Text-to-speech is not supported in your browser.');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <Link to="/profile" className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-bold text-gray-900">Privacy Policy</h1>
-      </div>
-      <div className="p-6 space-y-6 text-gray-700 leading-relaxed">
-        <p>We respect your privacy and keep your data secure.</p>
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-bold text-gray-800">Data We Collect</h3>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>Basic account details (name, email).</li>
-              <li>Location (only when you allow, for better recommendations).</li>
-              <li>Usage data (to improve app performance).</li>
-            </ul>
+    <div className="space-y-4">
+      {phrases.map((phrase, index) => (
+        <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }} className="bg-white rounded-lg p-4 border shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="font-medium text-gray-900">{phrase.en}</p>
+              <p className="text-lg text-blue-600 mt-1">{phrase.hi}</p>
+              <p className="text-sm text-gray-500 italic">{phrase.pronunciation}</p>
+            </div>
+            <button onClick={() => speak(phrase.hi)} className="p-2 text-gray-400 hover:text-blue-500">
+              <Volume2 className="w-5 h-5" />
+            </button>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-800">How We Use Data</h3>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>Personalize travel recommendations.</li>
-              <li>Show nearby attractions, guides, and services.</li>
-              <li>Improve app functionality and user experience.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Data Sharing</h3>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>We never sell your personal data.</li>
-              <li>We may share limited info with trusted partners (e.g., map or booking services) to serve you better.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Your Control</h3>
-            <p>You can delete your account and personal data anytime from settings.</p>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Security</h3>
-            <p>We use modern encryption and follow strict security practices to protect your information.</p>
-          </div>
-        </div>
-      </div>
+        </motion.div>
+      ))}
     </div>
   );
 };
 
-export default PrivacyPage;
+export default CommonPhrases;

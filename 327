@@ -1,42 +1,100 @@
--- Add new location parameters and update demo data for Taj Mahal
-
--- 1. Create a function to check for admin privileges.
--- This ensures that only authenticated admins can modify sensitive data.
+-- Create the is_admin function if it doesn't exist
 CREATE OR REPLACE FUNCTION is_admin(user_id uuid)
 RETURNS boolean AS $$
   SELECT EXISTS (
-    SELECT 1 FROM profiles WHERE id = user_id AND role = 'admin'
-  );
+    SELECT 1
+    FROM pg_roles
+    WHERE rolname = 'service_role'
+    AND pg_has_role(user_id, 'service_role', 'member')
+  ) OR (
+    SELECT email
+    FROM auth.users
+    WHERE id = user_id
+  ) = 'kartikroyal777@gmail.com';
 $$ LANGUAGE sql SECURITY DEFINER;
 
+-- Add 'details' column to locations if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'locations' AND column_name = 'details'
+  ) THEN
+    ALTER TABLE public.locations ADD COLUMN details jsonb;
+  END IF;
+END;
+$$;
 
--- 2. Update the locations table RLS policies to use the new is_admin function.
--- This ensures that the new data structure is protected.
-ALTER POLICY "Enable read access for all users" ON "public"."locations"
-  USING (true);
-
-ALTER POLICY "Enable insert for authenticated users" ON "public"."locations"
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable update for users based on user_id" ON "public"."locations"
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable delete for users based on user_id" ON "public"."locations"
-  USING (is_admin(auth.uid()));
+-- Add 'latitude' and 'longitude' columns if they don't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'latitude') THEN
+    ALTER TABLE public.locations ADD COLUMN latitude double precision;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'locations' AND column_name = 'longitude') THEN
+    ALTER TABLE public.locations ADD COLUMN longitude double precision;
+  END IF;
+END;
+$$;
 
 
--- 3. Update the 'Taj Mahal' location with comprehensive demo data for all new parameters.
--- This populates the UI with rich content for immediate visual feedback.
+-- Create location_images table with a single primary key
+CREATE TABLE IF NOT EXISTS public.location_images (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  location_id uuid REFERENCES public.locations(id) ON DELETE CASCADE,
+  image_url text NOT NULL,
+  alt_text text,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- Create bargaining_price_guide table
+CREATE TABLE IF NOT EXISTS public.bargaining_price_guide (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    location_name text NOT NULL,
+    item_name text NOT NULL,
+    fair_price_range text,
+    quoted_price_range text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+-- RLS Policies
+ALTER TABLE public.location_images ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.location_images;
+CREATE POLICY "Enable read access for all users" ON public.location_images FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.location_images;
+CREATE POLICY "Enable insert for admins" ON public.location_images FOR INSERT WITH CHECK (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable update for admins" ON public.location_images;
+CREATE POLICY "Enable update for admins" ON public.location_images FOR UPDATE USING (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable delete for admins" ON public.location_images;
+CREATE POLICY "Enable delete for admins" ON public.location_images FOR DELETE USING (is_admin(auth.uid()));
+
+ALTER TABLE public.bargaining_price_guide ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.bargaining_price_guide;
+CREATE POLICY "Enable read access for all users" ON public.bargaining_price_guide FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.bargaining_price_guide;
+CREATE POLICY "Enable insert for admins" ON public.bargaining_price_guide FOR INSERT WITH CHECK (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable update for admins" ON public.bargaining_price_guide;
+CREATE POLICY "Enable update for admins" ON public.bargaining_price_guide FOR UPDATE USING (is_admin(auth.uid()));
+DROP POLICY IF EXISTS "Enable delete for admins" ON public.bargaining_price_guide;
+CREATE POLICY "Enable delete for admins" ON public.bargaining_price_guide FOR DELETE USING (is_admin(auth.uid()));
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON public.notifications;
+CREATE POLICY "Enable read access for authenticated users" ON public.notifications FOR SELECT USING (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Enable insert for admins" ON public.notifications;
+CREATE POLICY "Enable insert for admins" ON public.notifications FOR INSERT WITH CHECK (is_admin(auth.uid()));
+
+-- Update Taj Mahal with demo data
 UPDATE public.locations
 SET 
   latitude = 27.1751,
   longitude = 78.0421,
   details = '{
     "about": {
-      "why_famous": "A UNESCO World Heritage site and one of the New7Wonders of the World.",
-      "cultural_significance": "An immense mausoleum of white marble, built by Mughal emperor Shah Jahan in memory of his favourite wife, Mumtaz Mahal.",
-      "historical_background": "Construction started in 1631 and was completed in 1653, employing thousands of artisans and craftsmen. It is the jewel of Muslim art in India."
+      "historical_background": "The Taj Mahal is an immense mausoleum of white marble, built in Agra between 1631 and 1648 by order of the Mughal emperor Shah Jahan in memory of his favourite wife, Mumtaz Mahal. It is the jewel of Muslim art in India and one of the universally admired masterpieces of the world''s heritage.",
+      "cultural_significance": "A symbol of eternal love and India''s rich history.",
+      "why_famous": "One of the Seven Wonders of the World."
     },
     "opening_hours": {
       "daily_timings": {
@@ -53,125 +111,102 @@ SET
     },
     "best_time_to_visit": {
       "best_season": "October to March",
-      "best_time_of_day": "Sunrise for ethereal beauty and fewer crowds, or Sunset for dramatic lighting.",
-      "festival_timing": "Taj Mahotsav, an annual 10-day festival, is held in February near the monument."
+      "best_time_of_day": "Sunrise or Sunset",
+      "festival_timing": "Taj Mahotsav in February"
     },
     "transport": {
-      "nearest_airport": "Agra Airport (AGR), approximately 13 km away.",
-      "nearest_railway_station": "Agra Cantt (AGC) is the main station, about 6 km away.",
-      "last_mile_options": "No polluting vehicles are allowed within 500m. Free electric buses and golf carts are available from the ticket booths.",
-      "taxi_cost_estimate": "₹200-300 from Agra Cantt station."
+      "nearest_airport": "Agra Airport (AGR) - 13km",
+      "nearest_railway_station": "Agra Cantt (AGC) - 6km",
+      "last_mile_options": "Electric bus or golf cart from ticket counter.",
+      "taxi_cost_estimate": "₹200-300 from city center"
     },
     "safety_risks": {
       "safety_score": 9,
-      "scams_warnings": [
-        "Beware of unofficial guides offering to skip lines.",
-        "Decline offers for ''special'' photos from unauthorized photographers.",
-        "Be cautious of gem scams in nearby shops."
-      ],
-      "womens_safety_rating": "High, due to prominent security. However, usual precautions in crowds are advised.",
-      "emergency_contacts": [
-        { "name": "Tourist Police", "number": "1363" },
-        { "name": "Local Police", "number": "112" }
-      ]
+      "scams_warnings": ["Unofficial guides", "Overpriced souvenirs", "Fake photographers"],
+      "womens_safety_rating": "Generally safe, but be cautious of overly friendly strangers.",
+      "emergency_contacts": [{"name": "Tourist Police", "number": "1363"}, {"name": "Local Police", "number": "112"}]
     },
     "cultural_etiquette": {
-      "dress_code": "Modest dress is recommended. Cover shoulders and knees out of respect.",
-      "dos_donts": [
-        "Do deposit large bags and food items at the cloakroom.",
-        "Don''t touch or lean on the marble walls.",
-        "Don''t make loud noises inside the mausoleum."
-      ],
-      "temple_etiquette": "While not a temple, silence and respectful behavior are expected inside the main mausoleum.",
-      "photography_rules": "Photography is prohibited inside the main mausoleum. Drones are strictly forbidden."
+      "dress_code": "Modest clothing recommended; cover shoulders and knees.",
+      "dos_donts": ["Do remove shoes before stepping onto the mausoleum.", "Don''t bring food, drinks, or tripods inside."],
+      "temple_etiquette": "Maintain silence and be respectful.",
+      "photography_rules": "Photography of the main mausoleum interior is prohibited."
     },
     "costs_money": {
-      "ticket_prices": {
-        "local": "₹50",
-        "foreigner": "₹1100"
-      },
-      "avg_budget_per_day": "₹1500 (including ticket & guide)",
-      "haggling_info": "Haggling is common for taxis and souvenirs outside the complex.",
-      "digital_payment_availability": "Yes, UPI and cards are accepted at the official ticket counter."
+      "ticket_prices": { "local": "₹50", "foreigner": "₹1100" },
+      "avg_budget_per_day": "₹1500 per person",
+      "haggling_info": "Haggling is common for taxis and souvenirs outside.",
+      "digital_payment_availability": "Yes, for tickets."
     },
     "amenities": {
-      "toilets": "Available, but can have long queues. Use them before entering the main complex.",
-      "wifi": "Limited free Wi-Fi near the entrance.",
-      "seating": "Benches are available in the gardens.",
-      "water_refills": "Water fountains are available.",
-      "cloakrooms": "Yes, available near the ticket counters to store luggage."
+      "toilets": "Available (paid)",
+      "wifi": "Not available",
+      "seating": "Benches available in gardens",
+      "water_refills": "Available",
+      "cloakrooms": "Available near entrances"
     },
     "food_stay": {
-      "local_shops_street_food": "Agra is famous for ''Petha'', a translucent soft candy. Buy from reputable stores.",
-      "dishes_to_try": "Mughlai cuisine like Biryani and Kebabs are popular in the city.",
-      "recommended_restaurants": ["Pinch of Spice", "Esphahan at The Oberoi"],
-      "nearby_hotels": ["The Oberoi Amarvilas", "ITC Mughal", "Hotel Taj Resorts"]
+      "local_shops_street_food": "Try Petha, a local sweet, outside the complex.",
+      "dishes_to_try": "Mughlai cuisine",
+      "recommended_restaurants": ["Pinch of Spice", "Esphahan"],
+      "nearby_hotels": ["The Oberoi Amarvilas", "ITC Mughal"]
     },
     "events_festivals": {
       "event_name": "Taj Mahotsav",
-      "event_date": "February 18th to 27th annually",
-      "type": "Cultural festival celebrating arts, crafts, and cuisine."
+      "event_date": "February",
+      "type": "Cultural Festival"
     },
     "weather_air_quality": {
-      "current_temp": "Varies",
-      "humidity": "Varies",
-      "aqi": "Varies",
-      "seasonal_trends": "Winters are cool and pleasant. Summers are very hot. Monsoon season is from July to September."
+      "current_temp": "N/A", "humidity": "N/A", "aqi": "N/A",
+      "seasonal_trends": "Hot summers, pleasant winters, monsoon from July-Sept."
     },
     "accessibility": {
-      "wheelchair_access": "Yes, ramps and wheelchairs are available on request.",
-      "english_speaking_guides": "Official English-speaking guides are available for hire.",
-      "foreigner_friendly_services": "Separate ticket counter for foreigners to reduce wait times."
+      "wheelchair_access": "Yes, ramps are available.",
+      "english_speaking_guides": "Available (official guides recommended)",
+      "foreigner_friendly_services": "Separate ticket counter for foreigners."
     },
     "nearby_essentials": {
-      "atms": "Available near the ticket counters.",
-      "pharmacies": "Several pharmacies are located in the Taj Ganj area.",
-      "hospitals": "Multiple hospitals are within a 5km radius in Agra city.",
-      "police_stations": "A dedicated Tourist Police station is located near the complex."
+      "atms": "Near ticket counters",
+      "pharmacies": "In Taj Ganj area",
+      "hospitals": "SN Medical College",
+      "police_stations": "Tourist Police Station near Shilpgram"
     },
     "crowd_experience": {
-      "avg_crowd_density": "High, especially on weekends and holidays.",
-      "best_crowd_free_hours": "Early morning right at sunrise, or late afternoon.",
-      "type_of_visitors": "Tourists, families, couples, history enthusiasts."
+      "avg_crowd_density": "High",
+      "best_crowd_free_hours": "Early morning (6-8 AM)",
+      "type_of_visitors": "Families, Couples, History Buffs"
     },
     "traveler_tips": {
-      "hacks": "Buy tickets online from the official ASI website to save time.",
-      "hidden_gems": "Visit Mehtab Bagh on the opposite bank for a stunning sunset view of the Taj.",
-      "scam_avoidance": "Ignore anyone claiming the ticket office is closed or moved.",
-      "photography_spots": "The classic shot from the main gate, reflections in the side water channels, and from the mosque on the west side."
+      "hacks": "Buy tickets online to skip long queues.",
+      "hidden_gems": "View the Taj from Mehtab Bagh across the river at sunset.",
+      "scam_avoidance": "Only hire government-approved guides.",
+      "photography_spots": "The classic shot from the main gate, reflections in the side water channels."
     },
     "google_reviews": {
       "live_rating": "4.6",
-      "top_traveler_quotes": [
-        "Absolutely breathtaking, a must-see in a lifetime.",
-        "Go at sunrise to avoid the crowds and the heat.",
-        "More beautiful in person than any photo can capture."
-      ]
+      "top_traveler_quotes": ["Breathtakingly beautiful.", "A must-visit in a lifetime."]
     },
-    "virtual_tour": {
-      "url": "https://www.google.com/maps/about/behind-the-scenes/streetview/treks/taj-mahal/"
-    },
-    "hygiene_index": {
-      "rating": 8,
-      "notes": "Complex is well-maintained. Toilets are clean but can be crowded."
-    },
+    "virtual_tour": { "url": "https://www.google.com/maps/about/behind-the-scenes/streetview/treks/taj-mahal/" },
+    "hygiene_index": { "rating": 3, "notes": "Toilets can be crowded. Carry hand sanitizer." },
     "visa_foreigner_rules": {
-      "visa_info": "Standard Indian e-Visa or regular tourist visa required for entry into India.",
-      "permits": "No special permit required for Taj Mahal itself, only the entry ticket."
+      "visa_info": "E-Visa accepted for most nationalities.",
+      "permits": "No special permit required."
     },
     "things_to_do": {
-      "main_activities": [
-        "Admire the architecture and marble inlay work.",
-        "Visit the main mausoleum to see the cenotaphs.",
-        "Stroll through the Charbagh-style gardens.",
-        "Take photos from the iconic central platform."
-      ],
-      "nearby_attractions": ["Agra Fort", "Itimad-ud-Daulah (Baby Taj)"]
+      "main_activities": ["Admire the architecture", "Walk through the gardens", "Visit the museum"],
+      "nearby_attractions": ["Agra Fort", "Mehtab Bagh"]
     },
-    "map_navigation": {
-      "google_maps_link": "https://www.google.com/maps/place/Taj+Mahal/@27.1751448,78.0421422,15z"
+    "map_navigation": { "google_maps_link": "https://goo.gl/maps/A4Q1m9aB9iB2" },
+    "guides": {
+      "availability": "Readily available",
+      "booking_info": "Book official guides at the ticket counter to avoid scams."
     }
   }'
 WHERE name = 'Taj Mahal';
 
-</sql>
+-- Insert images for Taj Mahal
+DELETE FROM public.location_images WHERE location_id = (SELECT id FROM public.locations WHERE name = 'Taj Mahal');
+INSERT INTO public.location_images (location_id, image_url, alt_text) VALUES
+((SELECT id FROM public.locations WHERE name = 'Taj Mahal'), 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&h=600&fit=crop', 'Front view of Taj Mahal'),
+((SELECT id FROM public.locations WHERE name = 'Taj Mahal'), 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800&h=600&fit=crop', 'Taj Mahal with reflection'),
+((SELECT id FROM public.locations WHERE name = 'Taj Mahal'), 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&h=600&fit=crop', 'Detailed view of Taj Mahal architecture');

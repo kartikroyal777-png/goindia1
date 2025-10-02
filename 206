@@ -1,54 +1,75 @@
-import React from 'react';
-import { ArrowLeft, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
-const PrivacyPage: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <Link to="/profile" className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-bold text-gray-900">Privacy Policy</h1>
-      </div>
-      <div className="p-6 space-y-6 text-gray-700 leading-relaxed">
-        <p>We respect your privacy and keep your data secure.</p>
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-bold text-gray-800">Data We Collect</h3>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>Basic account details (name, email).</li>
-              <li>Location (only when you allow, for better recommendations).</li>
-              <li>Usage data (to improve app performance).</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">How We Use Data</h3>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>Personalize travel recommendations.</li>
-              <li>Show nearby attractions, guides, and services.</li>
-              <li>Improve app functionality and user experience.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Data Sharing</h3>
-            <ul className="list-disc list-inside space-y-1 mt-1">
-              <li>We never sell your personal data.</li>
-              <li>We may share limited info with trusted partners (e.g., map or booking services) to serve you better.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Your Control</h3>
-            <p>You can delete your account and personal data anytime from settings.</p>
-          </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Security</h3>
-            <p>We use modern encryption and follow strict security practices to protect your information.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default PrivacyPage;
+export const phraseCategories = [
+  {
+    title: "Survival & Polite",
+    phrases: [
+      { en: "Hello", hi: "नमस्ते", pronunciation: "namaste" },
+      { en: "Thank you", hi: "धन्यवाद", pronunciation: "dhanyavaad" },
+      { en: "Please", hi: "कृपया", pronunciation: "kripya" },
+      { en: "Sorry / Excuse me", hi: "माफ़ कीजिए", pronunciation: "maaf kijie" },
+      { en: "Yes", hi: "हाँ / जी", pronunciation: "haan / ji" },
+      { en: "No", hi: "नहीं", pronunciation: "nahī̃" },
+      { en: "OK", hi: "ठीक है", pronunciation: "ṭhīk hai" },
+      { en: "How much?", hi: "कितना हुआ?", pronunciation: "kitnā huā?" },
+      { en: "Water", hi: "पानी", pronunciation: "pānī" },
+      { en: "Food", hi: "खाना", pronunciation: "khānā" },
+      { en: "Where is the bathroom?", hi: "बाथरूम कहाँ है?", pronunciation: "bathroom kahān hai?" },
+      { en: "Let's go", hi: "चलो", pronunciation: "chalo" },
+      { en: "Help", hi: "सहायता", pronunciation: "sahāytā" },
+      { en: "Police", hi: "पुलिस", pronunciation: "pulis" },
+      { en: "Hospital", hi: "हस्पताल", pronunciation: "haspatal" },
+    ]
+  },
+  {
+    title: "Directions & Transport",
+    phrases: [
+      { en: "Left", hi: "बाएँ", pronunciation: "bāē̃" },
+      { en: "Right", hi: "दाएँ", pronunciation: "dāē̃" },
+      { en: "Straight", hi: "सीधे", pronunciation: "sīdhe" },
+      { en: "Stop", hi: "रुको", pronunciation: "ruko" },
+      { en: "Station", hi: "स्टेशन", pronunciation: "sṭeśan" },
+      { en: "Train", hi: "रेलगाड़ी", pronunciation: "relgāṛī" },
+      { en: "Taxi", hi: "टैक्सी", pronunciation: "ṭaiksī" },
+      { en: "Auto-rickshaw", hi: "ऑटो", pronunciation: "oṭo" },
+      { en: "Fare", hi: "किराया", pronunciation: "kirāyā" },
+      { en: "Ticket", hi: "टिकट", pronunciation: "ṭikaṭ" },
+    ]
+  },
+  {
+    title: "Shopping & Bargaining",
+    phrases: [
+      { en: "What's the price?", hi: "क्या कीमत है?", pronunciation: "kya qīmat hai?" },
+      { en: "It's expensive", hi: "महँगा है", pronunciation: "mahãgā hai" },
+      { en: "Cheap", hi: "सस्ता", pronunciation: "sastā" },
+      { en: "Reduce the price", hi: "दाम कम करो", pronunciation: "dām kam karo" },
+      { en: "Show me", hi: "दिखाइए", pronunciation: "dikhāiye" },
+      { en: "Money", hi: "पैसा", pronunciation: "paisā" },
+    ]
+  },
+  {
+    title: "Food & Drink",
+    phrases: [
+      { en: "Tea", hi: "चाय", pronunciation: "chāy" },
+      { en: "Coffee", hi: "कॉफ़ी", pronunciation: "kāfī" },
+      { en: "Sugar", hi: "चीनी", pronunciation: "chīnī" },
+      { en: "Salt", hi: "नमक", pronunciation: "namak" },
+      { en: "Spice", hi: "मिर्च", pronunciation: "mirc" },
+      { en: "Flat-bread", hi: "रोटी", pronunciation: "roṭī" },
+      { en: "Rice", hi: "चावल", pronunciation: "chāwal" },
+      { en: "Lentils", hi: "दाल", pronunciation: "dāl" },
+      { en: "Vegetables", hi: "सब्ज़ी", pronunciation: "sabzī" },
+      { en: "Cold", hi: "ठंडा", pronunciation: "ṭhaṇḍā" },
+      { en: "Hot", hi: "गरम", pronunciation: "garam" },
+      { en: "Bill", hi: "बिल", pronunciation: "bil" },
+    ]
+  },
+  {
+    title: "Slang / Cool Words",
+    phrases: [
+        { en: "Dude / Pal", hi: "यार", pronunciation: "yār" },
+        { en: "Awesome", hi: "झकास", pronunciation: "jhakās" },
+        { en: "Cool / Chilled", hi: "मस्त", pronunciation: "mast" },
+        { en: "Carefree", hi: "बिंदास", pronunciation: "bindās" },
+        { en: "Hack / Workaround", hi: "जुगाड़", pronunciation: "jugāṛ" },
+    ]
+  },
+];

@@ -1,123 +1,47 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Landmark } from 'lucide-react';
-import LocationCard from '../components/Tehsil/LocationCard';
-import { Tehsil, Location, City } from '../types';
-import { supabase } from '../lib/supabase';
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Go India - Travel Guide for Foreigners</title>
+    
+    <meta name="description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
+    <meta name="author" content="Go India Team" />
 
-const TehsilPage: React.FC = () => {
-  const { tehsilId } = useParams<{ tehsilId: string }>();
-  const navigate = useNavigate();
-  const [tehsil, setTehsil] = useState<Tehsil | null>(null);
-  const [city, setCity] = useState<City | null>(null);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+    <meta property="og:title" content="Go India - Travel Guide for Foreigners" />
+    <meta property="og:description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://goindia1-3rxj-dualite.netlify.app" />
+    <meta property="og:image" content="https://d33wubrfki0l68.cloudfront.net/68d7fa331814c8076aa21334/screenshot_2025-09-27-14-53-26-0000.webp" />
+    <meta property="og:image:width" content="960" />
+    <meta property="og:image:height" content="600" />	
+    <meta property="og:image:alt" content="Go India travel app for foreigners visiting India" />
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!tehsilId) return;
-      setLoading(true);
-      setError(null);
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Go India - Travel Guide for Foreigners" />
+    <meta name="twitter:description" content="Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights." />
+    <meta name="twitter:site" content="@goindia" />
+    <meta name="twitter:image" content="https://d33wubrfki0l68.cloudfront.net/68d7fa331814c8076aa21334/screenshot_2025-09-27-14-53-26-0000.webp" />
 
-      // Fetch tehsil details
-      const { data: tehsilData, error: tehsilError } = await supabase
-        .from('tehsils')
-        .select('*, cities(*)')
-        .eq('id', tehsilId)
-        .single();
-      
-      if (tehsilError || !tehsilData) {
-        setError('Could not find the requested area.');
-        console.error(tehsilError);
-        setLoading(false);
-        return;
+    <link rel="canonical" href="https://goindia1-3rxj-dualite.netlify.app" />
+
+     <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Go India",
+      "url": "https://goindia1-3rxj-dualite.netlify.app",
+      "description": "Modern travel super-app for foreigners visiting India. AI-powered trip planning, safety guides, translations, and verified local insights.",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Go India Team"
       }
-      
-      const { cities, ...tehsilInfo } = tehsilData;
-      setTehsil(tehsilInfo as Tehsil);
-      setCity(cities as City);
+    }
+    </script>
 
-      // Fetch locations for the tehsil
-      const { data: locationsData, error: locationsError } = await supabase
-        .from('locations')
-        .select('*, details, images:location_images(*)')
-        .eq('tehsil_id', tehsilId);
-      
-      if (locationsError) {
-        setError('Could not fetch locations for this area.');
-        console.error(locationsError);
-      } else {
-        setLocations(locationsData as Location[]);
-      }
-      
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [tehsilId]);
-
-  if (loading) {
-    return <div className="p-4 text-center">Loading...</div>;
-  }
-
-  if (error || !tehsil || !city) {
-    return <div className="p-4 text-center text-red-500">{error || 'Area not found.'}</div>;
-  }
-
-  return (
-    <div className="bg-gray-50 min-h-screen pb-10">
-      {/* Header */}
-      <div className="relative h-56">
-        <img src={tehsil.thumbnail_url} alt={tehsil.name} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        
-        <motion.button
-          onClick={() => navigate(`/city/${city.id}`)}
-          className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm p-2 rounded-full"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </motion.button>
-
-        <div className="absolute bottom-4 left-4 text-white">
-          <p className="text-md">{city.name}</p>
-          <h1 className="text-3xl">{tehsil.name}</h1>
-        </div>
-      </div>
-
-      {/* Tehsil Info */}
-      <div className="p-4">
-        <p className="text-gray-600 mb-4">{tehsil.description}</p>
-      </div>
-
-      {/* Locations List */}
-      <div className="p-4">
-        <div className="flex items-center space-x-2 mb-4">
-          <Landmark className="w-5 h-5 text-orange-500" />
-          <h2 className="text-xl text-gray-900">
-            Popular Locations
-          </h2>
-        </div>
-        <div className="space-y-4">
-          {locations.length > 0 ? locations.map((location, index) => (
-            <motion.div
-              key={location.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <LocationCard location={location} onClick={() => navigate(`/location/${location.id}`)} />
-            </motion.div>
-          )) : (
-             <p className="text-gray-500">No popular locations listed for this area yet.</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default TehsilPage;
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

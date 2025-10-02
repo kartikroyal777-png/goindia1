@@ -1,224 +1,179 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Hotel, Utensils, Car, ShoppingBag, Plus, Trash2, TrendingUp, TrendingDown, Info } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { runGroqQuery } from '../../lib/groq';
-import { safeFormatDate } from '../../lib/utils';
+import { supabase } from '../../lib/supabase';
+import { City, Tehsil, Location } from '../../types';
+import { PlusCircle, Edit, Trash2, RefreshCw, ChevronRight, Home } from 'lucide-react';
+import CityForm from './CityForm';
+import TehsilForm from './TehsilForm';
+import LocationForm from './LocationForm';
 
-interface BudgetItem {
-  id: string;
-  category: 'Hotel' | 'Food' | 'Transport' | 'Extras';
-  amount: number;
-}
+type View = 'cities' | 'tehsils' | 'locations';
+type FormState = {
+  type: View | null;
+  mode: 'add' | 'edit';
+  data: City | Tehsil | Location | null;
+};
 
-interface DailyRecord {
-  date: string;
-  estimated: number;
-  actual: number;
-}
+const ContentManager: React.FC = () => {
+  const [view, setView] = useState<View>('cities');
+  const [items, setItems] = useState<(City | Tehsil | Location)[]>([]);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [selectedTehsil, setSelectedTehsil] = useState<Tehsil | null>(null);
+  const [formState, setFormState] = useState<FormState>({ type: null, mode: 'add', data: null });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const BudgetTrackerPage: React.FC = () => {
-  const [city, setCity] = useState('Delhi');
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([
-    { id: 'hotel1', category: 'Hotel', amount: 2000 },
-    { id: 'food1', category: 'Food', amount: 1000 },
-    { id: 'transport1', category: 'Transport', amount: 500 },
-  ]);
-  const [history, setHistory] = useState<DailyRecord[]>([]);
-  const [analysis, setAnalysis] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setFormState({ type: null, mode: 'add', data: null });
 
-  const estimatedTotal = budgetItems.reduce((sum, item) => sum + item.amount, 0);
-
-  const addBudgetItem = (category: 'Hotel' | 'Food' | 'Transport' | 'Extras') => {
-    setBudgetItems([...budgetItems, { id: Date.now().toString(), category, amount: 0 }]);
-  };
-
-  const updateBudgetItem = (id: string, amount: number) => {
-    setBudgetItems(budgetItems.map(item => item.id === id ? { ...item, amount } : item));
-  };
-
-  const removeBudgetItem = (id: string) => {
-    setBudgetItems(budgetItems.filter(item => item.id !== id));
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'Hotel': return <Hotel className="w-5 h-5 text-blue-500" />;
-      case 'Food': return <Utensils className="w-5 h-5 text-green-500" />;
-      case 'Transport': return <Car className="w-5 h-5 text-amber-500" />;
-      case 'Extras': return <ShoppingBag className="w-5 h-5 text-purple-500" />;
-      default: return null;
+    let query;
+    if (view === 'locations' && selectedTehsil) {
+      query = supabase.from('locations').select('*, images:location_images(*)').eq('tehsil_id', selectedTehsil.id);
+    } else if (view === 'tehsils' && selectedCity) {
+      query = supabase.from('tehsils').select('*').eq('city_id', selectedCity.id);
+    } else {
+      query = supabase.from('cities').select('*, city_categories(categories(*))');
     }
-  };
 
-  const handleAnalysis = async () => {
-    setIsLoading(true);
-    setAnalysis(null);
-    const prompt = `
-      Analyze this daily travel budget for ${city}, India.
-      Estimated Budget: Hotel: ${budgetItems.find(i=>i.category==='Hotel')?.amount || 0} INR, Food: ${budgetItems.find(i=>i.category==='Food')?.amount || 0} INR, Transport: ${budgetItems.find(i=>i.category==='Transport')?.amount || 0} INR, Extras: ${budgetItems.find(i=>i.category==='Extras')?.amount || 0} INR.
-      Total: ${estimatedTotal} INR.
-      Provide a JSON object with:
-      1. "status": "Overspent" | "Saved" | "On Track".
-      2. "difference": a number (negative for overspent).
-      3. "saving_tips": An array of 3 short, actionable money-saving tips specific to ${city}.
-      
-      Example JSON:
-      {
-        "status": "On Track",
-        "difference": 100,
-        "saving_tips": [
-          "Use the Delhi Metro instead of taxis to save on transport.",
-          "Eat at local dhabas for authentic and cheap meals.",
-          "Look for budget guesthouses in Paharganj."
-        ]
-      }
-    `;
-
-    try {
-      const response = await runGroqQuery(prompt);
-      const parsedResponse = JSON.parse(response);
-      setAnalysis(parsedResponse);
-    } catch (e) {
-      console.error(e);
-      setAnalysis({ error: "Could not get analysis." });
-    } finally {
-      setIsLoading(false);
+    const { data, error: fetchError } = await query.order('name');
+    if (fetchError) {
+      setError(fetchError.message);
+    } else {
+      setItems(data as any);
     }
-  };
+    setLoading(false);
+  }, [view, selectedCity, selectedTehsil]);
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem('budgetHistory');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
-    }
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
-  const saveDay = (actual: number) => {
-    const today = new Date().toISOString().split('T')[0];
-    const newRecord: DailyRecord = { date: today, estimated: estimatedTotal, actual };
-    const updatedHistory = [newRecord, ...history.filter(h => h.date !== today)].slice(0, 7);
-    setHistory(updatedHistory);
-    localStorage.setItem('budgetHistory', JSON.stringify(updatedHistory));
-    handleAnalysis();
+  const handleDrillDown = (item: City | Tehsil) => {
+    if ('state' in item) { // It's a City
+      setSelectedCity(item);
+      setView('tehsils');
+    } else { // It's a Tehsil
+      setSelectedTehsil(item);
+      setView('locations');
+    }
   };
 
+  const handleBreadcrumbClick = (targetView: View) => {
+    if (targetView === 'cities') {
+      setSelectedCity(null);
+      setSelectedTehsil(null);
+    }
+    if (targetView === 'tehsils') {
+      setSelectedTehsil(null);
+    }
+    setView(targetView);
+  };
+
+  const handleAdd = () => {
+    setFormState({ type: view, mode: 'add', data: null });
+  };
+
+  const handleEdit = (item: City | Tehsil | Location) => {
+    setFormState({ type: view, mode: 'edit', data: item });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+      setLoading(true);
+      const { error: deleteError } = await supabase.from(view).delete().eq('id', id);
+      if (deleteError) {
+        setError(deleteError.message);
+      } else {
+        fetchData();
+      }
+      setLoading(false);
+    }
+  };
+
+  const renderForm = () => {
+    if (!formState.type) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-gray-500">
+          <Edit className="w-16 h-16 mb-4" />
+          <p>Select an item to edit or</p>
+          <p>click "Add New" to create one.</p>
+        </div>
+      );
+    }
+
+    const onSave = () => {
+      setFormState({ type: null, mode: 'add', data: null });
+      fetchData();
+    };
+
+    switch (formState.type) {
+      case 'cities':
+        return <CityForm city={formState.mode === 'edit' ? formState.data as City : null} onSave={onSave} />;
+      case 'tehsils':
+        if (!selectedCity) return <div className="p-4 text-center text-gray-500">Please select a city first.</div>;
+        return <TehsilForm tehsil={formState.mode === 'edit' ? formState.data as Tehsil : null} cityId={selectedCity.id} onSave={onSave} />;
+      case 'locations':
+        if (!selectedTehsil) return <div className="p-4 text-center text-gray-500">Please select a tehsil first.</div>;
+        return <LocationForm location={formState.mode === 'edit' ? formState.data as Location : null} tehsilId={selectedTehsil.id} onSave={onSave} />;
+      default:
+        return null;
+    }
+  };
+  
+  const getItemName = (item: any) => item.name;
+
   return (
-    <div className="pb-24 bg-gray-50 min-h-screen">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </Link>
-        <h1 className="text-xl font-medium text-gray-900">Daily Budget Tracker</h1>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-10rem)]">
+      <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-sm overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center text-sm text-gray-500">
+            <Home onClick={() => handleBreadcrumbClick('cities')} className="w-4 h-4 mr-2 cursor-pointer hover:text-orange-500" />
+            {selectedCity && <><ChevronRight className="w-4 h-4" /><span onClick={() => handleBreadcrumbClick('tehsils')} className="cursor-pointer hover:text-orange-500">{selectedCity.name}</span></>}
+            {selectedTehsil && <><ChevronRight className="w-4 h-4" /><span className="text-gray-700 font-medium">{selectedTehsil.name}</span></>}
+          </div>
+          <div className="flex space-x-2">
+            <button onClick={fetchData} disabled={loading} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 disabled:opacity-50"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /></button>
+            <button onClick={handleAdd} className="flex items-center space-x-1 px-3 py-1.5 bg-orange-500 text-white rounded-lg shadow-sm hover:bg-orange-600 text-sm">
+              <PlusCircle className="w-4 h-4" />
+              <span>Add New</span>
+            </button>
+          </div>
+        </div>
+
+        {loading ? <p>Loading...</p> : error ? <p className="text-red-500">{error}</p> : (
+          <ul className="space-y-2">
+            {items.map(item => (
+              <li key={item.id} className={`p-2 rounded-lg cursor-pointer flex justify-between items-center transition-colors ${formState.data?.id === item.id ? 'bg-orange-100' : 'hover:bg-gray-50'}`}>
+                <span onClick={() => handleEdit(item)} className="flex-grow font-medium text-gray-800">{getItemName(item)}</span>
+                <div className="flex items-center space-x-1 flex-shrink-0">
+                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-full"><Trash2 className="w-4 h-4" /></button>
+                  {view !== 'locations' && <button onClick={() => handleDrillDown(item as City | Tehsil)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded-full"><ChevronRight className="w-5 h-5" /></button>}
+                </div>
+              </li>
+            ))}
+             {items.length === 0 && <p className="text-center text-gray-500 mt-8">No {view} found.</p>}
+          </ul>
+        )}
       </div>
 
-      <div className="p-4 space-y-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
-          <h2 className="font-medium text-lg mb-4">Plan Your Day</h2>
-          <div className="mb-4">
-            <label className="text-sm font-medium text-gray-600">City</label>
-            <select value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 p-2 border rounded-lg bg-gray-50">
-              <option>Delhi</option>
-              <option>Mumbai</option>
-              <option>Jaipur</option>
-              <option>Goa</option>
-            </select>
-          </div>
-          <div className="space-y-3">
-            {budgetItems.map(item => (
-              <div key={item.id} className="flex items-center space-x-2">
-                <div className="flex items-center space-x-2 flex-grow">
-                  {getCategoryIcon(item.category)}
-                  <span className="font-medium w-20">{item.category}</span>
-                </div>
-                <input
-                  type="number"
-                  value={item.amount}
-                  onChange={e => updateBudgetItem(item.id, parseInt(e.target.value) || 0)}
-                  className="w-24 p-2 border rounded-lg text-right"
-                />
-                <span className="font-medium">INR</span>
-                <button onClick={() => removeBudgetItem(item.id)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            ))}
-          </div>
-          <div className="flex space-x-2 mt-4">
-            <button onClick={() => addBudgetItem('Extras')} className="text-sm flex items-center space-x-1 text-blue-600"><Plus className="w-4 h-4" /><span>Add Item</span></button>
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-4 text-center">
-          <div className="bg-white rounded-xl shadow-sm border p-4">
-            <p className="text-sm text-gray-500">Daily Budget</p>
-            <p className="text-2xl font-medium text-gray-800">₹{estimatedTotal.toLocaleString()}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border p-4">
-            <p className="text-sm text-gray-500">Weekly Estimate</p>
-            <p className="text-2xl font-medium text-gray-800">₹{(estimatedTotal * 7).toLocaleString()}</p>
-          </div>
-        </motion.div>
-
-        <motion.button 
-          onClick={() => {
-            const actualSpending = prompt("Enter today's actual spending (INR):");
-            if (actualSpending && !isNaN(Number(actualSpending))) {
-              saveDay(Number(actualSpending));
-            }
-          }}
-          className="w-full py-3 bg-orange-500 text-white font-medium rounded-xl shadow-lg"
-        >
-          Log Today's Spending
-        </motion.button>
-
-        <AnimatePresence>
-          {isLoading && <div className="text-center p-4">Loading analysis...</div>}
-          {analysis && !analysis.error && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
-              <h3 className="font-medium text-lg">AI Analysis</h3>
-              <div className={`flex items-center space-x-2 p-3 rounded-lg ${analysis.difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                {analysis.difference >= 0 ? <TrendingUp className="w-6 h-6 text-green-500" /> : <TrendingDown className="w-6 h-6 text-red-500" />}
-                <div>
-                  <p className={`font-medium ${analysis.difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>{analysis.status}</p>
-                  <p className="text-sm text-gray-600">
-                    {analysis.difference >= 0 ? `You saved ₹${analysis.difference}` : `You overspent by ₹${Math.abs(analysis.difference)}`}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2 flex items-center space-x-2"><Info className="w-4 h-4 text-blue-500"/><span>Money-Saving Tips for {city}</span></h4>
-                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 pl-4">
-                  {analysis.saving_tips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}
-                </ul>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {history.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl shadow-sm border p-4">
-            <h2 className="font-medium text-lg mb-4">Recent History</h2>
-            <div className="space-y-2">
-              {history.map(record => {
-                const difference = record.estimated - record.actual;
-                return (
-                  <div key={record.date} className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                    <div>
-                      <p className="font-medium">{safeFormatDate(record.date, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
-                      <p className="text-xs text-gray-500">Est: ₹{record.estimated} | Actual: ₹{record.actual}</p>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {difference >= 0 ? `+₹${difference}` : `-₹${Math.abs(difference)}`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-sm overflow-y-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={formState.type + formState.data?.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="h-full"
+          >
+            {renderForm()}
           </motion.div>
-        )}
+        </AnimatePresence>
       </div>
     </div>
   );
 };
 
-export default BudgetTrackerPage;
+export default ContentManager;

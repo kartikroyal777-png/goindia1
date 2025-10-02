@@ -194,7 +194,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
     try { keys.forEach(key => { value = value?.[key]; }); } catch (e) { value = ''; }
     return (
       <div className="space-y-1">
-        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        <label className="text-xs font-medium capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
         {type === 'textarea' ?
           <textarea value={value || ''} onChange={e => handleDetailChange(path, e.target.value)} className="w-full p-2 border rounded" rows={3} /> :
           <input type={type} value={value || ''} onChange={e => handleDetailChange(path, type === 'number' ? parseFloat(e.target.value) : e.target.value)} className="w-full p-2 border rounded" />
@@ -218,7 +218,7 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
 
     return (
       <div className="space-y-2">
-        <label className="text-xs font-semibold capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
+        <label className="text-xs font-medium capitalize text-gray-600">{label.replace(/_/g, ' ')}</label>
         {value.map((item, index) => (
           <div key={index} className="flex items-center space-x-2">
             <input value={item} onChange={(e) => handleArrayChange(index, e.target.value)} className="w-full p-2 border rounded" />
@@ -232,9 +232,9 @@ const LocationForm: React.FC<LocationFormProps> = ({ location, tehsilId, onSave 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
-      <h3 className="text-lg font-semibold">{location ? 'Edit Location' : 'Add New Location'}</h3>
+      <h3 className="text-lg font-medium">{location ? 'Edit Location' : 'Add New Location'}</h3>
       <div className="flex-grow overflow-y-auto pr-2 space-y-4">
-        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-semibold" />
+        <input value={formData.name} onChange={e => handleSimpleChange('name', e.target.value)} placeholder="Location Name" className="w-full p-2 border rounded font-medium" />
         <input value={formData.category} onChange={e => handleSimpleChange('category', e.target.value)} placeholder="Category (e.g., UNESCO World Heritage)" className="w-full p-2 border rounded" />
         <textarea value={formData.short_intro} onChange={e => handleSimpleChange('short_intro', e.target.value)} placeholder="Short Intro" className="w-full p-2 border rounded" rows={2} />
         <input value={formData.image_url} onChange={e => handleSimpleChange('image_url', e.target.value)} placeholder="Main Image URL (Thumbnail)" className="w-full p-2 border rounded" />

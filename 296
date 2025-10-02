@@ -1,73 +1,74 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { SavedPlace } from '../types';
-import LocationCard from '../components/Tehsil/LocationCard';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Castle, Waves, Palmtree, Building, Trees, Mountain, Utensils, ShoppingBag } from 'lucide-react';
+import { Category } from '../../types';
 
-const SavedPlacesPage = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
-  const [loading, setLoading] = useState(true);
+interface CategoryBarProps {
+  categories: Category[];
+  selectedCategory: string | null;
+  onCategorySelect: (categoryId: string | null) => void;
+}
 
-  useEffect(() => {
-    const fetchSavedPlaces = async () => {
-      if (!user) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('saved_places')
-        .select('*, locations(*, images:location_images(*))')
-        .eq('user_id', user.id);
-      
-      if (data) {
-        setSavedPlaces(data as SavedPlace[]);
-      }
-      setLoading(false);
+const CategoryBar: React.FC<CategoryBarProps> = ({ 
+  categories, 
+  selectedCategory, 
+  onCategorySelect 
+}) => {
+  const getIcon = (iconName: string) => {
+    const icons: { [key: string]: React.ElementType } = {
+      castle: Castle,
+      waves: Waves,
+      palmtree: Palmtree,
+      building: Building,
+      trees: Trees,
+      mountain: Mountain,
+      utensils: Utensils,
+      'shopping-bag': ShoppingBag,
     };
-    fetchSavedPlaces();
-  }, [user]);
+    return icons[iconName] || Building;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
+    <div className="px-4 py-3">
+      <div className="flex space-x-3 overflow-x-auto scrollbar-hide">
+        {/* All Categories Button */}
+        <motion.button
+          onClick={() => onCategorySelect(null)}
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+            selectedCategory === null
+              ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          All
         </motion.button>
-        <h1 className="text-xl font-semibold text-gray-900">Saved Places</h1>
-      </div>
-      <div className="p-4">
-        {loading ? (
-          <p>Loading saved places...</p>
-        ) : savedPlaces.length === 0 ? (
-          <div className="text-center py-16">
-            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700">No Saved Places Yet</h2>
-            <p className="text-gray-500 mt-2">Tap the heart icon on any location to save it here.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <AnimatePresence>
-            {savedPlaces.map((place, index) => (
-              <motion.div 
-                key={place.location_id} 
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <LocationCard location={place.locations} onClick={() => navigate(`/location/${place.location_id}`)} />
-              </motion.div>
-            ))}
-            </AnimatePresence>
-          </div>
-        )}
+
+        {categories.map((category) => {
+          const Icon = getIcon(category.icon);
+          const isSelected = selectedCategory === category.id;
+          
+          return (
+            <motion.button
+              key={category.id}
+              onClick={() => onCategorySelect(category.id)}
+              className={`flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                isSelected
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <span className="text-base">{category.emoji}</span>
+              <span>{category.name}</span>
+            </motion.button>
+          );
+        })}
       </div>
     </div>
   );
 };
 
-export default SavedPlacesPage;
+export default CategoryBar;

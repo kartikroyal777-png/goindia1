@@ -1,157 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { City, Category } from '../../types';
+/*
+# [Create Bargaining Price Guide Table]
+This migration creates the `bargaining_price_guide` table to store fair and quoted prices for various items in different locations. It also sets up Row Level Security (RLS) to allow public read access and restricts write operations to administrators.
 
-interface CityFormProps {
-  city: City | null;
-  onSave: () => void;
-}
+## Query Description: [This operation creates a new table for the Bargaining Coach feature. It is a structural change and does not affect any existing data. It is safe to run on a production database.]
 
-const initialCityState: Partial<City> = {
-  name: '',
-  state: '',
-  description: '',
-  short_tagline: '',
-  thumbnail_url: '',
-  popularity_score: 50,
-  safety_score: 5,
-  best_time_to_visit: '',
-  weather_info: '',
-};
+## Metadata:
+- Schema-Category: ["Structural"]
+- Impact-Level: ["Low"]
+- Requires-Backup: [false]
+- Reversible: [true]
 
-const CityForm: React.FC<CityFormProps> = ({ city, onSave }) => {
-  const [formData, setFormData] = useState<Partial<City>>(initialCityState);
-  const [allCategories, setAllCategories] = useState<Category[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+## Structure Details:
+- Table Created: `public.bargaining_price_guide`
+- Columns: `id`, `location_name`, `item_name`, `fair_price_range`, `quoted_price_range`, `created_at`
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const { data } = await supabase.from('categories').select('*');
-      if (data) setAllCategories(data);
-    };
-    fetchCategories();
-  }, []);
+## Security Implications:
+- RLS Status: [Enabled]
+- Policy Changes: [Yes]
+- Auth Requirements: [Admin role for write, public for read]
 
-  useEffect(() => {
-    if (city) {
-      setFormData(city);
-      const fetchCityCategories = async () => {
-        const { data } = await supabase.from('city_categories').select('category_id').eq('city_id', city.id);
-        const currentCategoryIds = new Set(data?.map(cc => cc.category_id) || []);
-        setSelectedCategories(currentCategoryIds);
-      };
-      fetchCityCategories();
-    } else {
-      setFormData(initialCityState);
-      setSelectedCategories(new Set());
-    }
-  }, [city]);
+## Performance Impact:
+- Indexes: [Primary Key on `id`]
+- Triggers: [None]
+- Estimated Impact: [Low. Creates a new table with minimal impact on overall database performance.]
+*/
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name.endsWith('_score') ? parseInt(value) : value }));
-  };
+-- Create the table for bargaining price guides
+CREATE TABLE public.bargaining_price_guide (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    location_name TEXT NOT NULL,
+    item_name TEXT NOT NULL,
+    fair_price_range TEXT,
+    quoted_price_range TEXT,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
 
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategories(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId);
-      } else {
-        newSet.add(categoryId);
-      }
-      return newSet;
-    });
-  };
+-- Add comments to the table and columns for clarity
+COMMENT ON TABLE public.bargaining_price_guide IS 'Stores fair and quoted price ranges for items to help users in bargaining.';
+COMMENT ON COLUMN public.bargaining_price_guide.location_name IS 'The city or market where the item is sold.';
+COMMENT ON COLUMN public.bargaining_price_guide.item_name IS 'The name of the item (e.g., T-shirt, Handicraft).';
+COMMENT ON COLUMN public.bargaining_price_guide.fair_price_range IS 'The fair price range for the item (e.g., ₹150-300).';
+COMMENT ON COLUMN public.bargaining_price_guide.quoted_price_range IS 'The commonly quoted price range by sellers (e.g., ₹600-800).';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+-- Enable Row Level Security
+ALTER TABLE public.bargaining_price_guide ENABLE ROW LEVEL SECURITY;
 
-    const { city_categories, ...cityDataToSave } = formData;
+-- Create a helper function to identify the admin user based on the app's logic
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() = 'service_role' THEN
+    RETURN TRUE;
+  END IF;
+  IF auth.jwt() IS NOT NULL AND auth.jwt()->>'email' = 'kartikroyal777@gmail.com' THEN
+    RETURN TRUE;
+  ELSE
+    RETURN FALSE;
+  END IF;
+END;
+$$;
 
-    const { data: savedCity, error: cityError } = city?.id
-      ? await supabase.from('cities').update(cityDataToSave).eq('id', city.id).select().single()
-      : await supabase.from('cities').insert(cityDataToSave).select().single();
+-- Grant execute permission on the function to authenticated users
+GRANT EXECUTE ON FUNCTION is_admin() TO authenticated;
 
-    if (cityError) {
-      setError(cityError.message);
-      setLoading(false);
-      return;
-    }
+-- Create policies for the table
+-- 1. Allow public read access to everyone
+CREATE POLICY "Allow public read access"
+ON public.bargaining_price_guide
+FOR SELECT
+USING (true);
 
-    const cityId = savedCity.id;
-    const { error: deleteError } = await supabase.from('city_categories').delete().eq('city_id', cityId);
-    if (deleteError) {
-      setError(`Failed to update categories: ${deleteError.message}`);
-      setLoading(false);
-      return;
-    }
-
-    if (selectedCategories.size > 0) {
-      const categoryLinks = Array.from(selectedCategories).map(catId => ({ city_id: cityId, category_id: catId }));
-      const { error: insertError } = await supabase.from('city_categories').insert(categoryLinks);
-      if (insertError) {
-        setError(`Failed to link categories: ${insertError.message}`);
-        setLoading(false);
-        return;
-      }
-    }
-
-    onSave();
-    setLoading(false);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 h-full flex flex-col">
-      <h3 className="text-lg font-medium">{city ? 'Edit City' : 'Add New City'}</h3>
-      <div className="flex-grow overflow-y-auto pr-2 space-y-4">
-        {Object.keys(initialCityState).map(key => {
-          if (key === 'id') return null;
-          const fieldKey = key as keyof typeof formData;
-          const isTextarea = ['description', 'weather_info'].includes(key);
-          const isNumber = key.endsWith('_score');
-          
-          return (
-            <div key={key}>
-              <label htmlFor={key} className="block text-sm font-medium text-gray-700 capitalize mb-1">{key.replace(/_/g, ' ')}</label>
-              {isTextarea ? (
-                <textarea id={key} name={key} value={String(formData[fieldKey] || '')} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" rows={3} />
-              ) : (
-                <input id={key} name={key} type={isNumber ? 'number' : 'text'} value={String(formData[fieldKey] || '')} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" max={isNumber && key.includes('safety') ? 10 : isNumber ? 100 : undefined} min={isNumber ? 0 : undefined} />
-              )}
-            </div>
-          );
-        })}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 capitalize mb-2">Categories</label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {allCategories.map(cat => (
-              <div key={cat.id} className="flex items-center">
-                <input
-                  id={`cat-${cat.id}`}
-                  type="checkbox"
-                  checked={selectedCategories.has(cat.id)}
-                  onChange={() => handleCategoryChange(cat.id)}
-                  className="h-4 w-4 text-orange-600 border-gray-300 rounded"
-                />
-                <label htmlFor={`cat-${cat.id}`} className="ml-2 text-sm text-gray-700">{cat.name}</label>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div className="flex justify-end space-x-3 pt-4 border-t">
-        <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 text-sm font-medium">
-          {loading ? 'Saving...' : 'Save City'}
-        </button>
-      </div>
-    </form>
-  );
-};
-
-export default CityForm;
+-- 2. Allow admins to perform all actions (insert, update, delete)
+CREATE POLICY "Allow admins full access"
+ON public.bargaining_price_guide
+FOR ALL
+USING (is_admin())
+WITH CHECK (is_admin());

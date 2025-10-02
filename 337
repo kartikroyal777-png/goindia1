@@ -1,62 +1,103 @@
-/*
-  ## 2025-10-28: Add Profiles and Usage Tracking (Idempotent)
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, MapPin, Trash2, Edit, PlusCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
+import { SavedTrip } from '../types';
 
-  This migration creates the `profiles` table to store user-specific data, including their subscription plan and usage of premium features. It also sets up a trigger to automatically create a profile for each new user who signs up.
+const MyTripsPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [trips, setTrips] = useState<SavedTrip[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  This version is idempotent and safe to re-run. It uses `IF NOT EXISTS` to prevent errors if objects already exist.
-*/
+  useEffect(() => {
+    const fetchTrips = async () => {
+      if (!user) return;
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('saved_trips')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (data) setTrips(data);
+      setLoading(false);
+    };
+    fetchTrips();
+  }, [user]);
+  
+  const deleteTrip = async (tripId: string) => {
+      if(window.confirm('Are you sure you want to delete this trip?')) {
+          await supabase.from('saved_trips').delete().eq('id', tripId);
+          setTrips(trips.filter(t => t.id !== tripId));
+      }
+  }
 
--- Create the profiles table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.profiles (
-  id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  updated_at timestamp with time zone,
-  full_name text,
-  avatar_url text,
-  plan_type text NOT NULL DEFAULT 'free'::text,
-  food_scans_used integer NOT NULL DEFAULT 0,
-  trip_planner_runs integer NOT NULL DEFAULT 0
-);
-
--- Add comments to the table and columns
-COMMENT ON TABLE public.profiles IS 'Stores public-facing user data and subscription details.';
-COMMENT ON COLUMN public.profiles.id IS 'References the internal auth.users table.';
-COMMENT ON COLUMN public.profiles.plan_type IS 'User subscription plan (free or paid).';
-COMMENT ON COLUMN public.profiles.food_scans_used IS 'Counter for food scanner feature usage.';
-COMMENT ON COLUMN public.profiles.trip_planner_runs IS 'Counter for trip planner feature usage.';
-
--- Set up Row Level Security for the profiles table
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
--- Create RLS policies for profiles
--- 1. Allow users to see their own profile
-DROP POLICY IF EXISTS "Users can view their own profile." ON public.profiles;
-CREATE POLICY "Users can view their own profile." ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
-
--- 2. Allow users to update their own profile
-DROP POLICY IF EXISTS "Users can update their own profile." ON public.profiles;
-CREATE POLICY "Users can update their own profile." ON public.profiles
-  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
-
--- Create a function to handle new user creation
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name, avatar_url)
-  VALUES (
-    new.id,
-    new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'avatar_url'
+  return (
+    <div className="min-h-screen bg-gray-50 pb-10">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+        <h1 className="text-xl font-semibold text-gray-900">My Trips</h1>
+      </div>
+      <div className="p-4">
+        {loading ? (
+          <p>Loading trips...</p>
+        ) : trips.length === 0 ? (
+          <div className="text-center py-16">
+            <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-700">No Saved Trips Yet</h2>
+            <p className="text-gray-500 mt-2">Use the Trip Planner to create your next adventure!</p>
+            <Link to="/planner">
+                <motion.button className="mt-6 px-6 py-2 bg-orange-500 text-white font-semibold rounded-full shadow-md flex items-center justify-center mx-auto space-x-2">
+                    <PlusCircle className="w-5 h-5" />
+                    <span>Plan a New Trip</span>
+                </motion.button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <AnimatePresence>
+            {trips.map((trip, index) => (
+              <motion.div 
+                key={trip.id} 
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-white rounded-xl shadow-sm border p-4"
+              >
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h3 className="font-semibold text-lg">{trip.trip_details.preferences.destination}</h3>
+                        <p className="text-sm text-gray-500">{trip.trip_details.preferences.days} days, {trip.trip_details.preferences.style} style</p>
+                        <p className="text-xs text-gray-400 mt-1">Created on {new Date(trip.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex space-x-1">
+                        <button className="p-2 text-gray-400 hover:text-blue-500"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => deleteTrip(trip.id)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                </div>
+                <div className="mt-4 border-t pt-2">
+                    <p className="text-sm font-medium mb-1">Itinerary Highlights:</p>
+                    <ul className="list-disc list-inside text-sm text-gray-600 truncate">
+                        {trip.trip_details.itinerary.slice(0, 2).map(day => (
+                            <li key={day.day}>{day.title}</li>
+                        ))}
+                    </ul>
+                </div>
+              </motion.div>
+            ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </div>
   );
-  RETURN new;
-END;
-$$;
+};
 
--- Create a trigger to call the function when a new user is created in auth.users
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+export default MyTripsPage;

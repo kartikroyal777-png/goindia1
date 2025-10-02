@@ -1,109 +1,52 @@
--- =================================================================
---  Fix is_admin function and dependent RLS policies
--- =================================================================
+import React from 'react';
+import { ArrowLeft, Bell, Palette, Globe } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
--- Drop the old function if it exists to avoid conflicts
-DROP FUNCTION IF EXISTS is_admin(user_id uuid);
+const AppSettingsPage = () => {
+  const navigate = useNavigate();
 
--- Create a new, correct is_admin function that checks the email directly
-CREATE OR REPLACE FUNCTION is_admin(user_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1
-    FROM auth.users
-    WHERE id = user_id AND email = 'kartikroyal777@gmail.com'
+  return (
+    <div className="min-h-screen bg-gray-50 pb-10">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </motion.button>
+        <h1 className="text-xl font-bold text-gray-900">App Settings</h1>
+      </div>
+      <div className="p-4 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="font-semibold text-lg mb-4">General</h2>
+          <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Bell className="w-5 h-5 text-gray-500" />
+              <span>Push Notifications</span>
+            </div>
+            <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input type="checkbox" name="toggle" id="toggle" className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                <label htmlFor="toggle" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+            </div>
+          </div>
+           <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Palette className="w-5 h-5 text-gray-500" />
+              <span>Dark Mode</span>
+            </div>
+            <span className="text-sm text-gray-400">Coming Soon</span>
+          </div>
+           <div className="flex justify-between items-center py-2">
+            <div className="flex items-center space-x-3">
+              <Globe className="w-5 h-5 text-gray-500" />
+              <span>Language</span>
+            </div>
+            <select className="border-none bg-gray-100 rounded-md p-1 text-sm">
+                <option>English</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
   );
-END;
-$$;
+};
 
--- Re-apply policies on all tables to use the correct function
--- This ensures admins have full access
-ALTER POLICY "Enable all access for admins" ON public.locations
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable all access for admins" ON public.location_images
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable all access for admins" ON public.cities
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-  
-ALTER POLICY "Enable all access for admins" ON public.tehsils
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable all access for admins" ON public.notifications
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-  
-ALTER POLICY "Enable all access for admins" ON public.phrases
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable all access for admins" ON public.bargaining_price_guide
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-ALTER POLICY "Enable all access for admins" ON public.city_categories
-  USING (is_admin(auth.uid()))
-  WITH CHECK (is_admin(auth.uid()));
-
-
--- =================================================================
---  Create `saved_places` table for saving locations
--- =================================================================
-CREATE TABLE IF NOT EXISTS public.saved_places (
-    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    location_id uuid NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    PRIMARY KEY (user_id, location_id)
-);
-
--- RLS Policies for saved_places
-ALTER TABLE public.saved_places ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.saved_places;
-CREATE POLICY "Enable read access for all users" ON public.saved_places
-  FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Users can insert their own saved places" ON public.saved_places;
-CREATE POLICY "Users can insert their own saved places" ON public.saved_places
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can delete their own saved places" ON public.saved_places;
-CREATE POLICY "Users can delete their own saved places" ON public.saved_places
-  FOR DELETE USING (auth.uid() = user_id);
-
-
--- =================================================================
---  Create `saved_trips` table for the Trip Planner
--- =================================================================
-CREATE TABLE IF NOT EXISTS public.saved_trips (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    trip_details jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
--- RLS Policies for saved_trips
-ALTER TABLE public.saved_trips ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can manage their own trips" ON public.saved_trips;
-CREATE POLICY "Users can manage their own trips" ON public.saved_trips
-  FOR ALL USING (auth.uid() = user_id);
-
--- =================================================================
---  Fix for `city_categories` admin panel issue
--- =================================================================
--- The primary fix is in the frontend code, but we ensure the RLS is correct.
--- This policy allows authenticated users to read the city-category links.
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.city_categories;
-CREATE POLICY "Enable read access for all users" ON public.city_categories
-  FOR SELECT USING (true);
+export default AppSettingsPage;

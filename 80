@@ -1,29 +1,17 @@
-import { supabase } from './supabase';
+import React from 'react';
+import { motion } from 'framer-motion';
 
-// This file is now deprecated for Gemini calls.
-// Keeping it for the Supabase function proxy if it's needed elsewhere.
-// New AI calls should use functions from `src/lib/gemini.ts`.
-
-export const runAssistantQueryWithProxy = async (prompt: string): Promise<string> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('ai-proxy', {
-      body: {
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-    
-    if (data.error) {
-      throw new Error(data.error);
-    }
-
-    return data.choices[0].message.content.trim();
-  } catch (err) {
-    console.error('Error invoking Supabase function:', err);
-    return 'Sorry, there was an issue connecting to the AI assistant.';
-  }
+const FullScreenLoader: React.FC = () => {
+  return (
+    <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full mb-4"
+      />
+      <p className="text-gray-600">Loading your experience...</p>
+    </div>
+  );
 };
+
+export default FullScreenLoader;

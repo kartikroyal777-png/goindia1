@@ -1,40 +1,47 @@
-import js from '@eslint/js';
-import globals from 'globals';
-import eslintPluginReact from 'eslint-plugin-react';
-import reactRefresh from 'eslint-plugin-react-refresh';
-import tseslint from 'typescript-eslint';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-export default tseslint.config(
-  { ignores: ['dist'] },
-  {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ['**/*.{ts,tsx}'],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-    },
-    plugins: {
-      'react': eslintPluginReact,
-      'react-refresh': reactRefresh,
-    },
-    rules: {
-      ...eslintPluginReact.configs.recommended.rules,
-      ...eslintPluginReact.configs['jsx-runtime'].rules,
-      'react/prop-types': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
+const VNICE_API_KEY = Deno.env.get('VNICE_API_KEY')
+const API_URL = 'https://api.v-nice.pro/v1/chat/completions'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
-);
+
+  try {
+    const { model, messages } = await req.json()
+
+    if (!VNICE_API_KEY) {
+      return new Response(JSON.stringify({ error: 'API key not configured in serverless function.' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${VNICE_API_KEY}`,
+      },
+      body: JSON.stringify({ model, messages }),
+    })
+
+    const data = await response.json()
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})

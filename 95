@@ -1,73 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { SavedPlace } from '../types';
-import LocationCard from '../components/Tehsil/LocationCard';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
-const SavedPlacesPage = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [savedPlaces, setSavedPlaces] = useState<SavedPlace[]>([]);
-  const [loading, setLoading] = useState(true);
+const dos = [
+  "Start bargaining at 50% of quoted price",
+  "Stay polite but firm",
+  "Walk away if price doesn’t drop to fair range",
+  "Research fair prices before bargaining",
+  "Use local phrases to build rapport",
+];
 
-  useEffect(() => {
-    const fetchSavedPlaces = async () => {
-      if (!user) return;
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('saved_places')
-        .select('*, locations(*, images:location_images(*))')
-        .eq('user_id', user.id);
-      
-      if (data) {
-        setSavedPlaces(data as SavedPlace[]);
-      }
-      setLoading(false);
-    };
-    fetchSavedPlaces();
-  }, [user]);
+const donts = [
+  "Don’t show excitement for the item",
+  "Don’t argue aggressively",
+  "Don’t bargain in fixed-price government shops",
+  "Don’t accept first quoted price",
+  "Don’t carry large cash amounts openly",
+];
 
+const DosAndDonts: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
-        <motion.button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-        </motion.button>
-        <h1 className="text-xl font-semibold text-gray-900">Saved Places</h1>
-      </div>
-      <div className="p-4">
-        {loading ? (
-          <p>Loading saved places...</p>
-        ) : savedPlaces.length === 0 ? (
-          <div className="text-center py-16">
-            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-700">No Saved Places Yet</h2>
-            <p className="text-gray-500 mt-2">Tap the heart icon on any location to save it here.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <AnimatePresence>
-            {savedPlaces.map((place, index) => (
-              <motion.div 
-                key={place.location_id} 
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <LocationCard location={place.locations} onClick={() => navigate(`/location/${place.location_id}`)} />
-              </motion.div>
-            ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl p-4 border shadow-sm">
+        <h3 className="font-semibold text-lg text-green-600 flex items-center space-x-2 mb-3">
+          <CheckCircle2 />
+          <span>Do's</span>
+        </h3>
+        <ul className="space-y-2">
+          {dos.map((item, i) => (
+            <li key={i} className="flex items-start space-x-2 text-sm">
+              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </motion.div>
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-xl p-4 border shadow-sm">
+        <h3 className="font-semibold text-lg text-red-600 flex items-center space-x-2 mb-3">
+          <XCircle />
+          <span>Don'ts</span>
+        </h3>
+        <ul className="space-y-2">
+          {donts.map((item, i) => (
+            <li key={i} className="flex items-start space-x-2 text-sm">
+              <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </motion.div>
     </div>
   );
 };
 
-export default SavedPlacesPage;
+export default DosAndDonts;

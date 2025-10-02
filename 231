@@ -1,154 +1,224 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import TopNavBar from './components/Layout/TopNavBar';
-import BottomNavBar from './components/Layout/BottomNavBar';
-import HomePage from './components/Home/HomePage';
-import FoodScorerPage from './components/FoodScorer/FoodScorerPage';
-import TripPlannerPage from './components/TripPlanner/TripPlannerPage';
-import ProfilePage from './components/Profile/ProfilePage';
-import CityPage from './components/City/CityPage';
-import TehsilPage from './components/Tehsil/TehsilPage';
-import LocationDetailPage from './components/Location/LocationDetailPage';
-import AuthPage from './pages/AuthPage';
-import NotificationsPage from './pages/NotificationsPage';
-import AdminPage from './pages/AdminPage';
-import MyTripsPage from './pages/MyTripsPage';
-import SavedPlacesPage from './pages/SavedPlacesPage';
-import { useAuth } from './contexts/AuthContext';
-import ToolsPage from './pages/ToolsPage';
-import FareCalculatorPage from './pages/tools/FareCalculatorPage';
-import CurrencyExchangerPage from './pages/tools/CurrencyExchangerPage';
-import BudgetTrackerPage from './pages/tools/BudgetTrackerPage';
-import BargainingCoachPage from './pages/tools/BargainingCoachPage';
-import TranslatePage from './pages/TranslatePage';
-import AppSettingsPage from './pages/AppSettingsPage';
-import AboutUsPage from './pages/AboutUsPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import PricingPage from './pages/PricingPage';
-import UpgradeModal from './components/Layout/UpgradeModal';
-import FullScreenLoader from './components/Layout/FullScreenLoader';
-import { AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Hotel, Utensils, Car, ShoppingBag, Plus, Trash2, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { runGroqQuery } from '../../lib/groq';
+import { safeFormatDate } from '../../lib/utils';
 
-const AppInitError: React.FC<{ message: string }> = ({ message }) => (
-  <div className="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center text-center p-4">
-    <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
-    <h2 className="text-xl font-semibold text-gray-800">Application Error</h2>
-    <p className="text-gray-600 mt-2">Could not load the application. Please try refreshing the page.</p>
-    <p className="text-xs text-gray-500 mt-4 bg-gray-200 p-2 rounded-md font-mono max-w-lg">{message}</p>
-  </div>
-);
+interface BudgetItem {
+  id: string;
+  category: 'Hotel' | 'Food' | 'Transport' | 'Extras';
+  amount: number;
+}
 
-const ProtectedRoute: React.FC<{ adminOnly?: boolean }> = ({ adminOnly = false }) => {
-  const { session, user, loading } = useAuth();
-  const navigate = useNavigate();
+interface DailyRecord {
+  date: string;
+  estimated: number;
+  actual: number;
+}
+
+const BudgetTrackerPage: React.FC = () => {
+  const [city, setCity] = useState('Delhi');
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([
+    { id: 'hotel1', category: 'Hotel', amount: 2000 },
+    { id: 'food1', category: 'Food', amount: 1000 },
+    { id: 'transport1', category: 'Transport', amount: 500 },
+  ]);
+  const [history, setHistory] = useState<DailyRecord[]>([]);
+  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const estimatedTotal = budgetItems.reduce((sum, item) => sum + item.amount, 0);
+
+  const addBudgetItem = (category: 'Hotel' | 'Food' | 'Transport' | 'Extras') => {
+    setBudgetItems([...budgetItems, { id: Date.now().toString(), category, amount: 0 }]);
+  };
+
+  const updateBudgetItem = (id: string, amount: number) => {
+    setBudgetItems(budgetItems.map(item => item.id === id ? { ...item, amount } : item));
+  };
+
+  const removeBudgetItem = (id: string) => {
+    setBudgetItems(budgetItems.filter(item => item.id !== id));
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'Hotel': return <Hotel className="w-5 h-5 text-blue-500" />;
+      case 'Food': return <Utensils className="w-5 h-5 text-green-500" />;
+      case 'Transport': return <Car className="w-5 h-5 text-amber-500" />;
+      case 'Extras': return <ShoppingBag className="w-5 h-5 text-purple-500" />;
+      default: return null;
+    }
+  };
+
+  const handleAnalysis = async () => {
+    setIsLoading(true);
+    setAnalysis(null);
+    const prompt = `
+      Analyze this daily travel budget for ${city}, India.
+      Estimated Budget: Hotel: ${budgetItems.find(i=>i.category==='Hotel')?.amount || 0} INR, Food: ${budgetItems.find(i=>i.category==='Food')?.amount || 0} INR, Transport: ${budgetItems.find(i=>i.category==='Transport')?.amount || 0} INR, Extras: ${budgetItems.find(i=>i.category==='Extras')?.amount || 0} INR.
+      Total: ${estimatedTotal} INR.
+      Provide a JSON object with:
+      1. "status": "Overspent" | "Saved" | "On Track".
+      2. "difference": a number (negative for overspent).
+      3. "saving_tips": An array of 3 short, actionable money-saving tips specific to ${city}.
+      
+      Example JSON:
+      {
+        "status": "On Track",
+        "difference": 100,
+        "saving_tips": [
+          "Use the Delhi Metro instead of taxis to save on transport.",
+          "Eat at local dhabas for authentic and cheap meals.",
+          "Look for budget guesthouses in Paharganj."
+        ]
+      }
+    `;
+
+    try {
+      const response = await runGroqQuery(prompt);
+      const parsedResponse = JSON.parse(response);
+      setAnalysis(parsedResponse);
+    } catch (e) {
+      console.error(e);
+      setAnalysis({ error: "Could not get analysis." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (loading) return;
-    if (!session) {
-      navigate('/auth', { replace: true });
-    } else if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') {
-      navigate('/', { replace: true });
+    const savedHistory = localStorage.getItem('budgetHistory');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
     }
-  }, [session, user, adminOnly, navigate, loading]);
+  }, []);
 
-  if (loading) return <FullScreenLoader />;
-  if (!session) return null;
-  if (adminOnly && user?.email !== 'kartikroyal777@gmail.com') return null;
-
-  return <Outlet />;
-};
-
-const AppLayout = () => {
-  const location = useLocation();
-  const noNavRoutes = ['/auth', '/admin'];
-  
-  const isFullScreen = [
-    '/food-scorer',
-    '/pricing',
-  ].includes(location.pathname);
-
-  const isToolPage = location.pathname.startsWith('/tools/');
-
-  const showTopNav = !noNavRoutes.some(path => location.pathname.startsWith(path)) && !isFullScreen && !isToolPage;
-  const showBottomNav = !noNavRoutes.some(path => location.pathname.startsWith(path));
+  const saveDay = (actual: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newRecord: DailyRecord = { date: today, estimated: estimatedTotal, actual };
+    const updatedHistory = [newRecord, ...history.filter(h => h.date !== today)].slice(0, 7);
+    setHistory(updatedHistory);
+    localStorage.setItem('budgetHistory', JSON.stringify(updatedHistory));
+    handleAnalysis();
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {showTopNav && <TopNavBar />}
-      
-      <main className={`flex-grow ${showTopNav ? 'pt-16' : ''} ${showBottomNav ? 'pb-20' : ''} flex flex-col`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-grow flex flex-col"
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </main>
+    <div className="pb-24 bg-gray-50 min-h-screen">
+      <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center space-x-4">
+        <Link to="/tools" className="p-2 rounded-full hover:bg-gray-100">
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
+        </Link>
+        <h1 className="text-xl font-medium text-gray-900">Daily Budget Tracker</h1>
+      </div>
 
-      {showBottomNav && <BottomNavBar />}
-      <UpgradeModal />
+      <div className="p-4 space-y-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="font-medium text-lg mb-4">Plan Your Day</h2>
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-600">City</label>
+            <select value={city} onChange={e => setCity(e.target.value)} className="w-full mt-1 p-2 border rounded-lg bg-gray-50">
+              <option>Delhi</option>
+              <option>Mumbai</option>
+              <option>Jaipur</option>
+              <option>Goa</option>
+            </select>
+          </div>
+          <div className="space-y-3">
+            {budgetItems.map(item => (
+              <div key={item.id} className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 flex-grow">
+                  {getCategoryIcon(item.category)}
+                  <span className="font-medium w-20">{item.category}</span>
+                </div>
+                <input
+                  type="number"
+                  value={item.amount}
+                  onChange={e => updateBudgetItem(item.id, parseInt(e.target.value) || 0)}
+                  className="w-24 p-2 border rounded-lg text-right"
+                />
+                <span className="font-medium">INR</span>
+                <button onClick={() => removeBudgetItem(item.id)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            ))}
+          </div>
+          <div className="flex space-x-2 mt-4">
+            <button onClick={() => addBudgetItem('Extras')} className="text-sm flex items-center space-x-1 text-blue-600"><Plus className="w-4 h-4" /><span>Add Item</span></button>
+          </div>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-4 text-center">
+          <div className="bg-white rounded-xl shadow-sm border p-4">
+            <p className="text-sm text-gray-500">Daily Budget</p>
+            <p className="text-2xl font-medium text-gray-800">₹{estimatedTotal.toLocaleString()}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border p-4">
+            <p className="text-sm text-gray-500">Weekly Estimate</p>
+            <p className="text-2xl font-medium text-gray-800">₹{(estimatedTotal * 7).toLocaleString()}</p>
+          </div>
+        </motion.div>
+
+        <motion.button 
+          onClick={() => {
+            const actualSpending = prompt("Enter today's actual spending (INR):");
+            if (actualSpending && !isNaN(Number(actualSpending))) {
+              saveDay(Number(actualSpending));
+            }
+          }}
+          className="w-full py-3 bg-orange-500 text-white font-medium rounded-xl shadow-lg"
+        >
+          Log Today's Spending
+        </motion.button>
+
+        <AnimatePresence>
+          {isLoading && <div className="text-center p-4">Loading analysis...</div>}
+          {analysis && !analysis.error && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
+              <h3 className="font-medium text-lg">AI Analysis</h3>
+              <div className={`flex items-center space-x-2 p-3 rounded-lg ${analysis.difference >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                {analysis.difference >= 0 ? <TrendingUp className="w-6 h-6 text-green-500" /> : <TrendingDown className="w-6 h-6 text-red-500" />}
+                <div>
+                  <p className={`font-medium ${analysis.difference >= 0 ? 'text-green-700' : 'text-red-700'}`}>{analysis.status}</p>
+                  <p className="text-sm text-gray-600">
+                    {analysis.difference >= 0 ? `You saved ₹${analysis.difference}` : `You overspent by ₹${Math.abs(analysis.difference)}`}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2 flex items-center space-x-2"><Info className="w-4 h-4 text-blue-500"/><span>Money-Saving Tips for {city}</span></h4>
+                <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 pl-4">
+                  {analysis.saving_tips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}
+                </ul>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {history.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl shadow-sm border p-4">
+            <h2 className="font-medium text-lg mb-4">Recent History</h2>
+            <div className="space-y-2">
+              {history.map(record => {
+                const difference = record.estimated - record.actual;
+                return (
+                  <div key={record.date} className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                    <div>
+                      <p className="font-medium">{safeFormatDate(record.date, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                      <p className="text-xs text-gray-500">Est: ₹{record.estimated} | Actual: ₹{record.actual}</p>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${difference >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {difference >= 0 ? `+₹${difference}` : `-₹${Math.abs(difference)}`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 };
 
-function App() {
-  const { loading, error } = useAuth();
-
-  if (loading) {
-    return <FullScreenLoader />;
-  }
-
-  if (error) {
-    return <AppInitError message={error} />;
-  }
-  
-  return (
-    <Routes>
-      <Route path="/auth" element={<AuthPage />} />
-      <Route path="/pricing" element={<PricingPage />} />
-
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/tools" element={<ToolsPage />} />
-        
-        <Route element={<ProtectedRoute />}>
-          <Route path="/food-scorer" element={<FoodScorerPage />} />
-          <Route path="/planner" element={<TripPlannerPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/my-trips" element={<MyTripsPage />} />
-          <Route path="/saved-places" element={<SavedPlacesPage />} />
-          <Route path="/settings/app" element={<AppSettingsPage />} />
-          <Route path="/about-us" element={<AboutUsPage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-          <Route path="/terms-of-service" element={<TermsOfServicePage />} />
-        </Route>
-
-        <Route element={<ProtectedRoute adminOnly={true} />}>
-          <Route path="/admin" element={<AdminPage />} />
-        </Route>
-
-        <Route path="/city/:cityId" element={<CityPage />} />
-        <Route path="/tehsil/:tehsilId" element={<TehsilPage />} />
-        <Route path="/location/:locationId" element={<LocationDetailPage />} />
-      </Route>
-      
-      {/* Tool routes outside main layout for fullscreen */}
-      <Route path="/tools/translate" element={<TranslatePage />} />
-      <Route path="/tools/fare-calculator" element={<FareCalculatorPage />} />
-      <Route path="/tools/currency-exchanger" element={<CurrencyExchangerPage />} />
-      <Route path="/tools/budget-tracker" element={<BudgetTrackerPage />} />
-      <Route path="/tools/bargaining-coach" element={<BargainingCoachPage />} />
-    </Routes>
-  );
-}
-
-export default App;
+export default BudgetTrackerPage;

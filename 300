@@ -1,83 +1,69 @@
 import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, Scan, Wrench, MapPin, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Globe, Car, Banknote, Landmark, Handshake, Wrench } from 'lucide-react';
-import ToolCard from '../components/Tools/ToolCard';
 
-const tools = [
-  {
-    title: 'Translator',
-    description: 'Translate text and learn common phrases.',
-    icon: Globe,
-    path: '/tools/translate',
-    color: 'blue',
-    comingSoon: false,
-  },
-  {
-    title: 'Fare Calculator',
-    description: 'Estimate auto and taxi fares instantly.',
-    icon: Car,
-    path: '/tools/fare-calculator',
-    color: 'amber',
-    comingSoon: false,
-  },
-  {
-    title: 'Currency Exchanger',
-    description: 'Get live rates and find exchange spots.',
-    icon: Banknote,
-    path: '/tools/currency-exchanger',
-    color: 'green',
-    comingSoon: false,
-  },
-  {
-    title: 'Budget Tracker',
-    description: 'Plan and track your daily travel expenses.',
-    icon: Landmark,
-    path: '/tools/budget-tracker',
-    color: 'indigo',
-    comingSoon: false,
-  },
-  {
-    title: 'Bargaining Coach',
-    description: 'Learn to haggle like a local with a fun simulator.',
-    icon: Handshake,
-    path: '/tools/bargaining-coach',
-    color: 'rose',
-    comingSoon: false,
-  },
-];
+const BottomNavBar: React.FC = () => {
+  const location = useLocation();
+  const tabs = [
+    { path: '/', label: 'Home', icon: Home },
+    { path: '/food-scorer', label: 'Food Score', icon: Scan },
+    { path: '/tools', label: 'Tools', icon: Wrench },
+    { path: '/planner', label: 'Trip Planner', icon: MapPin },
+    { path: '/pricing', label: 'Pricing', icon: CreditCard },
+  ];
 
-const ToolsPage: React.FC = () => {
+  const noNavRoutes = ['/auth', '/admin'];
+  
+  const isFullScreen = [
+    '/food-scorer',
+    '/pricing',
+  ].includes(location.pathname);
+
+  const isToolPage = location.pathname.startsWith('/tools/');
+
+  if (noNavRoutes.some(path => location.pathname.startsWith(path)) || isFullScreen || isToolPage) {
+    return null;
+  }
+
   return (
-    <div className="pb-24">
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-4 pt-6 pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <Wrench className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-          <h1 className="text-2xl font-medium text-gray-900 mb-2">
-            All <span className="text-orange-500">Essential Tools</span>
-          </h1>
-          <p className="text-gray-600">Your one-stop utility kit for traveling in India.</p>
-        </motion.div>
-      </div>
-      <div className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tools.map((tool, index) => (
-            <motion.div
-              key={tool.path}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+    <motion.nav 
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-50"
+    >
+      <div className="flex justify-around items-center max-w-sm mx-auto">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = location.pathname === tab.path;
+          
+          return (
+            <NavLink
+              to={tab.path}
+              key={tab.path}
+              className="relative flex flex-col items-center py-2 px-3 rounded-lg transition-all w-16"
             >
-              <ToolCard {...tool} />
-            </motion.div>
-          ))}
-        </div>
+              <div className={`p-1 rounded-full ${isActive ? 'text-orange-500' : 'text-gray-500'}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className={`text-xs mt-1 ${
+                isActive ? 'text-orange-500 font-medium' : 'text-gray-500'
+              }`}>
+                {tab.label}
+              </span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 w-8 h-1 bg-orange-500 rounded-full"
+                />
+              )}
+            </NavLink>
+          );
+        })}
       </div>
-    </div>
+    </motion.nav>
   );
 };
 
-export default ToolsPage;
+export default BottomNavBar;

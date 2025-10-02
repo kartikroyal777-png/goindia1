@@ -1,83 +1,53 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Globe, Car, Banknote, Landmark, Handshake, Wrench } from 'lucide-react';
-import ToolCard from '../components/Tools/ToolCard';
+import { LucideProps } from 'lucide-react';
 
-const tools = [
-  {
-    title: 'Translator',
-    description: 'Translate text and learn common phrases.',
-    icon: Globe,
-    path: '/tools/translate',
-    color: 'blue',
-    comingSoon: false,
-  },
-  {
-    title: 'Fare Calculator',
-    description: 'Estimate auto and taxi fares instantly.',
-    icon: Car,
-    path: '/tools/fare-calculator',
-    color: 'amber',
-    comingSoon: false,
-  },
-  {
-    title: 'Currency Exchanger',
-    description: 'Get live rates and find exchange spots.',
-    icon: Banknote,
-    path: '/tools/currency-exchanger',
-    color: 'green',
-    comingSoon: false,
-  },
-  {
-    title: 'Budget Tracker',
-    description: 'Plan and track your daily travel expenses.',
-    icon: Landmark,
-    path: '/tools/budget-tracker',
-    color: 'indigo',
-    comingSoon: false,
-  },
-  {
-    title: 'Bargaining Coach',
-    description: 'Learn to haggle like a local with a fun simulator.',
-    icon: Handshake,
-    path: '/tools/bargaining-coach',
-    color: 'rose',
-    comingSoon: false,
-  },
-];
+interface ToolCardProps {
+  title: string;
+  description: string;
+  icon: React.FC<LucideProps>;
+  path: string;
+  color: string;
+  comingSoon: boolean;
+}
 
-const ToolsPage: React.FC = () => {
-  return (
-    <div className="pb-24">
-      <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-4 pt-6 pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <Wrench className="w-12 h-12 text-gray-500 mx-auto mb-3" />
-          <h1 className="text-2xl font-medium text-gray-900 mb-2">
-            All <span className="text-orange-500">Essential Tools</span>
-          </h1>
-          <p className="text-gray-600">Your one-stop utility kit for traveling in India.</p>
-        </motion.div>
-      </div>
-      <div className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {tools.map((tool, index) => (
-            <motion.div
-              key={tool.path}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <ToolCard {...tool} />
-            </motion.div>
-          ))}
+const colorVariants: { [key: string]: { bg: string; text: string; border: string } } = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'hover:border-blue-300' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'hover:border-amber-300' },
+  green: { bg: 'bg-green-50', text: 'text-green-600', border: 'hover:border-green-300' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'hover:border-indigo-300' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'hover:border-rose-300' },
+};
+
+const ToolCard: React.FC<ToolCardProps> = ({ title, description, icon: Icon, path, color, comingSoon }) => {
+  const { bg, text, border } = colorVariants[color] || colorVariants.blue;
+
+  const cardContent = (
+    <motion.div
+      className={`relative h-full bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-between overflow-hidden transition-all ${border}`}
+      whileHover={{ y: -5 }}
+    >
+      <div>
+        <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
+          <Icon className={`w-6 h-6 ${text}`} />
         </div>
+        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <p className="text-sm text-gray-600 mt-1">{description}</p>
       </div>
-    </div>
+      {comingSoon && (
+        <div className="absolute top-4 right-4 bg-gray-200 text-gray-700 text-xs font-semibold px-2 py-1 rounded-full">
+          SOON
+        </div>
+      )}
+    </motion.div>
+  );
+
+  return comingSoon ? (
+    <div className="cursor-not-allowed opacity-60">{cardContent}</div>
+  ) : (
+    <Link to={path}>{cardContent}</Link>
   );
 };
 
-export default ToolsPage;
+export default ToolCard;

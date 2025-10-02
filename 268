@@ -1,125 +1,81 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Heart, MapPin, LogOut, Edit, Crown, FileText, Shield, Info } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import EditProfileModal from './EditProfileModal';
+/*
+# [Feature] User Profiles and Plan Limits
+This migration introduces a `profiles` table to store user-specific data, including subscription plans and feature usage counters. It also sets up a trigger to automatically create a profile for new users upon sign-up.
 
-const ProfilePage: React.FC = () => {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+## Query Description:
+- **Creates `profiles` table**: This new table will store user profiles, linked to `auth.users`. It includes columns for plan type and usage tracking. No existing data is affected as this is a new table.
+- **Creates `handle_new_user` function**: A trigger function that inserts a new row into `public.profiles` whenever a new user is added to `auth.users`.
+- **Creates trigger `on_auth_user_created`**: This trigger executes the `handle_new_user` function after a new user signs up, ensuring every user has a profile.
+- **Enables RLS on `profiles`**: Secures the new table.
+- **Creates RLS policies**:
+  - Allows users to view their own profile.
+  - Allows users to update their own profile.
+  - Allows the app to create profiles via the trigger.
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-  
-  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+## Metadata:
+- Schema-Category: "Structural"
+- Impact-Level: "Low"
+- Requires-Backup: false
+- Reversible: true (manually, by dropping table, trigger, and function)
 
-  const menuItems = [
-    { icon: Heart, label: 'Saved Places', path: '/saved-places' },
-    { icon: MapPin, label: 'My Trips', path: '/my-trips' },
-    { icon: Settings, label: 'App Settings', path: '/settings/app' },
-  ];
+## Structure Details:
+- **Table Added**: `public.profiles`
+- **Columns**: `id`, `updated_at`, `full_name`, `avatar_url`, `plan_type`, `food_scans_used`, `trip_planner_runs`
+- **Function Added**: `public.handle_new_user`
+- **Trigger Added**: `on_auth_user_created` on `auth.users`
 
-  const legalItems = [
-    { icon: Info, label: 'About Us', path: '/about-us' },
-    { icon: Shield, label: 'Privacy Policy', path: '/privacy-policy' },
-    { icon: FileText, label: 'Terms of Service', path: '/terms-of-service' },
-  ];
+## Security Implications:
+- RLS Status: Enabled on `profiles`.
+- Policy Changes: New policies are added for the `profiles` table to ensure users can only access and modify their own data.
+- Auth Requirements: Policies are based on `auth.uid()`.
 
-  return (
-    <>
-      <div className="pb-20 bg-gray-50">
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 px-4 pt-6 pb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative text-center text-white"
-          >
-            <div className="relative w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-12 h-12 text-white" />
-              <button onClick={() => setIsEditModalOpen(true)} className="absolute bottom-0 right-0 w-8 h-8 bg-white text-orange-500 rounded-full flex items-center justify-center shadow-md">
-                <Edit className="w-4 h-4" />
-              </button>
-            </div>
-            <h1 className="text-xl font-medium mb-1">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Traveler'}</h1>
-            <p className="text-orange-100 text-sm">{user?.email}</p>
-          </motion.div>
-        </div>
+## Performance Impact:
+- Indexes: Primary key index on `profiles.id`.
+- Triggers: A trigger is added to `auth.users`, which will have a negligible performance impact on user sign-ups.
+- Estimated Impact: Low.
+*/
 
-        <div className="px-4 -mt-8">
-          {isAdmin && (
-            <Link to="/admin">
-              <motion.div
-                className="w-full mb-6 bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl p-4 flex items-center justify-center space-x-3 text-white hover:shadow-2xl transition-shadow"
-                whileHover={{ scale: 1.02 }}
-              >
-                <Crown className="w-6 h-6 text-yellow-400" />
-                <span className="text-lg">Admin Panel</span>
-              </motion.div>
-            </Link>
-          )}
+-- 1. Create the profiles table
+create table public.profiles (
+  id uuid not null references auth.users on delete cascade,
+  updated_at timestamp with time zone,
+  full_name text,
+  avatar_url text,
+  plan_type text not null default 'free',
+  food_scans_used integer not null default 0,
+  trip_planner_runs integer not null default 0,
 
-          <div className="bg-white rounded-xl shadow-md p-4 mb-4">
-            <div className="space-y-2">
-              {menuItems.map((item, index) => (
-                <Link to={item.path} key={item.label}>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="w-full p-3 flex items-center justify-between hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-800">{item.label}</span>
-                    </div>
-                    <span className="text-gray-400">›</span>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl shadow-md p-4">
-            <div className="space-y-2">
-              {legalItems.map((item, index) => (
-                <Link to={item.path} key={item.label}>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: (index + menuItems.length) * 0.1 }}
-                    className="w-full p-3 flex items-center justify-between hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className="w-5 h-5 text-gray-500" />
-                      <span className="text-gray-800">{item.label}</span>
-                    </div>
-                    <span className="text-gray-400">›</span>
-                  </motion.div>
-                </Link>
-              ))}
-            </div>
-          </div>
+  primary key (id)
+);
 
-          <motion.button
-            onClick={handleSignOut}
-            className="w-full mt-6 bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-center space-x-2 text-red-600 hover:bg-red-50 transition-colors"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Sign Out</span>
-          </motion.button>
-        </div>
-      </div>
-      <AnimatePresence>
-        {isEditModalOpen && <EditProfileModal onClose={() => setIsEditModalOpen(false)} />}
-      </AnimatePresence>
-    </>
-  );
-};
+alter table public.profiles enable row level security;
 
-export default ProfilePage;
+-- 2. Create RLS policies for profiles
+create policy "Public profiles are viewable by everyone."
+  on public.profiles for select
+  using ( true );
+
+create policy "Users can insert their own profile."
+  on public.profiles for insert
+  with check ( auth.uid() = id );
+
+create policy "Users can update own profile."
+  on public.profiles for update
+  using ( auth.uid() = id );
+
+-- 3. Create a trigger to create a profile for new users
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name, avatar_url)
+  values (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
