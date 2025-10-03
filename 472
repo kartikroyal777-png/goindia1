@@ -30,6 +30,7 @@ import PricingPage from './pages/PricingPage';
 import UpgradeModal from './components/Layout/UpgradeModal';
 import FullScreenLoader from './components/Layout/FullScreenLoader';
 import { AlertTriangle } from 'lucide-react';
+import EmergencySOSPage from './pages/EmergencySOSPage';
 
 const AppInitError: React.FC<{ message: string }> = ({ message }) => (
   <div className="fixed inset-0 bg-gray-100 z-[100] flex flex-col items-center justify-center text-center p-4">
@@ -67,6 +68,7 @@ const AppLayout = () => {
   const isFullScreen = [
     '/food-scorer',
     '/pricing',
+    '/tools/emergency-sos'
   ].includes(location.pathname);
 
   const isToolPage = location.pathname.startsWith('/tools/');
@@ -147,6 +149,7 @@ function App() {
       <Route path="/tools/currency-exchanger" element={<CurrencyExchangerPage />} />
       <Route path="/tools/budget-tracker" element={<BudgetTrackerPage />} />
       <Route path="/tools/bargaining-coach" element={<BargainingCoachPage />} />
+      <Route path="/tools/emergency-sos" element={<EmergencySOSPage />} />
     </Routes>
   );
 }
